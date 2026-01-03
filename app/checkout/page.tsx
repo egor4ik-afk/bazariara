@@ -9,7 +9,7 @@ import { handlePlaceOrder } from './actions';
 import { calculateDisplayPrice } from '@/lib/priceLogic';
 
 const FREE_SHIPPING_THRESHOLD = 100;
-const SHIPPING_COST = 5;
+const SHIPPING_COST = 10;
 
 const getSocialOptions = (t: (key: string) => string) => [
     { key: 'telegram', label: t('checkout.telegram'), selectedColor: 'bg-sky-500', hoverColor: 'hover:bg-sky-600' },

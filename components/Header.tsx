@@ -46,13 +46,13 @@ export default function Header() {
                                 aria-label="Switch language"
                             >
                                 <Image 
-                                  src={language === 'ru' ? '/gb.svg' : '/ru.svg'} 
+                                  src={language === 'ru' ? '/ru.svg' : '/gb.svg'} 
                                   alt="Language flag" 
                                   width={24} 
                                   height={24} 
                                   className="w-6 h-6 rounded-full object-cover" 
                                 />
-                                <span className="font-semibold text-sm uppercase">{language === 'ru' ? 'EN' : 'RU'}</span>
+                                <span className="font-semibold text-sm uppercase">{language}</span>
                             </button>
                             <Link href="/orders" className="relative flex items-center text-white hover:text-lime-400 transition-colors duration-300">
                                 <ArchiveBoxIcon className="h-8 w-8" />

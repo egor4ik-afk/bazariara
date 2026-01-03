@@ -1,3 +1,4 @@
+
 {
   "common": {
     "categories": "Categories",
@@ -53,6 +54,17 @@
     "errorContactRequired": "Please provide your name and at least one contact: phone or social media.",
     "errorEmptyCart": "Your cart is empty.",
     "errorOrderFailed": "Failed to place order."
+  },
+  "orders": {
+    "title": "My Orders",
+    "order": "Order",
+    "quantity": "Quantity",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "free": "FREE",
+    "total": "Total",
+    "noOrders": "You don't have any orders yet.",
+    "noOrdersHint": "Feel free to browse our products and place your first order!"
   },
   "returns": {
     "title": "Returns Policy",
