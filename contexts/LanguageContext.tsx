@@ -20,10 +20,15 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setIsClient(true);
-    // Load language from localStorage or default to 'ru'
     const savedLanguage = localStorage.getItem('language') as Language;
-    if (savedLanguage === 'ru' || savedLanguage === 'en') {
+
+    if (savedLanguage && ['ru', 'en'].includes(savedLanguage)) {
       setLanguageState(savedLanguage);
+    } else {
+      // Если язык не сохранен, определяем по языку браузера
+      const browserLang = navigator.language.split('-')[0];
+      const defaultLang = browserLang === 'en' ? 'en' : 'ru';
+      setLanguageState(defaultLang);
     }
   }, []);
 

@@ -46,7 +46,7 @@ async function fetchProduct(category: string, id: string): Promise<Product | nul
     }
 }
 
-function RelatedProductCard({ category, id }: { category: string; id: string }) {
+function RelatedProductCard({ category, id, language }: { category: string; id: string; language: 'ru' | 'en' }) {
     const [product, setProduct] = useState<Product | null>(null);
 
     useEffect(() => {
@@ -62,11 +62,13 @@ function RelatedProductCard({ category, id }: { category: string; id: string }) 
         );
     }
 
+    const displayTitle = (language === 'en' && product.title_en) ? product.title_en : product.title;
+
     return (
         <Link href={`/products/${product.categoryKey}/${product.id}`} className="block bg-gray-800 rounded-lg shadow-md hover:shadow-lime-500/20 transition-shadow duration-300">
-            <img src={product.image_url} alt={product.title} className="w-full h-32 object-cover rounded-t-lg" />
+            <img src={product.image_url} alt={displayTitle} className="w-full h-32 object-cover rounded-t-lg" />
             <div className="p-4">
-                <h4 className="font-bold text-md truncate text-white">{product.title}</h4>
+                <h4 className="font-bold text-md truncate text-white">{displayTitle}</h4>
                 <p className="text-lime-400 font-semibold">{calculateDisplayPrice(product.price)} ₾</p>
             </div>
         </Link>
@@ -271,7 +273,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                             if (pathnameParts.length >= 4) {
                                 const category = pathnameParts[2];
                                 const id = pathnameParts[3];
-                                return <RelatedProductCard key={index} category={category} id={id} />
+                                return <RelatedProductCard key={index} category={category} id={id} language={language} />
                             }
                         } catch (error) {
                             console.error("Invalid URL in product links", link, error);
