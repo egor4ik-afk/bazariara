@@ -8,7 +8,6 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Script from 'next/script';
-import Snowfall from '@/components/Snowfall';
 
 const siteName = 'BAZARI ARA';
 const siteUrl = new URL('https://bazariara.ge');
@@ -110,7 +109,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </Script>
       </head>
       <body className="flex flex-col min-h-screen">
-        <Snowfall />
 
         <LanguageProvider>
           <OrderProvider>
