@@ -5,7 +5,6 @@ import { translations } from '@/lib/translations';
 
 type Language = 'ru' | 'en';
 
-
 interface LanguageContextType {
   language: Language;
   setLanguage: (lang: Language) => void;
@@ -15,7 +14,8 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('ru');
+  // Изначально можно оставить 'en' или 'ru', это изменится после маунта
+  const [language, setLanguageState] = useState<Language>('en'); 
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -25,9 +25,13 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (savedLanguage && ['ru', 'en'].includes(savedLanguage)) {
       setLanguageState(savedLanguage);
     } else {
-      // Если язык не сохранен, определяем по языку браузера
+      // ЛОГИКА ИЗМЕНЕНА ЗДЕСЬ:
       const browserLang = navigator.language.split('-')[0];
-      const defaultLang = browserLang === 'en' ? 'en' : 'ru';
+      
+      // Если язык браузера 'ru' -> ставим 'ru'
+      // Если любой другой (включая en, de, fr...) -> ставим 'en'
+      const defaultLang = browserLang === 'ru' ? 'ru' : 'en';
+      
       setLanguageState(defaultLang);
     }
   }, []);
@@ -36,7 +40,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     setLanguageState(lang);
     if (isClient) {
       localStorage.setItem('language', lang);
-      // Update html lang attribute
       document.documentElement.lang = lang;
     }
   };
@@ -59,7 +62,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
     if (typeof value !== 'string') return key;
 
-    // Replace placeholders like {amount} with actual values
     if (params) {
       return value.replace(/\{(\w+)\}/g, (match, paramKey) => {
         return params[paramKey]?.toString() || match;
