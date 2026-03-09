@@ -3,7 +3,6 @@
 import { useCart } from '@/contexts/CartContext';
 import { ShoppingCartIcon, ArrowLeftIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -69,7 +68,7 @@ function RelatedProductCard({ category, id, language }: { category: string; id: 
             <img src={product.image_url} alt={displayTitle} className="w-full h-32 object-cover rounded-t-lg" />
             <div className="p-4">
                 <h4 className="font-bold text-md truncate text-white">{displayTitle}</h4>
-                <p className="text-lime-400 font-semibold">{calculateDisplayPrice(product.price)} ₾</p>
+                <p className="text-lime-400 font-semibold">{product.price} ₾</p>
             </div>
         </Link>
     );
@@ -219,7 +218,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-baseline gap-3">
-                        <p className="text-4xl font-bold text-lime-500">{calculateDisplayPrice(product.price)} ₾</p>
+                        <p className="text-4xl font-bold text-lime-500">{product.price} ₾</p>
                     </div>
                     {product.in_stock && <span className="text-sm font-semibold text-green-400 bg-green-900/50 rounded-full px-3 py-1">{t('product.inStock')}</span>}
                 </div>

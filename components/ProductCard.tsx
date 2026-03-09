@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 
 interface Product {
   id: string;
@@ -39,7 +38,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">{product.title}</h3>
         <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{product.description}</p>
         <div className="mt-4 flex items-center justify-between">
-          <p className="text-xl font-bold text-gray-900 dark:text-gray-50">${calculateDisplayPrice(product.price)}</p>
+          <p className="text-xl font-bold text-gray-900 dark:text-gray-50">${product.price}</p>
           <button
             className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
             Add to Cart

@@ -5,7 +5,6 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { TrashIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/solid';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 import { useState, useEffect, useRef } from 'react';
 
 const MIN_ORDER_AMOUNT = 30;
@@ -149,7 +148,7 @@ export default function CartPage() {
         router.push('/checkout');
     }
 
-    const subtotal = cartItems.reduce((acc, item) => acc + calculateDisplayPrice(item.price) * item.quantity, 0);
+    const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
     
     const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
     const total = subtotal + shippingCost;
@@ -183,7 +182,7 @@ export default function CartPage() {
                                             <div>
                                                 <h2 className="font-bold text-lg text-gray-200 group-hover:text-lime-400 transition-colors duration-300">{title}</h2>
                                                 <div className="flex items-center gap-2 mt-1">
-                                                    <p className="text-lime-500 font-semibold">₾{calculateDisplayPrice(item.price).toFixed(2)}</p>
+                                                    <p className="text-lime-500 font-semibold">₾{item.price.toFixed(2)}</p>
                                                 </div>
                                             </div>
                                         </Link>

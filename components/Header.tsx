@@ -7,7 +7,6 @@ import { useCart } from '@/contexts/CartContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { ShoppingCartIcon, ArchiveBoxIcon } from '@heroicons/react/24/solid';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 import SidebarMenu from './SidebarMenu';
 
 export default function Header() {
@@ -21,7 +20,7 @@ export default function Header() {
     }, []);
 
     const itemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-    const totalPrice = cartItems.reduce((sum, item) => sum + calculateDisplayPrice(item.price) * item.quantity, 0);
+    const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const orderCount = orders.length;
 
     const toggleLanguage = () => {

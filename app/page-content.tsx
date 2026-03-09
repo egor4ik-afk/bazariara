@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useCart } from '@/contexts/CartContext';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import CategoryCarousel from '@/components/CategoryCarousel';
 import QuantityInput from '@/components/QuantityInput';
@@ -291,7 +290,7 @@ export default function HomePageContent({ products: initialProducts }: { product
                               <p className="text-gray-400 text-sm mb-3">{category}{sub_category ? ` / ${sub_category}` : ''}</p>
                                <div className="flex items-center flex-wrap gap-2">
                                    <div className="flex items-baseline gap-2 mr-auto">
-                                      <p className="text-2xl font-semibold text-lime-500 whitespace-nowrap">{calculateDisplayPrice(product.price)} ₾</p>
+                                      <p className="text-2xl font-semibold text-lime-500 whitespace-nowrap">{product.price} ₾</p>
                                   </div>
                                   {product.in_stock && <span className="text-sm font-semibold text-green-400 shrink-0">{t('home.inStock')}</span>}
                               </div>
