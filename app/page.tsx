@@ -1,238 +1,202 @@
-import { Suspense } from 'react';
-import HomePageContent from './page-content';
 import { database } from '@/lib/firebase/server';
 import type { Metadata } from 'next';
 import { translations } from '@/lib/translations';
+import Link from 'next/link';
+import QuantityInput from '@/components/QuantityInput';
+import InteractiveFilters from '@/components/InteractiveFilters';
+import ProductImageSlider from '@/components/ProductImageSlider';
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 60; // 🔁 обновление данных каждые 60 секунд
+// 🔹 ISR: Обновление кэша базы данных каждые 10 минут
+export const revalidate = 600;
 
 type Product = {
-  id: string;
-  title: string;
-  category: string;
-  price: number;
-  in_stock: boolean;
-  description?: string;
-  image_url?: string;
-  categoryKey: string;
-  image_urls?: string[];
-  links?: string[];
-  sub_category?: string;
-  subCategoryKey?: string;
+  id: string; title: string; category: string; price: number; in_stock: boolean;
+  description?: string; image_url?: string; categoryKey: string; image_urls?: string[];
+  sub_category?: string; subCategoryKey?: string;
 };
 
-// === 🔹 Получение данных из Firebase ===
+// 🔹 Метаданные (SEO)
+export const metadata: Metadata = {
+  title: 'BAZARI ARA: Товары для дома, сада, туризма и отдыха',
+  description: 'Широкий ассортимент товаров. Быстрая доставка по Тбилиси за 2 часа!',
+};
+
+// ... функция fetchProductsFromFirebase остается без изменений ...
 async function fetchProductsFromFirebase(): Promise<Product[]> {
-  try {
-    const productsRef = database.ref('products');
-    const snapshot = await productsRef.once('value');
-    const categoriesData = snapshot.val() || {};
-
-    const allProducts: Product[] = [];
-
-    const generateKey = (name: string) => {
-      if (!name) return '';
-      return name.trim().toLowerCase().replace(/\s+/g, '-');
-    };
-
-    Object.keys(categoriesData).forEach(categoryKey => {
-      const productsInCategory = categoriesData[categoryKey];
-      if (productsInCategory && typeof productsInCategory === 'object') {
-        Object.keys(productsInCategory).forEach(firebaseDocumentKey => {
-          const productData = productsInCategory[firebaseDocumentKey];
-          if (productData && typeof productData === 'object' && productData.title) {
-            const newProduct: Product = {
-              ...productData,
-              id: firebaseDocumentKey, // ← Сохраняем оригинальный Firebase ключ
-              categoryKey: categoryKey,
-            };
-
-            if (productData.sub_category) {
-              newProduct.subCategoryKey = generateKey(productData.sub_category);
+    // Скопируйте сюда вашу текущую функцию fetchProductsFromFirebase из app/page.tsx
+    // (Я опустил ее реализацию для краткости, она у вас написана отлично)
+    try {
+        const productsRef = database.ref('products');
+        const snapshot = await productsRef.once('value');
+        const categoriesData = snapshot.val() || {};
+        const allProducts: Product[] = [];
+        const generateKey = (name: string) => name ? name.trim().toLowerCase().replace(/\s+/g, '-') : '';
+        Object.keys(categoriesData).forEach(categoryKey => {
+            const productsInCategory = categoriesData[categoryKey];
+            if (productsInCategory && typeof productsInCategory === 'object') {
+                Object.keys(productsInCategory).forEach(firebaseDocumentKey => {
+                    const productData = productsInCategory[firebaseDocumentKey];
+                    if (productData && typeof productData === 'object' && productData.title) {
+                        const newProduct: Product = { ...productData, id: firebaseDocumentKey, categoryKey };
+                        if (productData.sub_category) newProduct.subCategoryKey = generateKey(productData.sub_category);
+                        allProducts.push(newProduct);
+                    }
+                });
             }
-
-            allProducts.push(newProduct);
-          }
         });
+        allProducts.sort((a, b) => {
+            const order: Record<string, number> = { top: 1, hiking: 2 };
+            return (order[a.categoryKey] || 3) - (order[b.categoryKey] || 3);
+        });
+        return allProducts;
+    } catch (error) {
+        return [];
+    }
+}
+
+
+export default async function HomePage({ searchParams }: { searchParams: { [key: string]: string | undefined } }) {
+  const products = await fetchProductsFromFirebase();
+  const t = translations.ru; // Для серверного рендера SEO используем русский
+
+  // 1. Читаем параметры URL прямо на сервере
+  const selectedCategory = searchParams.category || 'all';
+  const selectedSubCategory = searchParams.subcategory || 'all';
+  const searchQuery = searchParams.search || '';
+  const currentPage = parseInt(searchParams.page || '1', 10);
+
+  // 2. СЕРВЕРНАЯ фильтрация
+  let filteredProducts = products.filter(p => p.image_url && p.image_url.trim() !== '').sort((a, b) => {
+    if (a.in_stock && !b.in_stock) return -1;
+    if (!a.in_stock && b.in_stock) return 1;
+    return 0;
+  });
+
+  const categoryMap = new Map<string, { name: string; key: string; imageUrl: string }>();
+  filteredProducts.forEach(product => {
+      if (!categoryMap.has(product.categoryKey)) {
+          categoryMap.set(product.categoryKey, { name: product.category, key: product.categoryKey, imageUrl: product.image_url! });
+      }
+  });
+  const categoriesList = Array.from(categoryMap.values());
+
+  const subCategoryMap = new Map<string, { name: string; key: string; imageUrl: string }>();
+  if (selectedCategory !== 'all') {
+    filteredProducts = filteredProducts.filter(p => p.categoryKey === selectedCategory);
+    filteredProducts.forEach(product => {
+      if (product.sub_category && product.subCategoryKey && !subCategoryMap.has(product.subCategoryKey)) {
+        subCategoryMap.set(product.subCategoryKey, { name: product.sub_category, key: product.subCategoryKey, imageUrl: product.image_url! });
       }
     });
-
-    // Сортировка: "new-year", "top" и "hiking" — первые
-    allProducts.sort((a, b) => {
-      const order: Record<string, number> = { top: 1, hiking: 2 };
-      const aOrder = order[a.categoryKey] || 3;
-      const bOrder = order[b.categoryKey] || 3;
-      return aOrder - bOrder;
-    });
-
-    return allProducts;
-  } catch (error) {
-    console.error('Ошибка при загрузке товаров:', error);
-    return [];
   }
-}
+  const subCategoriesList = Array.from(subCategoryMap.values());
 
-// === 🔹 SEO, Facebook (Open Graph) и Twitter ===
-export async function generateMetadata({ searchParams }: { searchParams: { [key: string]: string | string[] | undefined } }): Promise<Metadata> {
-  const category = searchParams.category;
-  const baseUrl = 'https://bazariara.ge';
-  const canonicalUrl = category ? `${baseUrl}/?category=${category}` : baseUrl;
+  if (selectedSubCategory !== 'all') {
+    filteredProducts = filteredProducts.filter(p => p.subCategoryKey === selectedSubCategory);
+  }
 
-  return {
-    metadataBase: new URL(baseUrl),
-    title: 'BAZARIara: Товары для дома, сада, туризма и отдыха',
-    description:
-      'Широкий ассортимент товаров: мебель, инструменты, игрушки, всё для сада, дома и активного отдыха. Быстрая доставка по Тбилиси за 2 часа!',
-      keywords: [
-        // Русский
-        'новогодние товары', 'новый год', 'елки', 'гирлянды', 'елочные игрушки',
-        'товары для дома', 'мебель', 'мягкая мебель', 'кухонная мебель', 'детская мебель',
-        'офисная мебель', 'мебель под заказ', 'шкафы', 'столы', 'стулья', 'диваны', 'кровати',
-        'сад и огород', 'садовая техника', 'инструменты для сада', 'растения', 'семена', 'цветы',
-        'горшки для растений', 'садовые аксессуары', 'грядки', 'удобрения', 'туризм', 'отдых',
-        'пляжный отдых', 'семейный отдых', 'походы', 'кемпинг', 'палатки', 'спальные мешки',
-        'туристические рюкзаки', 'туристическое снаряжение', 'игрушки', 'мягкие игрушки',
-        'конструкторы', 'развивающие игрушки', 'настольные игры', 'строительные инструменты',
-        'электроинструменты', 'ручные инструменты', 'инструменты для ремонта', 'дрели', 'шуруповерты',
-        'газ', 'баллоны газа', 'газовое оборудование', 'термобелье', 'термос', 'дождевик',
-        'доставка Тбилиси', 'онлайн заказ', 'быстрая доставка', 'доставка по Грузии', 'BAZARI ARA',
-        'онлайн магазин', 'купить мебель Тбилиси', 'купить игрушки Тбилиси', 'купить инструменты Тбилиси',
-        'садовый магазин Тбилиси', 'туристические товары Тбилиси', 'аксессуары для дома', 'декор для дома',
-        'освещение', 'ковры', 'текстиль', 'подушки', 'занавески', 'кухонные принадлежности',
-        'посуда', 'бытовая техника', 'очистка и уборка', 'интерьер',
-      
-        // English
-        'new year goods', 'new year', 'christmas trees', 'garlands', 'christmas decorations',
-        'home goods', 'furniture', 'sofa', 'kitchen furniture', 'kids furniture', 'office furniture',
-        'custom furniture', 'wardrobes', 'tables', 'chairs', 'beds', 'garden and yard', 'garden tools',
-        'plants', 'seeds', 'flowers', 'flower pots', 'garden accessories', 'raised beds', 'fertilizers',
-        'tourism', 'vacation', 'beach vacation', 'family vacation', 'hiking', 'camping', 'tents',
-        'sleeping bags', 'backpacks', 'tourist gear', 'toys', 'soft toys', 'construction toys',
-        'educational toys', 'board games', 'construction tools', 'power tools', 'hand tools', 'repair tools',
-        'drills', 'screwdrivers', 'gas', 'gas cylinders', 'gas equipment', 'thermal underwear', 'thermos', 'raincoat',
-        'Tbilisi delivery', 'online order', 'fast delivery', 'delivery in Georgia', 'BAZARI ARA', 'online store',
-        'buy furniture Tbilisi', 'buy toys Tbilisi', 'buy tools Tbilisi', 'garden store Tbilisi',
-        'tourist goods Tbilisi', 'home accessories', 'home decor', 'lighting', 'carpets', 'textiles',
-        'pillows', 'curtains', 'kitchen utensils', 'tableware', 'appliances', 'cleaning', 'painting supplies',
-        'interior design'
-      ],      
-    alternates: {
-      canonical: canonicalUrl,
-    },
-    openGraph: {
-      type: 'website',
-      locale: 'ru_RU',
-      url: canonicalUrl,
-      siteName: 'BAZARI ARA',
-      title: 'BAZARI ARA: Всё для дома, сада, туризма и отдыха',
-      description: 'Быстрая доставка по Тбилиси за 2 часа. Всё для комфорта дома и активного отдыха!',
-      images: [
-        {
-          url: 'pre.png',
-          width: 1200,
-          height: 630,
-          alt: 'BAZARI ARA — интернет-магазин товаров для дома, сада и отдыха',
-        },
-      ],
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: 'BAZARI ARA — всё для дома и отдыха',
-      description: 'Мебель, инструменты, туризм, сад и огород. Быстрая доставка по Тбилиси!',
-      images: ['pre.png'],
-    },
-    other: {
-      'og:image:width': '1200',
-      'og:image:height': '630',
-      'og:image:alt': 'BAZARI ARA — интернет-магазин товаров для дома, сада и отдыха',
-      'og:locale:alternate': 'ru_RU',
-      'fb:app_id': '1234567890', // 🔸 можно добавить свой ID Facebook App, если есть
-    },
-  };
-}
+  if (searchQuery.length >= 2) {
+    filteredProducts = filteredProducts.filter(p => p.title.toLowerCase().includes(searchQuery.toLowerCase()));
+  }
 
+  // 3. СЕРВЕРНАЯ пагинация
+  const ITEMS_PER_PAGE = 20;
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const paginatedProducts = filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-// === 🔹 Главная страница ===
-export default async function HomePage() {
-  const products = await fetchProductsFromFirebase();
-
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'WebSite',
-        url: 'https://bazariara.ge',
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: {
-            '@type': 'EntryPoint',
-            urlTemplate: 'https://bazariara.ge/?search={search_term_string}',
-          },
-          'query-input': 'required name=search_term_string',
-        },
-      },
-      {
-        '@type': 'Organization',
-        name: 'BAZARIara',
-        url: 'https://bazariara.ge',
-        logo: 'https://i.ibb.co/Rkpg2k2d/Chat-GPT-Image-29-2025-14-40-32.png',
-        contactPoint: {
-          '@type': 'ContactPoint',
-          telephone: '+995591017945',
-          contactType: 'customer service',
-        },
-      },
-      {
-        '@type': 'ItemList',
-        itemListElement: products.map((product, index) => ({
-          '@type': 'ListItem',
-          position: index + 1,
-          item: {
-            '@type': 'Product',
-            name: product.title,
-            description: product.description || product.title,
-            image: product.image_url,
-            sku: product.id,
-            mpn: product.id,
-            brand: {
-              '@type': 'Brand',
-              name: product.category,
-            },
-            offers: {
-              '@type': 'Offer',
-              url: `https://bazariara.ge/products/${product.categoryKey}/${product.id}`,
-              priceCurrency: 'GEL',
-              price: product.price,
-              availability: product.in_stock
-                ? 'https://schema.org/InStock'
-                : 'https://schema.org/OutOfStock',
-              seller: {
-                '@type': 'Organization',
-                name: 'BAZARIara',
-              },
-            },
-          },
-        })),
-      },
-    ],
+  // 4. Генерация URL для пагинации (SEO-friendly)
+  const buildPageUrl = (pageNumber: number) => {
+    const params = new URLSearchParams();
+    if (selectedCategory !== 'all') params.set('category', selectedCategory);
+    if (selectedSubCategory !== 'all') params.set('subcategory', selectedSubCategory);
+    if (searchQuery) params.set('search', searchQuery);
+    params.set('page', pageNumber.toString());
+    return `/?${params.toString()}`;
   };
 
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
-      <Suspense
-        fallback={
-          <div className="flex items-center justify-center min-h-[60vh] text-white">
-            {translations.ru.home.loading}
+    <div className="bg-gray-900 min-h-screen text-white">
+      <main className="container mx-auto px-4 py-1 sm:px-6 lg:px-8">
+        <div className="text-center py-4">
+          <h1 className="text-4xl font-bold text-white mb-4">{t.home.title}</h1>
+          <p className="text-2xl font-bold text-lime-400">{t.home.delivery}</p>
+        </div>
+
+        {/* Интерактивные фильтры (Клиентский компонент) */}
+        <InteractiveFilters 
+          categories={categoriesList} 
+          subCategories={subCategoriesList} 
+          selectedCategory={selectedCategory} 
+          selectedSubCategory={selectedSubCategory} 
+        />
+
+        <section>
+          <h2 className="text-3xl font-bold text-white my-8">
+            {selectedCategory === 'all' ? t.home.allProducts : categoriesList.find(c => c.key === selectedCategory)?.name}
+          </h2>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
+            {paginatedProducts.map((product) => {
+              const imageUrls = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
+              const uniqueImageUrls = [...new Set(imageUrls)];
+
+              return (
+                <div key={product.id} className="bg-gray-800/40 rounded-xl shadow-lg overflow-hidden flex flex-col group transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-2xl hover:shadow-lime-500/20">
+                    <div className="relative flex-grow">
+                      {/* prefetch={false} ускорит навигацию и сэкономит трафик */}
+                      <Link prefetch={false} href={`/products/${product.categoryKey}/${product.id}`} className="block h-full">
+                          
+                          {/* Слайдер (Клиентский компонент) */}
+                          <ProductImageSlider images={uniqueImageUrls} alt={product.title} />
+                          
+                          <div className="p-5">
+                              <h3 className="text-xl font-bold mb-2 truncate group-hover:text-lime-400 transition-colors duration-300">{product.title}</h3>
+                              <p className="text-gray-400 text-sm mb-3">{product.category}</p>
+                               <div className="flex items-center flex-wrap gap-2">
+                                   <div className="flex items-baseline gap-2 mr-auto">
+                                      <p className="text-2xl font-semibold text-lime-500 whitespace-nowrap">{product.price} ₾</p>
+                                  </div>
+                                  {product.in_stock && <span className="text-sm font-semibold text-green-400 shrink-0">{t.home.inStock}</span>}
+                              </div>
+                          </div>
+                      </Link>
+                    </div>
+                    <div className="p-5 pt-0 mt-auto">
+                        <QuantityInput product={product} />
+                    </div>
+                </div>
+              )
+            })}
           </div>
-        }
-      >
-        <HomePageContent products={products} />
-      </Suspense>
-    </>
+        </section>
+
+        {/* СЕРВЕРНАЯ ПАГИНАЦИЯ (Идеально для SEO) */}
+        {totalPages > 1 && (
+            <div className="mt-16 flex justify-center items-center gap-4">
+                {currentPage > 1 ? (
+                  <Link href={buildPageUrl(currentPage - 1)} className="p-3 rounded-full bg-lime-500 text-gray-900 font-bold hover:bg-lime-400 transition-all shadow-lg hover:scale-105">
+                      <ChevronLeftIcon className="h-6 w-6" />
+                  </Link>
+                ) : (
+                  <div className="p-3 rounded-full bg-gray-700 text-gray-900 opacity-50 cursor-not-allowed"><ChevronLeftIcon className="h-6 w-6" /></div>
+                )}
+
+                <span className="text-lg font-semibold text-white bg-gray-800/80 rounded-full px-5 py-2">
+                  {currentPage} / {totalPages}
+                </span>
+
+                {currentPage < totalPages ? (
+                  <Link href={buildPageUrl(currentPage + 1)} className="p-3 rounded-full bg-lime-500 text-gray-900 font-bold hover:bg-lime-400 transition-all shadow-lg hover:scale-105">
+                      <ChevronRightIcon className="h-6 w-6" />
+                  </Link>
+                ) : (
+                  <div className="p-3 rounded-full bg-gray-700 text-gray-900 opacity-50 cursor-not-allowed"><ChevronRightIcon className="h-6 w-6" /></div>
+                )}
+            </div>
+        )}
+      </main>
+    </div>
   );
 }

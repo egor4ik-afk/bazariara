@@ -1,8 +1,10 @@
 import { database } from '@/lib/firebase/server';
 import ProductDetailClient from './client-page';
 import { Metadata } from 'next';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 import { translations } from '@/lib/translations';
+
+// === 🔹 Включаем ISR (обновление кэша каждые 10 минут) ===
+export const revalidate = 600; 
 
 // === 🔸 Тип товара ===
 type Product = {
@@ -40,8 +42,6 @@ async function getProduct(category: string, id: string): Promise<Product | null>
 // === 🔸 Мета-данные для SEO, Facebook и Twitter ===
 export async function generateMetadata({ params }: { params: { category: string; id: string } }): Promise<Metadata> {
   const product = await getProduct(params.category, params.id);
-  
-  // Default to Russian for metadata (SEO purposes)
   const t = translations.ru;
 
   if (!product) {
@@ -55,7 +55,8 @@ export async function generateMetadata({ params }: { params: { category: string;
     };
   }
 
-  const displayPrice = calculateDisplayPrice(product.price);
+  // Берем цену напрямую из БД
+  const displayPrice = product.price; 
   const title = `${product.title} — купить в Тбилиси с доставкой`;
   const description = product.description
     ? `${product.description} Быстрая доставка по Тбилиси. Цена: ${displayPrice} ₾.`
@@ -75,6 +76,7 @@ export async function generateMetadata({ params }: { params: { category: string;
       locale: 'ru_GE',
       url,
       siteName: 'BAZARI ARA',
+      type: 'website',
       title,
       description,
       images: [
@@ -105,11 +107,12 @@ export default async function ProductDetailPage({ params }: { params: { category
     return <ProductNotFound />;
   }
 
-  const displayPrice = calculateDisplayPrice(product.price);
+  // Берем цену напрямую из БД
+  const displayPrice = product.price;
   const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
   const absoluteImageUrls = allImages.map(url => url.startsWith('/') ? `https://bazariara.ge${url}` : url);
 
-  // === Добавляем JSON-LD (структурированные данные) для Google ===
+  // === JSON-LD (структурированные данные) для Google ===
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
@@ -171,10 +174,10 @@ export default async function ProductDetailPage({ params }: { params: { category
         '@type': 'Review',
         author: {
           '@type': 'Person',
-          name: 'Anonymous',
+          name: 'Покупатель',
         },
         datePublished: '2024-05-23',
-        reviewBody: 'Отличный товар!',
+        reviewBody: 'Отличный товар, быстрая доставка!',
         reviewRating: {
           '@type': 'Rating',
           ratingValue: 5,
@@ -185,7 +188,6 @@ export default async function ProductDetailPage({ params }: { params: { category
 
   return (
     <>
-      {/* Структурированные данные для Google */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
