@@ -56,7 +56,7 @@ export async function generateMetadata({ params }: { params: { category: string;
   }
 
   const displayPrice = calculateDisplayPrice(product.price);
-  const title = `${product.title} — купить в Тбилиси с доставкой | BAZARI ARA`;
+  const title = `${product.title} — купить в Тбилиси с доставкой`;
   const description = product.description
     ? `${product.description} Быстрая доставка по Тбилиси. Цена: ${displayPrice} ₾.`
     : `Купите ${product.title} по выгодной цене ${displayPrice} ₾ с быстрой доставкой по Тбилиси.`;
@@ -143,7 +143,7 @@ export default async function ProductDetailPage({ params }: { params: { category
         '@type': 'OfferShippingDetails',
         shippingRate: {
           '@type': 'MonetaryAmount',
-          value: '5',
+          value: '10',
           currency: 'GEL',
         },
         shippingDestination: {

@@ -248,7 +248,6 @@ export default function HomePageContent({ products: initialProducts }: { product
               const imageUrls = [product.image_url, ...(product.image_urls || [])].filter(url => url && url.trim() !== '');
               const uniqueImageUrls = [...new Set(imageUrls)];
               const hasMultipleImages = uniqueImageUrls.length > 1;
-              const oldPrice = Math.round(product.price * 2.2);
               
               const title = (language === 'en' && product.title_en) ? product.title_en : product.title;
               const category = (language === 'en' && product.category_en) ? product.category_en : product.category;
@@ -293,7 +292,6 @@ export default function HomePageContent({ products: initialProducts }: { product
                                <div className="flex items-center flex-wrap gap-2">
                                    <div className="flex items-baseline gap-2 mr-auto">
                                       <p className="text-2xl font-semibold text-lime-500 whitespace-nowrap">{calculateDisplayPrice(product.price)} ₾</p>
-                                      <p className="text-red-500 line-through text-sm whitespace-nowrap">{calculateDisplayPrice(oldPrice)} ₾</p>
                                   </div>
                                   {product.in_stock && <span className="text-sm font-semibold text-green-400 shrink-0">{t('home.inStock')}</span>}
                               </div>

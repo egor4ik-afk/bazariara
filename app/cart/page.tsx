@@ -175,7 +175,6 @@ export default function CartPage() {
                             <ul className="divide-y divide-gray-700/50">
                                 {cartItems.map(item => {
                                     const key = `${item.id}-${item.category}`;
-                                    const oldPrice = Math.round(item.price * 2.2);
                                     const title = (language === 'en' && item.title_en) ? item.title_en : item.title;
                                     return (
                                     <li key={key} className="flex flex-col sm:flex-row justify-between items-center p-5 gap-4">
@@ -185,7 +184,6 @@ export default function CartPage() {
                                                 <h2 className="font-bold text-lg text-gray-200 group-hover:text-lime-400 transition-colors duration-300">{title}</h2>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <p className="text-lime-500 font-semibold">₾{calculateDisplayPrice(item.price).toFixed(2)}</p>
-                                                    <p className="text-red-500 line-through text-sm">₾{calculateDisplayPrice(oldPrice).toFixed(2)}</p>
                                                 </div>
                                             </div>
                                         </Link>

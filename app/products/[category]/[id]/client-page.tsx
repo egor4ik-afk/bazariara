@@ -88,7 +88,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   const cartItem = cartItems.find(item => item.id === product.id && item.category === product.category);
   const [inputValue, setInputValue] = useState<string | number>('');
-  const oldPrice = Math.round(product.price * 2.2);
 
   useEffect(() => {
     if (cartItem) {
@@ -221,7 +220,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 <div className="flex justify-between items-center mb-6">
                     <div className="flex items-baseline gap-3">
                         <p className="text-4xl font-bold text-lime-500">{calculateDisplayPrice(product.price)} ₾</p>
-                        <p className="text-2xl text-red-500 line-through">{calculateDisplayPrice(oldPrice)} ₾</p>
                     </div>
                     {product.in_stock && <span className="text-sm font-semibold text-green-400 bg-green-900/50 rounded-full px-3 py-1">{t('product.inStock')}</span>}
                 </div>

@@ -30,8 +30,6 @@ export default function Card({ title, imageUrl, price, isFavorite, isAdded, onCl
     }
   }
 
-  const oldPrice = Math.round(price * 2.2)
-
   return (
     <div className="relative bg-white border border-gray-100 rounded-3xl p-8 cursor-pointer transition hover:-translate-y-2 hover:shadow-xl">
       <button onClick={handleFavoriteClick} className="absolute top-8 left-8">
@@ -44,7 +42,6 @@ export default function Card({ title, imageUrl, price, isFavorite, isAdded, onCl
           <span className="text-gray-500">Цена:</span>
           <div className="flex items-center">
             <b>{price} руб.</b>
-            <b className="text-red-500 line-through ml-4">{oldPrice} руб.</b>
           </div>
         </div>
         <button onClick={handleAddClick}>
