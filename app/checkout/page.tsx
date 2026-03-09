@@ -6,7 +6,6 @@ import { useOrders } from '@/contexts/OrderContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useRouter } from 'next/navigation';
 import { handlePlaceOrder } from './actions';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 
 const FREE_SHIPPING_THRESHOLD = 100;
 const SHIPPING_COST = 10;
@@ -47,7 +46,7 @@ export default function CheckoutPage() {
     setCheckoutItems(cartItems);
   }, [cartItems]);
 
-  const subtotal = checkoutItems.reduce((sum, item) => sum + calculateDisplayPrice(item.price) * item.quantity, 0);
+  const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
   const total = subtotal + shippingCost;
   const cartCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
@@ -106,7 +105,7 @@ export default function CheckoutPage() {
           id: item.id,
           title: item.title,
           title_en: item.title_en, // Pass english title
-          price: calculateDisplayPrice(item.price),
+          price: item.price,
           category: item.category,
           categoryKey: item.categoryKey,
           image_url: item.image_url,
@@ -150,10 +149,10 @@ export default function CheckoutPage() {
                         <img src={item.image_url} alt={title} className="w-16 h-16 object-cover rounded-md mr-4" />
                         <div>
                         <h3 className="font-semibold">{title}</h3>
-                        <p className="text-gray-400">{item.quantity} x ₾{calculateDisplayPrice(item.price).toFixed(2)}</p>
+                        <p className="text-gray-400">{item.quantity} x ₾{item.price.toFixed(2)}</p>
                         </div>
                     </div>
-                    <span className="font-semibold">₾{(calculateDisplayPrice(item.price) * item.quantity).toFixed(2)}</span>
+                    <span className="font-semibold">₾{(item.price * item.quantity).toFixed(2)}</span>
                     </li>
                 );
               })}

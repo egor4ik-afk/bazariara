@@ -1,7 +1,6 @@
 'use client';
 
 import { Order, OrderItem } from '@/contexts/OrderContext';
-import { calculateDisplayPrice } from '@/lib/priceLogic';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -15,7 +14,7 @@ export default function OrdersList({ orders }: OrdersListProps) {
     return (
         <div className="space-y-6">
             {orders.map((order, index) => {
-                const subtotal = order.reduce((sum, item) => sum + calculateDisplayPrice(item.price) * item.quantity, 0);
+                const subtotal = order.reduce((sum, item) => sum + item.price * item.quantity, 0);
                 const shippingCost = order.length > 0 ? (order[0] as OrderItem).shippingCost : 0;
                 const total = subtotal + shippingCost;
 
@@ -36,7 +35,7 @@ export default function OrdersList({ orders }: OrdersListProps) {
                                                 <p className="text-gray-400">{t('orders.quantity')}: {item.quantity}</p>
                                             </div>
                                         </Link>
-                                        <p className="font-semibold text-white">₾{(calculateDisplayPrice(item.price) * item.quantity).toFixed(2)}</p>
+                                        <p className="font-semibold text-white">₾{(item.price * item.quantity).toFixed(2)}</p>
                                     </div>
                                 );
                             })}
