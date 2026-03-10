@@ -94,19 +94,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ru">
       <head>
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
-          strategy="afterInteractive"
-        />
-        <Script id="google-analytics" strategy="afterInteractive">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-
-            gtag('config', 'G-EN4C3S417X');
-          `}
-        </Script>
       </head>
       <body className="flex flex-col min-h-screen">
 
@@ -120,6 +107,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </OrderProvider>
         </LanguageProvider>
         <Analytics />
+        
+        {/* Google Analytics - Отложенная загрузка */}
+        <Script 
+          src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X" 
+          strategy="lazyOnload" 
+        />
+        <Script id="google-analytics" strategy="lazyOnload">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-EN4C3S417X');
+          `}
+        </Script>
       </body>
     </html>
   );
