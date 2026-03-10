@@ -246,7 +246,7 @@ export default async function HomePage({
           </h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
-            {paginatedProducts.map(product => {
+            {paginatedProducts.map((product, index) => {
               const imageUrls = [product.image_url, ...(product.image_urls || [])].filter(
                 Boolean
               ) as string[];
@@ -263,7 +263,11 @@ export default async function HomePage({
                       href={`/products/${product.categoryKey}/${product.id}`}
                       className="block h-full"
                     >
-                      <ProductImageSlider images={uniqueImageUrls} alt={product.title} />
+                      <ProductImageSlider
+                          images={uniqueImageUrls}
+                          alt={product.title}
+                          priority={index < 4} // 🔹 Первые 4 картинки грузятся сразу (LCP)
+                        />
 
                       <div className="p-5">
                         <h3 className="text-xl font-bold mb-2 truncate group-hover:text-lime-400 transition-colors duration-300">
