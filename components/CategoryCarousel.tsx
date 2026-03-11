@@ -7,7 +7,8 @@ type Category = {
     name: string;
     name_en?: string;
     key: string;
-    imageUrl: string;
+    imageUrl?: string;       // Старое поле на случай обратной совместимости
+    category_image?: string; // 🔹 Новое поле из БД для превью категории
 };
 
 export default function CategoryCarousel({ 
@@ -41,12 +42,12 @@ export default function CategoryCarousel({
     // Новый useEffect для прокрутки к выбранной категории
     useEffect(() => {
         const el = scrollRef.current;
- if (el && selectedCategory) {
- // Ищем элемент по ID
- const selectedButton = el.querySelector<HTMLButtonElement>(`#category-${selectedCategory}`);
- if (selectedButton) {
- selectedButton.scrollIntoView({ behavior: 'smooth', inline: 'center' });
- }
+        if (el && selectedCategory) {
+            // Ищем элемент по ID
+            const selectedButton = el.querySelector<HTMLButtonElement>(`#category-${selectedCategory}`);
+            if (selectedButton) {
+                selectedButton.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+            }
         }
     }, [selectedCategory, categories]); // Зависимости: выбранная категория и список категорий
 
@@ -74,7 +75,8 @@ export default function CategoryCarousel({
                             {/* Фото категории */}
                             <div className="w-full flex justify-center items-center bg-gray-900">
                                 <img 
-                                    src={category.imageUrl} 
+                                    // 🔹 Берем новое поле category_image, если его нет — фолбэк на старое
+                                    src={category.category_image || category.imageUrl} 
                                     alt={name} 
                                     className="object-cover w-full h-auto"
                                     loading="lazy"

@@ -22,11 +22,18 @@ export const metadata: Metadata = {
   description: 'Широкий ассортимент товаров. Быстрая доставка по Тбилиси за 2 часа!',
 };
 
-async function fetchProductsFromFirebase(): Promise<Product[]> {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | undefined };
+}) {
+  let products: Product[] = [];
+  let categoriesData: any = {};
+
   try {
     const productsRef = database.ref('products');
     const snapshot = await productsRef.once('value');
-    const categoriesData = snapshot.val() || {};
+    categoriesData = snapshot.val() || {};
     const allProducts: Product[] = [];
     const generateKey = (name: string) =>
       name ? name.trim().toLowerCase().replace(/\s+/g, '-') : '';
@@ -35,6 +42,8 @@ async function fetchProductsFromFirebase(): Promise<Product[]> {
       const productsInCategory = categoriesData[categoryKey];
       if (productsInCategory && typeof productsInCategory === 'object') {
         Object.keys(productsInCategory).forEach(firebaseDocumentKey => {
+          if (firebaseDocumentKey === 'category_image') return;
+
           const productData = productsInCategory[firebaseDocumentKey];
           if (productData && typeof productData === 'object' && productData.title) {
             const newProduct: Product = { ...productData, id: firebaseDocumentKey, categoryKey };
@@ -46,22 +55,13 @@ async function fetchProductsFromFirebase(): Promise<Product[]> {
         });
       }
     });
-
-    // ❌ Убрана глобальная сортировка по категориям — она вызывала дубли TOP при ISR.
-    // Порядок категорий теперь управляется в HomePage ниже.
-
-    return allProducts;
+    products = allProducts;
   } catch (error) {
-    return [];
+    console.error("Firebase fetch error:", error);
+    products = [];
+    categoriesData = {};
   }
-}
-
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: { [key: string]: string | undefined };
-}) {
-  const products = await fetchProductsFromFirebase();
+  
   const t = translations.ru;
 
   // 1. Читаем параметры URL
@@ -82,7 +82,7 @@ export default async function HomePage({
       categoryMap.set(product.categoryKey, {
         name: product.category,
         key: product.categoryKey,
-        imageUrl: product.image_url!,
+        imageUrl: categoriesData[product.categoryKey]?.category_image || product.image_url!,
       });
     }
   });
