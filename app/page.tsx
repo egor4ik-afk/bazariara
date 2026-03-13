@@ -16,11 +16,32 @@ type Product = {
   sub_category?: string; subCategoryKey?: string;
 };
 
-// 🔹 Метаданные (SEO)
-export const metadata: Metadata = {
-  title: 'BAZARI ARA: Товары для дома, сада, туризма и отдыха',
-  description: 'Широкий ассортимент товаров. Быстрая доставка по Тбилиси за 2 часа!',
-};
+// 🔹 Динамические метаданные (SEO)
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | undefined };
+}): Promise<Metadata> {
+  const category = searchParams.category;
+  const subcategory = searchParams.subcategory;
+
+  // Базовые метаданные для главной
+  if (!category || category === 'all') {
+    return {
+      title: 'BAZARI ARA: Товары для дома, сада, туризма и отдыха в Тбилиси',
+      description: 'Широкий ассортимент товаров. Быстрая доставка по Тбилиси за 2 часа!',
+    };
+  }
+
+  // Здесь логика подстановки названия категории (можно брать из базы или словаря переводов)
+  const categoryName = category.charAt(0).toUpperCase() + category.slice(1); // Заглушка, лучше брать реальное имя
+
+  return {
+    title: `${categoryName} — купить в Тбилиси с доставкой за 2 часа | BAZARI ARA`,
+    description: `Большой выбор товаров из категории ${categoryName}. Заказывайте онлайн по доступным ценам с быстрой доставкой по Тбилиси.`,
+  };
+}
+
 
 export default async function HomePage({
   searchParams,
