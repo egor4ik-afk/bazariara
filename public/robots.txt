@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
+Disallow: /cart
+Disallow: /checkout
+Disallow: /orders
+Disallow: /order-success
+Disallow: /api/
 
 Sitemap: https://bazariara.ge/sitemap.xml
