@@ -13,35 +13,77 @@ export const revalidate = 600;
 type Product = {
   id: string; title: string; category: string; price: number; in_stock: boolean;
   description?: string; image_url?: string; categoryKey: string; image_urls?: string[];
-  sub_category?: string; subCategoryKey?: string;
+  sub_category?: string; subCategoryKey?: string; category_en?: string; sub_category_en?: string;
 };
 
-// 🔹 Динамические метаданные (SEO)
+// Словарь названий категорий для SEO
+const CATEGORY_NAMES: Record<string, string> = {
+  top:                         'Популярные товары',
+  hiking:                      'Туризм и отдых',
+  garden:                      'Сад и огород',
+  furniture:                   'Мебель',
+  toys:                        'Игрушки',
+  heaters:                     'Обогреватели',
+  lighting:                    'Освещение',
+  climate:                     'Климатическое оборудование',
+  plumbing:                    'Сантехника',
+  pet_products:                'Товары для животных',
+  power_banks_and_accessories: 'Портативные аккумуляторы и аксессуары',
+  warehouse:                   'Складские товары',
+};
+
+// 🔹 Динамические метаданные — уникальный title/description + canonical для каждой
+//    комбинации категория/подкатегория. Параметр page отсекается из canonical,
+//    чтобы /?page=2 не ранжировался отдельно от /?category=hiking
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: { [key: string]: string | undefined };
 }): Promise<Metadata> {
-  const category = searchParams.category;
+  const category    = searchParams.category;
   const subcategory = searchParams.subcategory;
+  const page        = parseInt(searchParams.page || '1', 10);
+  const pageStr     = page > 1 ? ` — страница ${page}` : '';
 
-  // Базовые метаданные для главной
+  // Canonical ВСЕГДА без ?page= — все страницы пагинации ссылаются
+  // на чистый URL категории/подкатегории, исключая дублирование в индексе
+  const canonicalParams = new URLSearchParams();
+  if (category && category !== 'all') canonicalParams.set('category', category);
+  if (subcategory && subcategory !== 'all') canonicalParams.set('subcategory', subcategory);
+  const canonicalQuery = canonicalParams.toString();
+  const canonical = `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`;
+
+  // — Главная (все категории) —
   if (!category || category === 'all') {
     return {
-      title: 'BAZARI ARA: Товары для дома, сада, туризма и отдыха в Тбилиси',
-      description: 'Широкий ассортимент товаров. Быстрая доставка по Тбилиси за 2 часа!',
+      title: `BAZARI ARA: Товары для дома, сада, туризма и отдыха в Тбилиси${pageStr}`,
+      description: 'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!',
+      alternates: { canonical },
     };
   }
 
-  // Здесь логика подстановки названия категории (можно брать из базы или словаря переводов)
-  const categoryName = category.charAt(0).toUpperCase() + category.slice(1); // Заглушка, лучше брать реальное имя
+  const catName = CATEGORY_NAMES[category] || category;
 
+  // — Категория + подкатегория —
+  if (subcategory && subcategory !== 'all') {
+    const subName = subcategory
+      .split('-')
+      .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    return {
+      title: `${subName} — ${catName} | купить в Тбилиси | BAZARI ARA${pageStr}`,
+      description: `${subName} в категории «${catName}». Быстрая доставка по Тбилиси за 2 часа. Доступные цены, более 1000 товаров в наличии.`,
+      alternates: { canonical },
+    };
+  }
+
+  // — Только категория —
   return {
-    title: `${categoryName} — купить в Тбилиси с доставкой за 2 часа | BAZARI ARA`,
-    description: `Большой выбор товаров из категории ${categoryName}. Заказывайте онлайн по доступным ценам с быстрой доставкой по Тбилиси.`,
+    title: `${catName} — купить в Тбилиси с доставкой за 2 часа | BAZARI ARA${pageStr}`,
+    description: `Большой выбор товаров «${catName}» в Тбилиси. Заказывайте онлайн по доступным ценам — доставим за 2 часа.`,
+    alternates: { canonical },
   };
 }
-
 
 export default async function HomePage({
   searchParams,
@@ -49,7 +91,7 @@ export default async function HomePage({
   searchParams: { [key: string]: string | undefined };
 }) {
   let products: Product[] = [];
-  let categoriesData: any = {};
+  let categoriesData: Record<string, any> = {};
 
   try {
     const productsRef = database.ref('products');
@@ -63,6 +105,7 @@ export default async function HomePage({
       const productsInCategory = categoriesData[categoryKey];
       if (productsInCategory && typeof productsInCategory === 'object') {
         Object.keys(productsInCategory).forEach(firebaseDocumentKey => {
+          // 🔹 Пропускаем служебное поле category_image — это не товар
           if (firebaseDocumentKey === 'category_image') return;
 
           const productData = productsInCategory[firebaseDocumentKey];
@@ -78,18 +121,18 @@ export default async function HomePage({
     });
     products = allProducts;
   } catch (error) {
-    console.error("Firebase fetch error:", error);
+    console.error('Firebase fetch error:', error);
     products = [];
     categoriesData = {};
   }
-  
+
   const t = translations.ru;
 
   // 1. Читаем параметры URL
-  const selectedCategory = searchParams.category || 'all';
+  const selectedCategory    = searchParams.category || 'all';
   const selectedSubCategory = searchParams.subcategory || 'all';
-  const searchQuery = searchParams.search || '';
-  const currentPage = parseInt(searchParams.page || '1', 10);
+  const searchQuery         = searchParams.search || '';
+  const currentPage         = parseInt(searchParams.page || '1', 10);
 
   // 2. Базовая фильтрация: только товары с картинкой
   let filteredProducts = products.filter(
@@ -97,11 +140,14 @@ export default async function HomePage({
   );
 
   // 3. Собираем список категорий ДО любой фильтрации по категории
-  const categoryMap = new Map<string, { name: string; key: string; imageUrl: string }>();
+  //    imageUrl берётся из поля category_image узла категории в Firebase,
+  //    с фолбэком на фото первого товара
+  const categoryMap = new Map<string, { name: string; name_en?: string; key: string; imageUrl: string }>();
   filteredProducts.forEach(product => {
     if (!categoryMap.has(product.categoryKey)) {
       categoryMap.set(product.categoryKey, {
         name: product.category,
+        name_en: product.category_en,
         key: product.categoryKey,
         imageUrl: categoriesData[product.categoryKey]?.category_image || product.image_url!,
       });
@@ -110,7 +156,7 @@ export default async function HomePage({
   const categoriesList = Array.from(categoryMap.values());
 
   // 4. Фильтрация по категории
-  const subCategoryMap = new Map<string, { name: string; key: string; imageUrl: string }>();
+  const subCategoryMap = new Map<string, { name: string; name_en?: string; key: string; imageUrl: string }>();
   if (selectedCategory !== 'all') {
     filteredProducts = filteredProducts.filter(p => p.categoryKey === selectedCategory);
     filteredProducts.forEach(product => {
@@ -121,6 +167,7 @@ export default async function HomePage({
       ) {
         subCategoryMap.set(product.subCategoryKey, {
           name: product.sub_category,
+          name_en: product.sub_category_en,
           key: product.subCategoryKey,
           imageUrl: product.image_url!,
         });
@@ -144,12 +191,11 @@ export default async function HomePage({
   }
 
   // 7. Сортировка:
-  //    — При просмотре всех категорий (all) товары TOP показываются ТОЛЬКО на странице 1.
+  //    — При category=all товары TOP показываются ТОЛЬКО на странице 1.
   //      На странице 2+ они исключаются, чтобы не дублироваться.
   //    — Внутри каждой категории: сначала in_stock, потом остальные.
   if (selectedCategory === 'all') {
     if (currentPage === 1) {
-      // Страница 1: TOP идут первыми, затем остальные — каждая группа сортирована по in_stock
       const topProducts = filteredProducts
         .filter(p => p.categoryKey === 'top')
         .sort((a, b) => {
@@ -171,7 +217,7 @@ export default async function HomePage({
 
       filteredProducts = [...topProducts, ...otherProducts];
     } else {
-      // Страница 2+: TOP полностью исключаем — они уже были на первой странице
+      // Страница 2+: TOP исключаем — они уже были на первой странице
       filteredProducts = filteredProducts
         .filter(p => p.categoryKey !== 'top')
         .sort((a, b) => {
@@ -184,7 +230,6 @@ export default async function HomePage({
         });
     }
   } else {
-    // Выбрана конкретная категория — просто сортируем по in_stock
     filteredProducts = filteredProducts.sort((a, b) => {
       if (a.in_stock && !b.in_stock) return -1;
       if (!a.in_stock && b.in_stock) return 1;
@@ -195,50 +240,26 @@ export default async function HomePage({
   // 8. Пагинация
   const ITEMS_PER_PAGE = 20;
 
-  // Для корректного расчёта totalPages при category=all нужно знать
-  // общее количество товаров БЕЗ учёта исключения TOP на стр. 2+.
-  // Считаем отдельно: TOP товары займут место только на стр. 1.
-  let totalProductsForPagination: number;
-  if (selectedCategory === 'all') {
-    const baseFiltered = products.filter(p => p.image_url && p.image_url.trim() !== '');
-    const topCount = baseFiltered.filter(p => p.categoryKey === 'top').length;
-    const otherCount = baseFiltered.filter(p => p.categoryKey !== 'top').length;
-
-    // Страница 1 вмещает (ITEMS_PER_PAGE - topCount) других товаров + все TOP
-    // Остальные страницы — только otherProducts
-    const othersOnPage1 = Math.max(0, ITEMS_PER_PAGE - topCount);
-    const remainingOthers = Math.max(0, otherCount - othersOnPage1);
-    const extraPages = Math.ceil(remainingOthers / ITEMS_PER_PAGE);
-    totalProductsForPagination = topCount > 0 ? (1 + extraPages) * ITEMS_PER_PAGE : otherCount;
-    // Упрощённо: просто считаем реальные страницы
-    const page1Items = Math.min(ITEMS_PER_PAGE, topCount + otherCount);
-    const afterPage1 = Math.max(0, otherCount - Math.max(0, page1Items - topCount));
-    const totalPages_ = 1 + Math.ceil(afterPage1 / ITEMS_PER_PAGE);
-    totalProductsForPagination = totalPages_ * ITEMS_PER_PAGE; // используется только для totalPages
-  } else {
-    totalProductsForPagination = filteredProducts.length;
-  }
-
   const totalPages = selectedCategory === 'all'
     ? (() => {
         const baseFiltered = products.filter(p => p.image_url && p.image_url.trim() !== '');
-        const topCount = baseFiltered.filter(p => p.categoryKey === 'top').length;
+        const topCount   = baseFiltered.filter(p => p.categoryKey === 'top').length;
         const otherCount = baseFiltered.filter(p => p.categoryKey !== 'top').length;
-        const othersOnPage1 = Math.max(0, ITEMS_PER_PAGE - topCount);
-        const remainingOthers = Math.max(0, otherCount - othersOnPage1);
+        const othersOnPage1    = Math.max(0, ITEMS_PER_PAGE - topCount);
+        const remainingOthers  = Math.max(0, otherCount - othersOnPage1);
         return 1 + Math.ceil(remainingOthers / ITEMS_PER_PAGE);
       })()
     : Math.ceil(filteredProducts.length / ITEMS_PER_PAGE);
 
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const startIndex       = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedProducts = filteredProducts.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
   // 9. Генерация URL для пагинации (SEO-friendly)
   const buildPageUrl = (pageNumber: number) => {
     const params = new URLSearchParams();
-    if (selectedCategory !== 'all') params.set('category', selectedCategory);
+    if (selectedCategory !== 'all')    params.set('category', selectedCategory);
     if (selectedSubCategory !== 'all') params.set('subcategory', selectedSubCategory);
-    if (searchQuery) params.set('search', searchQuery);
+    if (searchQuery)                   params.set('search', searchQuery);
     params.set('page', pageNumber.toString());
     return `/?${params.toString()}`;
   };
@@ -251,7 +272,6 @@ export default async function HomePage({
           <p className="text-2xl font-bold text-lime-400">{t.home.delivery}</p>
         </div>
 
-        {/* Интерактивные фильтры (Клиентский компонент) */}
         <InteractiveFilters
           categories={categoriesList}
           subCategories={subCategoriesList}
@@ -285,10 +305,10 @@ export default async function HomePage({
                       className="block h-full"
                     >
                       <ProductImageSlider
-                          images={uniqueImageUrls}
-                          alt={product.title}
-                          priority={index < 4} // 🔹 Первые 4 картинки грузятся сразу (LCP)
-                        />
+                        images={uniqueImageUrls}
+                        alt={product.title}
+                        priority={index < 4}
+                      />
 
                       <div className="p-5">
                         <h3 className="text-xl font-bold mb-2 truncate group-hover:text-lime-400 transition-colors duration-300">
@@ -319,7 +339,6 @@ export default async function HomePage({
           </div>
         </section>
 
-        {/* Серверная пагинация */}
         {totalPages > 1 && (
           <div className="mt-16 flex justify-center items-center gap-4">
             {currentPage > 1 ? (
