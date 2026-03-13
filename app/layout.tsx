@@ -13,11 +13,27 @@ const description = 'Товары для дома, сада, туризма и �
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
+
   title: {
     default: siteName,
     template: `%s | ${siteName}`,
   },
   description,
+
+  // 🔹 Canonical главной страницы
+  alternates: {
+    canonical: 'https://bazariara.ge/',
+  },
+
+  // 🔹 Запрещаем индексацию технических страниц через robots
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
+  },
 
   icons: {
     icon: [
@@ -34,17 +50,21 @@ export const metadata: Metadata = {
     url: siteUrl.toString(),
     siteName,
     description,
+    locale: 'ru_GE',
     images: [
       {
-        url: new URL('/web-app-manifest-512x512.png', siteUrl).toString(),
-        width: 512,
-        height: 512,
-        alt: 'Логотип BAZARI ARA',
+        // 🔹 1200×630 — стандартный размер для превью в соцсетях и мессенджерах
+        url: new URL('/og-image.png', siteUrl).toString(),
+        width: 1200,
+        height: 630,
+        alt: 'BAZARI ARA — доставка товаров по Тбилиси за 2 часа',
       },
     ],
   },
+
   twitter: {
     card: 'summary_large_image',
+    site: '@bazariara', // 🔹 замените на реальный Twitter/X аккаунт или удалите строку
   },
 
   themeColor: '#1a202c',
@@ -68,9 +88,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </OrderProvider>
         </LanguageProvider>
 
-        {/* 🔹 Загружаем все метрики через 3 секунды после загрузки страницы.
-            Один инлайн-скрипт создаёт тег <script> для GA динамически,
-            Vercel Analytics подключается тем же способом. */}
+        {/* 🔹 Все метрики грузятся через 3 секунды — не блокируют LCP и FID.
+            afterInteractive ждёт гидрации, затем setTimeout даёт странице
+            полностью отрисоваться перед загрузкой сторонних скриптов. */}
         <Script id="delayed-analytics" strategy="afterInteractive">
           {`
             setTimeout(function() {
