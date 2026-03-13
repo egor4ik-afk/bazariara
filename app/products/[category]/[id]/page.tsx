@@ -101,6 +101,9 @@ export default async function ProductDetailPage({
   const absoluteImageUrls = allImages.map(url =>
     url.startsWith('/') ? `https://bazariara.ge${url}` : url
   );
+  
+  const nextYear = new Date();
+  nextYear.setFullYear(nextYear.getFullYear() + 1);
 
   // === JSON-LD — только здесь, в серверном компоненте (убран дубль из client-page) ===
   const jsonLd = {
@@ -119,7 +122,7 @@ export default async function ProductDetailPage({
       '@type': 'Offer',
       priceCurrency: 'GEL',
       price: product.price,
-      priceValidUntil: '2026-12-31', // 🔹 Обновлено
+      priceValidUntil: nextYear.toISOString().split('T')[0],
       availability: product.in_stock
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
