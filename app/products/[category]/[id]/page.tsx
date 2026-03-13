@@ -154,20 +154,6 @@ export default async function ProductDetailPage({
         returnFees: 'https://schema.org/FreeReturn',
       },
     },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: 4.9,
-      reviewCount: 10,
-    },
-    review: [
-      {
-        '@type': 'Review',
-        author: { '@type': 'Person', name: 'Покупатель' },
-        datePublished: '2024-05-23',
-        reviewBody: 'Отличный товар, быстрая доставка!',
-        reviewRating: { '@type': 'Rating', ratingValue: 5 },
-      },
-    ],
   };
 
   return (
