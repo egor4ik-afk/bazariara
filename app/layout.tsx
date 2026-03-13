@@ -1,5 +1,4 @@
 import { Metadata } from 'next';
-import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 import { CartProvider } from '@/contexts/CartContext';
 import { OrderProvider } from '@/contexts/OrderContext';
@@ -69,19 +68,32 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </OrderProvider>
         </LanguageProvider>
 
-        <Analytics />
-
-        {/* Google Analytics — lazyOnload не блокирует LCP */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
-          strategy="lazyOnload"
-        />
-        <Script id="google-analytics" strategy="lazyOnload">
+        {/* 🔹 Загружаем все метрики через 3 секунды после загрузки страницы.
+            Один инлайн-скрипт создаёт тег <script> для GA динамически,
+            Vercel Analytics подключается тем же способом. */}
+        <Script id="delayed-analytics" strategy="afterInteractive">
           {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', 'G-EN4C3S417X');
+            setTimeout(function() {
+              // — Google Analytics —
+              var gaScript = document.createElement('script');
+              gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X';
+              gaScript.async = true;
+              document.head.appendChild(gaScript);
+
+              gaScript.onload = function() {
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){ window.dataLayer.push(arguments); }
+                window.gtag = gtag;
+                gtag('js', new Date());
+                gtag('config', 'G-EN4C3S417X');
+              };
+
+              // — Vercel Analytics —
+              var vaScript = document.createElement('script');
+              vaScript.src = '/_vercel/insights/script.js';
+              vaScript.defer = true;
+              document.head.appendChild(vaScript);
+            }, 3000);
           `}
         </Script>
       </body>
