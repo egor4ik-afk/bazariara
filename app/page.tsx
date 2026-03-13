@@ -268,7 +268,12 @@ export default async function HomePage({
     <div className="bg-gray-900 min-h-screen text-white">
       <main className="container mx-auto px-4 py-1 sm:px-6 lg:px-8">
         <div className="text-center py-4">
-          <h1 className="text-4xl font-bold text-white mb-4">{t.home.title}</h1>
+          {/* 🔹 H1 динамический — отражает выбранную категорию для SEO */}
+          <h1 className="text-4xl font-bold text-white mb-4">
+            {selectedCategory === 'all'
+              ? t.home.title
+              : categoriesList.find(c => c.key === selectedCategory)?.name || t.home.title}
+          </h1>
           <p className="text-2xl font-bold text-lime-400">{t.home.delivery}</p>
         </div>
 
@@ -280,10 +285,9 @@ export default async function HomePage({
         />
 
         <section>
+          {/* 🔹 H2 — статичный подзаголовок каталога, не дублирует H1 */}
           <h2 className="text-3xl font-bold text-white my-8">
-            {selectedCategory === 'all'
-              ? t.home.allProducts
-              : categoriesList.find(c => c.key === selectedCategory)?.name}
+            {t.home.allProducts}
           </h2>
 
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
