@@ -1,12 +1,4 @@
 'use client';
-import { Metadata } from 'next';
-
-export const metadata: Metadata = {
-  robots: {
-    index: false,
-    follow: false,
-  },
-};
 
 import { useCart, ProductInCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
