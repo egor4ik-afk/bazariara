@@ -17,6 +17,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (snapshot.exists()) {
       const categories = snapshot.val();
       Object.keys(categories).forEach(categoryKey => {
+        // Добавляем саму категорию в sitemap
+        if (categoryKey !== 'top') { // 'top' можно исключить, если это не самостоятельная SEO-страница
+            productEntries.push({
+            url: `${URL}/?category=${categoryKey}`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly',
+            priority: 0.9, // Высокий приоритет для посадочной страницы
+            });
+        }
+
         const productsInCategory = categories[categoryKey];
         if (productsInCategory && typeof productsInCategory === 'object') {
             Object.keys(productsInCategory).forEach(productId => {
