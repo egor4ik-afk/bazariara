@@ -20,11 +20,6 @@ export const metadata: Metadata = {
   },
   description,
 
-  // 🔹 Canonical главной страницы
-  alternates: {
-    canonical: 'https://bazariara.ge/',
-  },
-
   // 🔹 Запрещаем индексацию технических страниц через robots
   robots: {
     index: true,
