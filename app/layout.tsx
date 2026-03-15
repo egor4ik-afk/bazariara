@@ -68,7 +68,6 @@ export const metadata: Metadata = {
     'msapplication-TileColor': '#1a202c',
   },
 };
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
@@ -83,19 +82,51 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </OrderProvider>
         </LanguageProvider>
 
+        {/* ── Google Analytics ── */}
         <Script
-  src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
-  strategy="afterInteractive"
-/>
-<Script id="google-analytics" strategy="afterInteractive">
-  {`
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){ window.dataLayer.push(arguments); }
-    window.gtag = gtag;
-    gtag('js', new Date());
-    gtag('config', 'G-EN4C3S417X');
-  `}
-</Script>
+          src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){ window.dataLayer.push(arguments); }
+            window.gtag = gtag;
+            gtag('js', new Date());
+            gtag('config', 'G-EN4C3S417X');
+          `}
+        </Script>
+
+        {/* ── Яндекс.Метрика ── */}
+        <Script
+          src="https://mc.yandex.ru/metrika/tag.js"
+          strategy="afterInteractive"
+          id="yandex-metrika-script"
+        />
+        <Script id="yandex-metrika" strategy="afterInteractive">
+          {`
+            window.ym = window.ym || function() { (window.ym.a = window.ym.a || []).push(arguments); };
+            window.ym.l = 1 * new Date();
+            ym(107711719, 'init', {
+              ssr: true,
+              webvisor: true,
+              clickmap: true,
+              ecommerce: 'dataLayer',
+              accurateTrackBounce: true,
+              trackLinks: true,
+            });
+          `}
+        </Script>
+        {/* noscript-пиксель Метрики — без него счётчик не засчитывает визиты без JS */}
+        <noscript>
+          <div>
+            <img
+              src="https://mc.yandex.ru/watch/107711719"
+              style={{ position: 'absolute', left: -9999 }}
+              alt=""
+            />
+          </div>
+        </noscript>
       </body>
     </html>
   );
