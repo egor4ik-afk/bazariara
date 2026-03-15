@@ -1,4 +1,3 @@
-
 {
   "common": {
     "categories": "Categories",
@@ -63,7 +62,7 @@
     "shipping": "Shipping",
     "free": "FREE",
     "total": "Total",
-    "noOrders": "You don't have any orders yet.",
+    "noOrders": "You don''t have any orders yet.",
     "noOrdersHint": "Feel free to browse our products and place your first order!"
   },
   "returns": {
@@ -88,16 +87,7 @@
     "section2Item1": "Process and fulfill your orders.",
     "section2Item2": "Improve our website and services.",
     "section2Item3": "Send you updates, promotional materials, and other information related to our services.",
-    "section2Item4": "Respond to your inquiries and provide support.",
-    "section3Title": "3. Data Storage and Security",
-    "section3Text": "We take reasonable measures to protect your personal information from unauthorized access, use, or disclosure. Your data is stored on secure servers, and we use encryption to protect sensitive information.",
-    "section4Title": "4. Disclosure to Third Parties",
-    "section4Text": "We do not sell, trade, or transfer your personal information to third parties without your consent, except as required by law or to fulfill our obligations to you (for example, sharing data with delivery services).",
-    "section5Title": "5. Your Rights",
-    "section5Text": "You have the right to access, correct, or delete your personal information. You can also opt-out of receiving our marketing messages at any time.",
-    "section6Title": "6. Policy Changes",
-    "section6Text": "We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page. We recommend reviewing this page periodically for the latest information.",
-    "contact": "If you have any questions about this Privacy Policy, please contact us."
+    "section2Item4": "Respond to your inquiries and provide support."
   },
   "home": {
     "title": "Home, Garden & Leisure Products",
@@ -122,5 +112,12 @@
   },
   "quantityInput": {
     "addToCart": "Add to Cart"
+  },
+  "orderSuccess": {
+    "title": "Order placed successfully!",
+    "thanks": "Thank you for your purchase! We have received your order.",
+    "contact": "Our manager will contact you shortly to confirm the payment and delivery details.",
+    "viewOrders": "View my orders",
+    "backHome": "Back to home"
   }
 }

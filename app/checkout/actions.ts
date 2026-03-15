@@ -16,158 +16,109 @@ interface OrderItem {
 }
 
 interface OrderDetails {
-  customer: {
-    name: string;
-    phone?: string;
-    social?: { [key: string]: string };
-  };
+  customer: { name: string; phone?: string; social?: Record<string, string> };
   items: OrderItem[];
   total: number;
   shippingCost: number;
 }
 
-// ─── Telegram уведомление ─────────────────────────────────────────────────────
+async function getProductLink(categoryKey: string, productId: string): Promise<string | null> {
+  try {
+    const rows = await sql`
+      SELECT gorgia_url, source_url FROM products
+      WHERE external_id = ${`${categoryKey}_${productId}`} AND source = 'gorgia'
+      LIMIT 1
+    `;
+    return rows[0] ? ((rows[0].gorgia_url || rows[0].source_url) as string | null) : null;
+  } catch { return null; }
+}
+
 async function sendTelegramNotification(
   customer: OrderDetails['customer'],
-  items: OrderItem[],
+  items: (OrderItem & { link?: string | null })[],
   total: number,
   shippingCost: number,
   createdAt: Date
-): Promise<boolean> {
+) {
   const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
   const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
-
-  if (!BOT_TOKEN || !CHAT_ID) {
-    console.error('TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID не заданы');
-    return false;
-  }
+  if (!BOT_TOKEN || !CHAT_ID) return;
 
   const socialContacts = customer.social
-    ? Object.entries(customer.social)
-        .map(([p, v]) => `💬 ${p.charAt(0).toUpperCase() + p.slice(1)}: ${v}`)
-        .join('\n')
+    ? Object.entries(customer.social).map(([p, v]) => `💬 ${p}: ${v}`).join('\n')
     : '';
 
   const contactDetails = [
-    customer.phone && `📞 Телефон: ${customer.phone}`,
+    customer.phone && `📞 ${customer.phone}`,
     socialContacts,
   ].filter(Boolean).join('\n');
 
-  const itemsList = items
-    .map((item, i) => {
-      const price = parseFloat(String(item.product.price));
-      return `${i + 1}. ${item.product.title}\n   ${item.quantity} x ₾${price.toFixed(2)} = ₾${(price * item.quantity).toFixed(2)}`;
-    })
-    .join('\n\n');
+  const itemsList = items.map((item, i) => {
+    const price = parseFloat(String(item.product.price));
+    const name  = item.link ? `[${item.product.title}](${item.link})` : item.product.title;
+    return `${i + 1}. ${name}\n   ${item.quantity} x ₾${price.toFixed(2)} = ₾${(price * item.quantity).toFixed(2)}`;
+  }).join('\n\n');
 
-  const subtotal     = total - shippingCost;
-  const shippingText = shippingCost > 0
-    ? `*🚚 Доставка: ₾${shippingCost.toFixed(2)}*`
-    : '*🚚 Доставка: БЕСПЛАТНО*';
-
-  const message = `
-🛒 *НОВЫЙ ЗАКАЗ* 🛒
-
-👤 *Клиент:* ${customer.name}
-${contactDetails}
-
-📦 *Состав заказа:*
-${itemsList}
-
-*Подытог: ₾${subtotal.toFixed(2)}*
-${shippingText}
-*💰 ИТОГО: ₾${total.toFixed(2)}*
-
-📅 *Дата:* ${createdAt.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi' })}
-  `.trim();
+  const subtotal = total - shippingCost;
+  const message = `🛒 *НОВЫЙ ЗАКАЗ*\n\n👤 *${customer.name}*\n${contactDetails}\n\n📦 *Заказ:*\n${itemsList}\n\nПодытог: ₾${subtotal.toFixed(2)}\n${shippingCost > 0 ? `Доставка: ₾${shippingCost.toFixed(2)}` : 'Доставка: БЕСПЛАТНО'}\n*💰 ИТОГО: ₾${total.toFixed(2)}*\n\n📅 ${createdAt.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi' })}`.trim();
 
   try {
-    const resp = await fetch(
-      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id:    CHAT_ID,
-          text:       message,
-          parse_mode: 'Markdown',
-        }),
-      }
-    );
-    const data = await resp.json();
-    if (!data.ok) {
-      console.error('Telegram API Error:', data.description);
-      return false;
-    }
-    return true;
-  } catch (err) {
-    console.error('Ошибка отправки в Telegram:', err);
-    return false;
-  }
+    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'Markdown', disable_web_page_preview: true }),
+    });
+  } catch (err) { console.error('Telegram error:', err); }
 }
 
-// ─── Создание таблицы заказов (если не существует) ───────────────────────────
-async function ensureOrdersTable() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS orders (
-      id           SERIAL PRIMARY KEY,
-      customer     JSONB NOT NULL,
-      items        JSONB NOT NULL,
-      subtotal     NUMERIC(10,2),
-      shipping     NUMERIC(10,2),
-      total        NUMERIC(10,2),
-      created_at   TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
-}
-
-// ─── Основная функция ─────────────────────────────────────────────────────────
 export async function handlePlaceOrder(orderDetails: OrderDetails) {
   const { customer, items, total, shippingCost } = orderDetails;
 
   const hasSocial = customer.social && Object.keys(customer.social).length > 0;
-  if (!customer?.name || (!customer.phone && !hasSocial)) {
+  if (!customer?.name || (!customer.phone && !hasSocial))
     return { success: false, message: 'Необходимо указать имя и хотя бы один контакт.' };
-  }
-  if (!items?.length) {
+  if (!items?.length)
     return { success: false, message: 'Ваша корзина пуста.' };
-  }
 
   const createdAt = new Date();
   const subtotal  = total - shippingCost;
 
   try {
-    await ensureOrdersTable();
+    await sql`
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY, customer JSONB NOT NULL, items JSONB NOT NULL,
+        subtotal NUMERIC(10,2), shipping NUMERIC(10,2), total NUMERIC(10,2),
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `;
 
-    // Сохраняем заказ в Neon
     await sql`
       INSERT INTO orders (customer, items, subtotal, shipping, total, created_at)
       VALUES (
         ${JSON.stringify(customer)}::jsonb,
-        ${JSON.stringify(items.map(item => ({
-          id:          item.product.id,
-          title:       item.product.title,
-          price:       parseFloat(String(item.product.price)),
-          quantity:    item.quantity,
-          category:    item.product.category,
-          categoryKey: item.product.categoryKey,
-          image_url:   item.product.image_url ?? null,
+        ${JSON.stringify(items.map(i => ({
+          id: i.product.id, title: i.product.title,
+          price: parseFloat(String(i.product.price)),
+          quantity: i.quantity, category: i.product.category,
+          categoryKey: i.product.categoryKey, image_url: i.product.image_url ?? null,
         })))}::jsonb,
-        ${subtotal},
-        ${shippingCost},
-        ${total},
-        ${createdAt.toISOString()}
+        ${subtotal}, ${shippingCost}, ${total}, ${createdAt.toISOString()}
       )
     `;
 
-    // Отправляем уведомление в Telegram
-    await sendTelegramNotification(customer, items, total, shippingCost, createdAt);
+    const itemsWithLinks = await Promise.all(
+      items.map(async item => ({
+        ...item,
+        link: await getProductLink(item.product.categoryKey, item.product.id),
+      }))
+    );
 
+    await sendTelegramNotification(customer, itemsWithLinks, total, shippingCost, createdAt);
     return { success: true };
 
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Неизвестная ошибка';
-    console.error('Ошибка при оформлении заказа:', msg);
+    console.error('Ошибка заказа:', msg);
     return { success: false, message: `Ошибка сервера: ${msg}` };
   }
 }
