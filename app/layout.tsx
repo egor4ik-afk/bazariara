@@ -1,15 +1,16 @@
-import { Metadata } from 'next';
-import './globals.css';
-import { CartProvider } from '@/contexts/CartContext';
-import { OrderProvider } from '@/contexts/OrderContext';
-import { LanguageProvider } from '@/contexts/LanguageContext';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import Script from 'next/script';
+import { Metadata } from 'next'
+import './globals.css'
+import { CartProvider } from '@/contexts/CartContext'
+import { OrderProvider } from '@/contexts/OrderContext'
+import { LanguageProvider } from '@/contexts/LanguageContext'
+import Header from '@/components/Header'
+import Footer from '@/components/Footer'
+import Script from 'next/script'
 
-const siteName = 'BAZARI ARA';
-const siteUrl = new URL('https://bazariara.ge');
-const description = 'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!';
+const siteName = 'BAZARI ARA'
+const siteUrl = new URL('https://bazariara.ge')
+const description =
+  'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!'
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
@@ -20,7 +21,6 @@ export const metadata: Metadata = {
   },
   description,
 
-  // 🔹 Запрещаем индексацию технических страниц через robots
   robots: {
     index: true,
     follow: true,
@@ -48,7 +48,6 @@ export const metadata: Metadata = {
     locale: 'ru_GE',
     images: [
       {
-        // 🔹 1200×630 — стандартный размер для превью в соцсетях и мессенджерах
         url: new URL('/og-image.png', siteUrl).toString(),
         width: 1200,
         height: 630,
@@ -59,7 +58,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    site: '@bazariara', // 🔹 замените на реальный Twitter/X аккаунт или удалите строку
+    site: '@bazariara',
   },
 
   themeColor: '#1a202c',
@@ -67,8 +66,13 @@ export const metadata: Metadata = {
   other: {
     'msapplication-TileColor': '#1a202c',
   },
-};
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="ru">
       <body className="flex flex-col min-h-screen">
@@ -82,7 +86,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </OrderProvider>
         </LanguageProvider>
 
-        {/* ── Google Analytics ── */}
+        {/* ───────── Google Analytics ───────── */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
           strategy="afterInteractive"
@@ -97,41 +101,42 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
 
-        {/* ── Яндекс.Метрика ── */}
-        {/* ── Яндекс.Метрика ── */}
+        {/* ───────── Яндекс.Метрика ───────── */}
         <Script id="yandex-metrika" strategy="afterInteractive">
           {`
             (function(m,e,t,r,i,k,a){
               m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
               m[i].l=1*new Date();
-              for(var j=0;j<document.scripts.length;j++){
-                if(document.scripts[j].src===r){return;}
-              }
               k=e.createElement(t),a=e.getElementsByTagName(t)[0];
               k.async=1;k.src=r;
               a.parentNode.insertBefore(k,a);
-            })(window,document,'script','https://mc.yandex.ru/metrika/tag.js','ym');
+            })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
 
-            ym(107711719,'init',{
-              ssr: true,
-              webvisor: true,
-              clickmap: true,
-              ecommerce: 'dataLayer',
-              accurateTrackBounce: true,
-              trackLinks: true,
+            ym(107711719, "init", {
+              clickmap:true,
+              trackLinks:true,
+              accurateTrackBounce:true,
+              webvisor:true,
+              ecommerce:"dataLayer"
             });
           `}
         </Script>
-        <noscript>
-          <div>
-            <img
-              src="https://mc.yandex.ru/watch/107711719"
-              style={{ position: 'absolute', left: -9999 }}
-              alt=""
-            />
-          </div>
-        </noscript>
+
+        {/* noscript версия */}
+        <div
+          dangerouslySetInnerHTML={{
+            __html: `
+              <noscript>
+                <div>
+                  <img src="https://mc.yandex.ru/watch/107711719"
+                       style="position:absolute; left:-9999px;"
+                       alt="" />
+                </div>
+              </noscript>
+            `,
+          }}
+        />
       </body>
     </html>
-  );
+  )
 }
