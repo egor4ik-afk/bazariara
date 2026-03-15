@@ -1,50 +1,82 @@
-import Link from 'next/link';
+'use client';
 
-interface Product {
-  id: string;
-  image_url: string;
-  title: string;
-  category: string;
-  description: string;
-  price: number;
-}
+import Link from 'next/link';
+import QuantityInput from '@/components/QuantityInput';
+import ProductImageSlider from '@/components/ProductImageSlider';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Product as NeonProduct, getAllImages } from '@/lib/types';
+import { Product as CartProduct } from '@/contexts/CartContext';
 
 interface ProductCardProps {
-  product: Product;
+  product: NeonProduct;
+  index: number;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, index }: ProductCardProps) {
+  const { language, t } = useLanguage();
+
+  const name =
+    language === 'ru' ? (product.name_ru || product.name_en || product.name_ka || product.name) :
+    language === 'en' ? (product.name_en || product.name_ru || product.name_ka || product.name) :
+    language === 'ka' ? (product.name_ka || product.name_ru || product.name_en || product.name) :
+    product.name;
+
+  const category =
+    language === 'en' ? (product.category_en || product.category || '') :
+    language === 'ka' ? (product.category || '') :
+    (product.category || '');
+
+  const images = getAllImages(product);
+  const [catKey, prodId] = product.external_id.split('_');
+
+  // Конвертируем Neon Product → CartContext Product
+  const cartProduct: CartProduct = {
+    id:              String(product.id),
+    title:           name,
+    title_en:        product.name_en || undefined,
+    price:           product.price ?? 0,
+    image_url:       product.image_url || undefined,
+    category:        product.category || '',
+    category_en:     product.category_en || undefined,
+    categoryKey:     catKey,
+    description:     product.description_ru || product.description || undefined,
+    description_en:  product.description_en || undefined,
+    sub_category:    product.sub_category || undefined,
+    sub_category_en: product.sub_category_en || undefined,
+    subCategoryKey:  product.sub_category
+      ? product.sub_category.toLowerCase().replace(/\s+/g, '-')
+      : undefined,
+    in_stock:        product.in_stock,
+  };
+
   return (
-    (<Link
-      href={`/product/${product.id}`}
-      className="group block overflow-hidden rounded-lg border border-gray-200 shadow-sm transition-all duration-300 hover:shadow-lg dark:border-gray-800">
-      <div className="relative h-48 overflow-hidden">
-        <img
-          src={product.image_url || '/placeholder.svg'}
-          alt={product.title}
-          width={400}
-          height={400}
-          className="h-full w-full object-cover transition-all duration-300 group-hover:scale-105" />
-        <div
-          className="absolute inset-0 bg-black/20 transition-all duration-300 group-hover:bg-black/30"></div>
-        <div className="absolute top-3 right-3">
-          <span
-            className="rounded-full bg-white/80 px-3 py-1 text-sm font-medium text-gray-900 backdrop-blur-sm dark:bg-gray-950/80 dark:text-gray-50">
-            {product.category}
-          </span>
-        </div>
+    <div className="bg-gray-800/40 rounded-xl shadow-lg overflow-hidden flex flex-col group transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-2xl hover:shadow-lime-500/20">
+      <div className="relative flex-grow">
+        <Link prefetch={false} href={`/products/${catKey}/${prodId}`} className="block h-full">
+          <ProductImageSlider images={images} alt={name} priority={index < 4} />
+          <div className="p-5">
+            <h3 className="text-xl font-bold mb-2 truncate group-hover:text-lime-400 transition-colors duration-300">
+              {name}
+            </h3>
+            <p className="text-gray-400 text-sm mb-3">{category}</p>
+            <div className="flex items-center flex-wrap gap-2">
+              <div className="flex items-baseline gap-2 mr-auto">
+                <p className="text-2xl font-semibold text-lime-500 whitespace-nowrap">
+                  {product.price} ₾
+                </p>
+              </div>
+              {product.in_stock && (
+                <span className="text-sm font-semibold text-green-400 shrink-0">
+                  {t('product.inStock')}
+                </span>
+              )}
+            </div>
+          </div>
+        </Link>
       </div>
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50">{product.title}</h3>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{product.description}</p>
-        <div className="mt-4 flex items-center justify-between">
-          <p className="text-xl font-bold text-gray-900 dark:text-gray-50">${product.price}</p>
-          <button
-            className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
-            Add to Cart
-          </button>
-        </div>
+      <div className="p-5 pt-0 mt-auto">
+        <QuantityInput product={cartProduct} />
       </div>
-    </Link>)
+    </div>
   );
 }

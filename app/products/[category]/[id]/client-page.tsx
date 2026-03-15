@@ -7,8 +7,6 @@ import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import Image from 'next/image';
-
-// Swiper
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
 import 'swiper/css';
@@ -16,100 +14,128 @@ import 'swiper/css/pagination';
 
 type Product = {
   id: string;
+  external_id?: string;
+  categoryKey: string;
+
   title: string;
   title_en?: string;
-  category: string;
-  category_en?: string;
-  price: number;
-  in_stock: boolean;
+  title_ka?: string;
+
   description?: string;
   description_en?: string;
-  image_url?: string;
-  categoryKey: string;
-  image_urls?: string[];
-  links?: string[];
+  description_ka?: string;
+
+  category: string;
+  category_en?: string;
   sub_category?: string;
   sub_category_en?: string;
   subCategoryKey?: string;
+
+  price: number;
+  in_stock: boolean;
+  currency?: string;
+
+  image_url?: string;
+  image_urls?: string[];
+  links?: string[];
 };
 
-// === Загрузка связанного товара ===
-async function fetchProduct(category: string, id: string): Promise<Product | null> {
-  try {
-    const response = await fetch(`/api/products/${category}/${id}`);
-    if (!response.ok) return null;
-    return response.json();
-  } catch (error) {
-    console.error('Failed to fetch related product', error);
-    return null;
-  }
-}
-
-// === Карточка связанного товара ===
-function RelatedProductCard({
-  category,
-  id,
-  language,
-}: {
-  category: string;
-  id: string;
-  language: 'ru' | 'en';
-}) {
+// === Карточка связанного товара — теперь использует Neon API ===
+function RelatedProductCard({ category, id }: { category: string; id: string }) {
   const [product, setProduct] = useState<Product | null>(null);
+  const { language } = useLanguage();
 
   useEffect(() => {
-    fetchProduct(category, id).then(setProduct);
-  }, [category, id]);
+    fetch(`/api/products/${category}/${id}?lang=${language}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return;
+        setProduct({
+          id:        data.id ? String(data.id) : id,
+          categoryKey: category,
+          title:     data.name || data.title || '',
+          title_en:  data.name_en || data.title_en,
+          title_ka:  data.name_ka,
+          price:     data.price ?? 0,
+          image_url: data.image_url,
+          in_stock:  data.in_stock,
+          category:  data.category || '',
+        });
+      })
+      .catch(console.error);
+  }, [category, id, language]);
+
+  const getTitle = () => {
+    if (!product) return '';
+    if (language === 'en') return product.title_en || product.title;
+    if (language === 'ka') return product.title_ka || product.title;
+    return product.title;
+  };
 
   if (!product) {
     return (
-      <div className="bg-gray-800 rounded-lg shadow-md p-4 text-center">
+      <div className="bg-gray-800 rounded-lg shadow-md p-4">
         <div className="w-full h-32 bg-gray-700 animate-pulse rounded-lg mb-4" />
         <div className="w-3/4 h-4 bg-gray-700 animate-pulse rounded-md mx-auto" />
       </div>
     );
   }
 
-  const displayTitle =
-    language === 'en' && product.title_en ? product.title_en : product.title;
-
   return (
     <Link
       href={`/products/${product.categoryKey}/${product.id}`}
       className="block bg-gray-800 rounded-lg shadow-md hover:shadow-lime-500/20 transition-shadow duration-300"
     >
-      {/* 🔹 next/image вместо <img> — лучше для LCP и CLS */}
       <div className="relative w-full h-32">
         <Image
           src={product.image_url || '/placeholder.png'}
-          alt={displayTitle}
+          alt={getTitle()}
           fill
           sizes="(max-width: 768px) 50vw, 25vw"
           className="object-cover rounded-t-lg"
         />
       </div>
       <div className="p-4">
-        <h4 className="font-bold text-md truncate text-white">{displayTitle}</h4>
+        <h4 className="font-bold text-md truncate text-white">{getTitle()}</h4>
         <p className="text-lime-400 font-semibold">{product.price} ₾</p>
       </div>
     </Link>
   );
 }
 
-// === Главный компонент страницы товара ===
+// === Главный компонент ===
 export default function ProductDetailClient({ product }: { product: Product }) {
   const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart();
   const router = useRouter();
   const { t, language } = useLanguage();
 
-  const displayTitle =
-    language === 'en' && product.title_en ? product.title_en : product.title;
-  const displayCategory =
-    language === 'en' && product.category_en ? product.category_en : product.category;
-  const displaySubCategory =
-    language === 'en' && product.sub_category_en ? product.sub_category_en : product.sub_category;
-  const displayDescription =
-    language === 'en' && product.description_en ? product.description_en : product.description;
+  const getTitle = () => {
+    if (language === 'en') return product.title_en || product.title;
+    if (language === 'ka') return product.title_ka || product.title;
+    return product.title;
+  };
+
+  const getDescription = () => {
+    if (language === 'en') return product.description_en || product.description;
+    if (language === 'ka') return product.description_ka || product.description;
+    return product.description;
+  };
+
+  const getCategory = () => {
+    if (language === 'en') return product.category_en || product.category;
+    return product.category;
+  };
+
+  const getSubCategory = () => {
+    if (language === 'en') return product.sub_category_en || product.sub_category;
+    return product.sub_category;
+  };
+
+  // CartContext ожидает строковый id и categoryKey
+  const cartProduct = {
+    ...product,
+    title: getTitle(),
+  };
 
   const cartItem = cartItems.find(
     item => item.id === product.id && item.category === product.category
@@ -122,48 +148,38 @@ export default function ProductDetailClient({ product }: { product: Product }) {
 
   const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
   const uniqueImageUrls = [...new Set(allImages)];
-  const hasMultipleImages = uniqueImageUrls.length > 1;
 
-  const handleAddToCart = () => addToCart(product);
-
-  const handleIncreaseQuantity = () => {
-    if (cartItem) {
-      const newQuantity = cartItem.quantity + 1;
-      setInputValue(newQuantity);
-      updateQuantity(cartItem.id, newQuantity, cartItem.category);
+  const handleAddToCart    = () => addToCart(cartProduct);
+  const handleIncrease     = () => {
+    if (!cartItem) return;
+    const q = cartItem.quantity + 1;
+    setInputValue(q);
+    updateQuantity(cartItem.id, q, cartItem.category);
+  };
+  const handleDecrease     = () => {
+    if (!cartItem) return;
+    if (cartItem.quantity > 1) {
+      const q = cartItem.quantity - 1;
+      setInputValue(q);
+      updateQuantity(cartItem.id, q, cartItem.category);
+    } else {
+      removeFromCart(cartItem.id, cartItem.category);
     }
   };
-
-  const handleDecreaseQuantity = () => {
-    if (cartItem) {
-      if (cartItem.quantity > 1) {
-        const newQuantity = cartItem.quantity - 1;
-        setInputValue(newQuantity);
-        updateQuantity(cartItem.id, newQuantity, cartItem.category);
-      } else {
-        removeFromCart(cartItem.id, cartItem.category);
-      }
-    }
+  const handleBlur         = () => {
+    if (!cartItem) return;
+    const q = parseInt(inputValue.toString(), 10);
+    if (!isNaN(q) && q > 0) updateQuantity(cartItem.id, q, cartItem.category);
+    else setInputValue(cartItem.quantity);
   };
 
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  };
-
-  const handleBlur = () => {
-    if (cartItem) {
-      const newQuantity = parseInt(inputValue.toString(), 10);
-      if (!isNaN(newQuantity) && newQuantity > 0) {
-        updateQuantity(cartItem.id, newQuantity, cartItem.category);
-      } else {
-        setInputValue(cartItem.quantity);
-      }
-    }
-  };
+  const displayTitle       = getTitle();
+  const displayDescription = getDescription();
+  const displayCategory    = getCategory();
+  const displaySubCategory = getSubCategory();
 
   return (
     <div className="bg-gray-900 min-h-screen text-white">
-      {/* 🔹 JSON-LD убран отсюда — он уже есть в серверном page.tsx, дубль вредит SEO */}
       <main className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
           <button
@@ -178,32 +194,30 @@ export default function ProductDetailClient({ product }: { product: Product }) {
         <div className="bg-gray-800/40 rounded-xl shadow-2xl overflow-hidden backdrop-blur-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
 
-            {/* === Галерея изображений === */}
+            {/* Галерея */}
             <div className="p-4">
-              {hasMultipleImages ? (
+              {uniqueImageUrls.length > 1 ? (
                 <Swiper
                   modules={[Pagination]}
                   pagination={{ clickable: true }}
                   className="w-full h-[400px] rounded-lg shadow-lg"
                   loop={true}
                 >
-                  {uniqueImageUrls.map((url, index) => (
-                    <SwiperSlide key={index} className="relative">
-                      {/* 🔹 next/image + priority для первого слайда (LCP) */}
+                  {uniqueImageUrls.map((url, i) => (
+                    <SwiperSlide key={i} className="relative">
                       <Image
                         src={url}
-                        alt={`${displayTitle} - ${t('product.photo', { number: index + 1 })}`}
+                        alt={`${displayTitle} - фото ${i + 1}`}
                         fill
                         sizes="(max-width: 768px) 100vw, 50vw"
                         className="object-cover"
-                        priority={index === 0}
-                        loading={index === 0 ? 'eager' : 'lazy'}
+                        priority={i === 0}
+                        loading={i === 0 ? 'eager' : 'lazy'}
                       />
                     </SwiperSlide>
                   ))}
                 </Swiper>
               ) : (
-                // 🔹 next/image + priority для единственного фото (LCP)
                 <div className="relative w-full h-[400px] rounded-lg shadow-lg overflow-hidden">
                   <Image
                     src={product.image_url || '/placeholder.png'}
@@ -217,59 +231,47 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               )}
             </div>
 
-            {/* === Информация о товаре === */}
+            {/* Информация */}
             <div className="p-8 flex flex-col justify-center">
-              <div>
-                <p className="text-sm text-lime-400 font-semibold mb-2">
-                  {displayCategory}
-                  {displaySubCategory && ` / ${displaySubCategory}`}
-                </p>
+              <p className="text-sm text-lime-400 font-semibold mb-2">
+                {displayCategory}
+                {displaySubCategory && ` / ${displaySubCategory}`}
+              </p>
 
-                <h1 className="text-4xl lg:text-5xl font-extrabold mb-4 text-gray-100">
-                  {displayTitle}
-                </h1>
+              <h1 className="text-4xl lg:text-5xl font-extrabold mb-4 text-gray-100">
+                {displayTitle}
+              </h1>
 
-                <div className="flex justify-between items-center mb-6">
-                  <p className="text-4xl font-bold text-lime-500">{product.price} ₾</p>
-                  {product.in_stock && (
-                    <span className="text-sm font-semibold text-green-400 bg-green-900/50 rounded-full px-3 py-1">
-                      {t('product.inStock')}
-                    </span>
-                  )}
-                </div>
-
-                {displayDescription && (
-                  <div className="text-gray-300 leading-relaxed space-y-4 whitespace-pre-line">
-                    {displayDescription.split('\n').map((paragraph, index) => (
-                      <p key={index}>{paragraph}</p>
-                    ))}
-                  </div>
+              <div className="flex justify-between items-center mb-6">
+                <p className="text-4xl font-bold text-lime-500">{product.price} ₾</p>
+                {product.in_stock && (
+                  <span className="text-sm font-semibold text-green-400 bg-green-900/50 rounded-full px-3 py-1">
+                    {t('product.inStock')}
+                  </span>
                 )}
               </div>
+
+              {displayDescription && (
+                <div className="text-gray-300 leading-relaxed space-y-4 whitespace-pre-line">
+                  {displayDescription.split('\n').map((p, i) => <p key={i}>{p}</p>)}
+                </div>
+              )}
 
               <div className="mt-8">
                 {cartItem ? (
                   <div className="flex items-center gap-4">
                     <p className="text-lg font-semibold">{t('product.inCart')}</p>
                     <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleDecreaseQuantity}
-                        className="p-3 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-colors"
-                      >
+                      <button onClick={handleDecrease} className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
                         <MinusIcon className="h-5 w-5" />
                       </button>
                       <input
-                        type="number"
-                        value={inputValue}
-                        onChange={handleQuantityChange}
+                        type="number" value={inputValue} min="1"
+                        onChange={e => setInputValue(e.target.value)}
                         onBlur={handleBlur}
-                        className="text-xl font-bold w-12 text-center bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-lime-500 rounded-md"
-                        min="1"
+                        className="text-xl font-bold w-12 text-center bg-transparent focus:outline-none focus:ring-2 focus:ring-lime-500 rounded-md"
                       />
-                      <button
-                        onClick={handleIncreaseQuantity}
-                        className="p-3 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-colors"
-                      >
+                      <button onClick={handleIncrease} className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors">
                         <PlusIcon className="h-5 w-5" />
                       </button>
                     </div>
@@ -277,7 +279,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 ) : (
                   <button
                     onClick={handleAddToCart}
-                    className="w-full flex items-center justify-center px-4 py-4 font-bold rounded-lg bg-lime-500 text-gray-900 hover:bg-lime-400 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-lime-500/30 hover:shadow-xl hover:shadow-lime-400/40"
+                    className="w-full flex items-center justify-center px-4 py-4 font-bold rounded-lg bg-lime-500 text-gray-900 hover:bg-lime-400 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-lime-500/30"
                   >
                     <ShoppingCartIcon className="h-6 w-6 mr-3" />
                     {t('product.addToCart')}
@@ -288,28 +290,18 @@ export default function ProductDetailClient({ product }: { product: Product }) {
           </div>
         </div>
 
-        {/* === Похожие товары === */}
+        {/* Похожие товары */}
         {product.links && product.links.length > 0 && (
-          <div className="mt-2">
-            <h3 className="text-2xl font-bold mb-2 text-white">{t('product.relatedProducts')}</h3>
+          <div className="mt-8">
+            <h3 className="text-2xl font-bold mb-4 text-white">{t('product.relatedProducts')}</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {product.links.map((link, index) => {
+              {product.links.map((link, i) => {
                 try {
-                  const url = new URL(link);
-                  const parts = url.pathname.split('/');
+                  const parts = new URL(link).pathname.split('/');
                   if (parts.length >= 4) {
-                    return (
-                      <RelatedProductCard
-                        key={index}
-                        category={parts[2]}
-                        id={parts[3]}
-                        language={language}
-                      />
-                    );
+                    return <RelatedProductCard key={i} category={parts[2]} id={parts[3]} />;
                   }
-                } catch (error) {
-                  console.error('Invalid URL in product links', link, error);
-                }
+                } catch {}
                 return null;
               })}
             </div>

@@ -3,9 +3,20 @@ const nextConfig = {
   images: {
     remotePatterns: [
       {
-        // Разрешаем загрузку и оптимизацию изображений с любых HTTPS-доменов
         protocol: 'https',
-        hostname: '**', 
+        hostname: 'flagcdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.vercel-storage.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ibb.co',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.ibb.co',
       },
     ],
   },

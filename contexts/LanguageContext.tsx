@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { translations } from '@/lib/translations';
 
-type Language = 'ru' | 'en';
+export type Language = 'ru' | 'en' | 'ka';
 
 interface LanguageContextType {
   language: Language;
@@ -14,24 +14,19 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // Изначально можно оставить 'en' или 'ru', это изменится после маунта
-  const [language, setLanguageState] = useState<Language>('en'); 
+  const [language, setLanguageState] = useState<Language>('ru');
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    const savedLanguage = localStorage.getItem('language') as Language;
-
-    if (savedLanguage && ['ru', 'en'].includes(savedLanguage)) {
-      setLanguageState(savedLanguage);
+    const saved = localStorage.getItem('language') as Language;
+    if (saved && ['ru', 'en', 'ka'].includes(saved)) {
+      setLanguageState(saved);
     } else {
-      // ЛОГИКА ИЗМЕНЕНА ЗДЕСЬ:
       const browserLang = navigator.language.split('-')[0];
-      
-      // Если язык браузера 'ru' -> ставим 'ru'
-      // Если любой другой (включая en, de, fr...) -> ставим 'en'
-      const defaultLang = browserLang === 'ru' ? 'ru' : 'en';
-      
+      const defaultLang: Language =
+        browserLang === 'ru' ? 'ru' :
+        browserLang === 'ka' ? 'ka' : 'en';
       setLanguageState(defaultLang);
     }
   }, []);
@@ -45,34 +40,28 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (isClient) {
-      document.documentElement.lang = language;
-    }
+    if (isClient) document.documentElement.lang = language;
   }, [language, isClient]);
 
-  const getTranslation = (key: string, params?: Record<string, string | number>): string => {
-    const currentTranslations = translations[language];
+  const t = (key: string, params?: Record<string, string | number>): string => {
+    const current = translations[language] as Record<string, any>;
     const keys = key.split('.');
-    let value: any = currentTranslations;
-    
+    let value: any = current;
     for (const k of keys) {
       value = value?.[k];
       if (value === undefined) return key;
     }
-
     if (typeof value !== 'string') return key;
-
     if (params) {
-      return value.replace(/\{(\w+)\}/g, (match, paramKey) => {
-        return params[paramKey]?.toString() || match;
-      });
+      return value.replace(/\{(\w+)\}/g, (match, paramKey) =>
+        params[paramKey]?.toString() || match
+      );
     }
-
     return value;
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t: getTranslation }}>
+    <LanguageContext.Provider value={{ language, setLanguage, t }}>
       {children}
     </LanguageContext.Provider>
   );
@@ -80,8 +69,6 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
 export function useLanguage() {
   const context = useContext(LanguageContext);
-  if (context === undefined) {
-    throw new Error('useLanguage must be used within a LanguageProvider');
-  }
+  if (!context) throw new Error('useLanguage must be used within a LanguageProvider');
   return context;
 }

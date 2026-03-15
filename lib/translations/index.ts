@@ -1,11 +1,6 @@
-import ruTranslations from './ru.json';
-import enTranslations from './en.json';
+import ru from './ru.json';
+import en from './en.json';
+import ka from './ka.json';
 
-export const translations = {
-  ru: ruTranslations,
-  en: enTranslations,
-};
-
-export type Translations = typeof ruTranslations;
-
-
+export const translations = { ru, en, ka };
+export type TranslationKey = typeof ru;

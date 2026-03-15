@@ -83,34 +83,19 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </OrderProvider>
         </LanguageProvider>
 
-        {/* 🔹 Все метрики грузятся через 3 секунды — не блокируют LCP и FID.
-            afterInteractive ждёт гидрации, затем setTimeout даёт странице
-            полностью отрисоваться перед загрузкой сторонних скриптов. */}
-        <Script id="delayed-analytics" strategy="afterInteractive">
-          {`
-            setTimeout(function() {
-              // — Google Analytics —
-              var gaScript = document.createElement('script');
-              gaScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X';
-              gaScript.async = true;
-              document.head.appendChild(gaScript);
-
-              gaScript.onload = function() {
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){ window.dataLayer.push(arguments); }
-                window.gtag = gtag;
-                gtag('js', new Date());
-                gtag('config', 'G-EN4C3S417X');
-              };
-
-              // — Vercel Analytics —
-              var vaScript = document.createElement('script');
-              vaScript.src = '/_vercel/insights/script.js';
-              vaScript.defer = true;
-              document.head.appendChild(vaScript);
-            }, 3000);
-          `}
-        </Script>
+        <Script
+  src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
+  strategy="afterInteractive"
+/>
+<Script id="google-analytics" strategy="afterInteractive">
+  {`
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ window.dataLayer.push(arguments); }
+    window.gtag = gtag;
+    gtag('js', new Date());
+    gtag('config', 'G-EN4C3S417X');
+  `}
+</Script>
       </body>
     </html>
   );

@@ -1,11 +1,12 @@
 'use server';
 
-import { database } from '@/lib/firebase/server';
+import sql from '@/lib/db';
 
 interface OrderItem {
   product: {
-    id: string; 
+    id: string;
     title: string;
+    title_en?: string;
     price: number;
     category: string;
     categoryKey: string;
@@ -25,49 +26,44 @@ interface OrderDetails {
   shippingCost: number;
 }
 
-interface EnrichedItemData {
-    id: string; 
-    title: string;
-    price: number;
-    quantity: number;
-    link?: string;
-}
-
+// ─── Telegram уведомление ─────────────────────────────────────────────────────
 async function sendTelegramNotification(
-    customer: OrderDetails['customer'],
-    items: EnrichedItemData[],
-    total: number,
-    shippingCost: number,
-    createdAt: Date
+  customer: OrderDetails['customer'],
+  items: OrderItem[],
+  total: number,
+  shippingCost: number,
+  createdAt: Date
 ): Promise<boolean> {
-  const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
 
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-    console.error('Telegram environment variables are not set.');
+  if (!BOT_TOKEN || !CHAT_ID) {
+    console.error('TELEGRAM_BOT_TOKEN или TELEGRAM_CHAT_ID не заданы');
     return false;
   }
 
-  const socialContacts = customer.social ? 
-    Object.entries(customer.social)
-        .map(([platform, value]) => `💬 ${platform.charAt(0).toUpperCase() + platform.slice(1)}: ${value}`)
-        .join('\n') 
+  const socialContacts = customer.social
+    ? Object.entries(customer.social)
+        .map(([p, v]) => `💬 ${p.charAt(0).toUpperCase() + p.slice(1)}: ${v}`)
+        .join('\n')
     : '';
 
   const contactDetails = [
     customer.phone && `📞 Телефон: ${customer.phone}`,
-    socialContacts
+    socialContacts,
   ].filter(Boolean).join('\n');
 
   const itemsList = items
-    .map((item, index) => {
-      const titleWithLink = item.link ? `[${item.title}](${item.link})` : item.title;
-      return `${index + 1}. ${titleWithLink}\n   Кол-во: ${item.quantity} x ₾${item.price.toFixed(2)} = ₾${(item.price * item.quantity).toFixed(2)}`;
+    .map((item, i) => {
+      const price = parseFloat(String(item.product.price));
+      return `${i + 1}. ${item.product.title}\n   ${item.quantity} x ₾${price.toFixed(2)} = ₾${(price * item.quantity).toFixed(2)}`;
     })
     .join('\n\n');
-    
-  const subtotal = total - shippingCost;
-  const shippingText = shippingCost > 0 ? `*🚚 Доставка: ₾${shippingCost.toFixed(2)}*` : '*🚚 Доставка: БЕСПЛАТНО*';
+
+  const subtotal     = total - shippingCost;
+  const shippingText = shippingCost > 0
+    ? `*🚚 Доставка: ₾${shippingCost.toFixed(2)}*`
+    : '*🚚 Доставка: БЕСПЛАТНО*';
 
   const message = `
 🛒 *НОВЫЙ ЗАКАЗ* 🛒
@@ -82,126 +78,96 @@ ${itemsList}
 ${shippingText}
 *💰 ИТОГО: ₾${total.toFixed(2)}*
 
-📅 *Дата:* ${new Date(createdAt).toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi' })}
+📅 *Дата:* ${createdAt.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi' })}
   `.trim();
 
   try {
-    const response = await fetch(
-      `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+    const resp = await fetch(
+      `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'Markdown' }),
+        body: JSON.stringify({
+          chat_id:    CHAT_ID,
+          text:       message,
+          parse_mode: 'Markdown',
+        }),
       }
     );
-    const data = await response.json();
+    const data = await resp.json();
     if (!data.ok) {
       console.error('Telegram API Error:', data.description);
       return false;
     }
-    console.log('Telegram notification sent successfully.');
     return true;
-  } catch (error) {
-    console.error('Failed to send Telegram notification:', error);
+  } catch (err) {
+    console.error('Ошибка отправки в Telegram:', err);
     return false;
   }
 }
 
+// ─── Создание таблицы заказов (если не существует) ───────────────────────────
+async function ensureOrdersTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS orders (
+      id           SERIAL PRIMARY KEY,
+      customer     JSONB NOT NULL,
+      items        JSONB NOT NULL,
+      subtotal     NUMERIC(10,2),
+      shipping     NUMERIC(10,2),
+      total        NUMERIC(10,2),
+      created_at   TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+}
+
+// ─── Основная функция ─────────────────────────────────────────────────────────
 export async function handlePlaceOrder(orderDetails: OrderDetails) {
   const { customer, items, total, shippingCost } = orderDetails;
 
-  const hasSocialContact = customer.social && Object.keys(customer.social).length > 0;
-
-  if (!customer || !customer.name || (!customer.phone && !hasSocialContact)) {
+  const hasSocial = customer.social && Object.keys(customer.social).length > 0;
+  if (!customer?.name || (!customer.phone && !hasSocial)) {
     return { success: false, message: 'Необходимо указать имя и хотя бы один контакт.' };
   }
-
-  if (!items || items.length === 0) {
+  if (!items?.length) {
     return { success: false, message: 'Ваша корзина пуста.' };
   }
 
+  const createdAt = new Date();
+  const subtotal  = total - shippingCost;
+
   try {
-    const createdAt = new Date().toISOString();
-    const subtotal = total - shippingCost;
-    
-    const ordersRef = database.ref('orders');
-    const newOrderRef = ordersRef.push();
+    await ensureOrdersTable();
 
-    const orderDataForRealtimeDB = {
-        customer,
-        items: items.map(item => ({
-            id: item.product.id,
-            title: item.product.title,
-            price: item.product.price,
-            quantity: item.quantity,
-            category: item.product.category,
-            categoryKey: item.product.categoryKey,
-            image_url: item.product.image_url ?? null,
-        })),
-        subtotal,
-        shippingCost,
-        total,
-        createdAt: createdAt,
-    };
+    // Сохраняем заказ в Neon
+    await sql`
+      INSERT INTO orders (customer, items, subtotal, shipping, total, created_at)
+      VALUES (
+        ${JSON.stringify(customer)}::jsonb,
+        ${JSON.stringify(items.map(item => ({
+          id:          item.product.id,
+          title:       item.product.title,
+          price:       parseFloat(String(item.product.price)),
+          quantity:    item.quantity,
+          category:    item.product.category,
+          categoryKey: item.product.categoryKey,
+          image_url:   item.product.image_url ?? null,
+        })))}::jsonb,
+        ${subtotal},
+        ${shippingCost},
+        ${total},
+        ${createdAt.toISOString()}
+      )
+    `;
 
-    await newOrderRef.set(orderDataForRealtimeDB);
-    console.log('Order saved to Realtime Database.');
-
-    // --- FINAL, ROBUST LINK FETCHING LOGIC ---
-    // item.product.id is the Firebase document key
-    const enrichedItems: EnrichedItemData[] = await Promise.all(
-        items.map(async (item) => {
-            const categoryKey = item.product.categoryKey || item.product.category;
-            const firebaseDocumentKey = item.product.id; // Firebase document key
-            const title = item.product.title;
-            let finalLink: string | undefined = undefined;
-
-            console.log(`\n🔍 SEARCHING for product: FirebaseKey="${firebaseDocumentKey}", Title="${title}", Category=${categoryKey}`);
-
-            try {
-                const productRef = database.ref(`products/${categoryKey}/${firebaseDocumentKey}`);
-                const snapshot = await productRef.once('value');
-
-                if (snapshot.exists()) {
-                    const product = snapshot.val();
-                    console.log(`✅ Product found at products/${categoryKey}/${firebaseDocumentKey}`);
-                    console.log(`   Full product:`, JSON.stringify(product, null, 2));
-                    
-                    if (product.link) {
-                        finalLink = product.link;
-                        console.log(`✅ Link extracted: ${finalLink}`);
-                    } else {
-                        console.log(`⚠️ No link field in product`);
-                    }
-                } else {
-                    console.log(`❌ Product not found at path: products/${categoryKey}/${firebaseDocumentKey}`);
-                }
-            } catch (err) {
-                console.error(`[FATAL] Database error fetching link for product "${title}":`, err);
-            }
-            
-            console.log(`✅ Final result for "${title}": link="${finalLink}"\n`);
-            
-            return {
-                id: item.product.id,
-                title: item.product.title,
-                price: item.product.price,
-                quantity: item.quantity,
-                link: finalLink
-            };
-        })
-    );
-    // --- END OF LOGIC ---
-
-    await sendTelegramNotification(customer, enrichedItems, total, shippingCost, new Date(createdAt));
+    // Отправляем уведомление в Telegram
+    await sendTelegramNotification(customer, items, total, shippingCost, createdAt);
 
     return { success: true };
 
-  } catch (error: any) {
-    console.error('Error processing order:', error);
-    return { 
-      success: false, 
-      message: `На сервере произошла ошибка: ${error.message}`
-    };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Неизвестная ошибка';
+    console.error('Ошибка при оформлении заказа:', msg);
+    return { success: false, message: `Ошибка сервера: ${msg}` };
   }
 }

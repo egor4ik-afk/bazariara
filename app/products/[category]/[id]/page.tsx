@@ -1,30 +1,95 @@
-import { database } from '@/lib/firebase/server';
+import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
 import { Metadata } from 'next';
-import { translations } from '@/lib/translations';
 import ProductNotFound from './not-found';
 
-// === ISR: обновление кэша каждые 10 минут ===
 export const revalidate = 600;
 
-type Product = {
-  id: string;
-  title: string;
-  category: string;
-  price: number;
+type Params = Promise<{ category: string; id: string }>;
+
+type NeonProduct = {
+  id: number;
+  external_id: string;
+  source_url: string | null;
+  gorgia_url: string | null;
+  name: string;
+  name_ru: string | null;
+  name_en: string | null;
+  name_ka: string | null;
+  description: string | null;
+  description_ru: string | null;
+  description_en: string | null;
+  description_ka: string | null;
+  price: number | null;
+  currency: string;
   in_stock: boolean;
-  description?: string;
-  image_url?: string;
-  categoryKey: string;
-  image_urls?: string[];
-  links?: string[];
+  category: string | null;
+  category_en: string | null;
+  sub_category: string | null;
+  sub_category_en: string | null;
+  image_url: string | null;
+  images: string[] | string | null;
 };
 
-async function getProduct(category: string, id: string): Promise<Product | null> {
+// Конвертируем Neon → формат который ожидает client-page
+function toClientProduct(p: NeonProduct, category: string, id: string) {
+  // Парсим images если это строка
+  let imgs: string[] = [];
+  if (typeof p.images === 'string') {
+    try { imgs = JSON.parse(p.images); } catch { imgs = []; }
+  } else if (Array.isArray(p.images)) {
+    imgs = p.images;
+  }
+
+  const allImages = [p.image_url, ...imgs].filter(Boolean) as string[];
+  const uniqueImages = [...new Set(allImages)];
+
+  return {
+    id:              String(p.id),
+    external_id:     p.external_id,
+    categoryKey:     category,
+
+    // Все три языка
+    title:           p.name_ru || p.name_en || p.name_ka || p.name,
+    title_en:        p.name_en || undefined,
+    title_ka:        p.name_ka || undefined,
+
+    description:     p.description_ru || p.description || undefined,
+    description_en:  p.description_en || undefined,
+    description_ka:  p.description_ka || undefined,
+
+    category:        p.category || '',
+    category_en:     p.category_en || undefined,
+
+    sub_category:    p.sub_category || undefined,
+    sub_category_en: p.sub_category_en || undefined,
+
+    price:           p.price ?? 0,
+    in_stock:        p.in_stock,
+    currency:        p.currency,
+
+    image_url:       uniqueImages[0] || undefined,
+    image_urls:      uniqueImages.slice(1),
+  };
+}
+
+async function getProduct(category: string, id: string) {
   try {
-    const snapshot = await database.ref(`products/${category}/${id}`).once('value');
-    if (!snapshot.exists()) return null;
-    return { ...snapshot.val(), id, categoryKey: category };
+    const rows = await sql`
+      SELECT
+        id, external_id, source_url, gorgia_url,
+        name, name_ru, name_en, name_ka,
+        description, description_ru, description_en, description_ka,
+        price, currency, in_stock,
+        category, category_en, sub_category, sub_category_en,
+        image_url, images
+      FROM products
+      WHERE source = 'gorgia'
+        AND external_id = ${`${category}_${id}`}
+      LIMIT 1
+    `;
+    if (!rows[0]) return null;
+    return toClientProduct(rows[0] as unknown as NeonProduct, category, id);
   } catch (err) {
     console.error('Ошибка при получении товара:', err);
     return null;
@@ -35,40 +100,30 @@ async function getProduct(category: string, id: string): Promise<Product | null>
 export async function generateMetadata({
   params,
 }: {
-  params: { category: string; id: string };
+  params: Params;
 }): Promise<Metadata> {
-  const product = await getProduct(params.category, params.id);
-  const t = translations.ru;
+  const { category, id } = await params;
+  const product = await getProduct(category, id);
 
   if (!product) {
     return {
-      title: t.product.notFoundTitle,
-      description: t.product.notFoundDescription,
-      openGraph: {
-        title: t.product.notFoundTitle,
-        description: t.product.notFoundDescription,
-      },
+      title: 'Товар не найден — BAZARI ARA',
+      description: 'Запрошенный товар не существует или был удалён.',
     };
   }
 
   const title = `${product.title} — купить в Тбилиси с доставкой`;
-
-  // 🔹 Обрезаем description до 160 символов — Google всё равно обрежет длиннее
   const rawDescription = product.description
     ? `${product.description.slice(0, 110)} — доставка по Тбилиси. Цена: ${product.price} ₾.`
     : `Купите ${product.title} за ${product.price} ₾ с доставкой по Тбилиси за 2 часа.`;
   const description = rawDescription.slice(0, 160);
-
   const image = product.image_url || '/default-product.png';
   const url = `https://bazariara.ge/products/${product.categoryKey}/${product.id}`;
 
   return {
     title,
     description,
-    // 🔹 keywords убраны — Google игнорирует, может восприниматься как спам
-    alternates: {
-      canonical: url,
-    },
+    alternates: { canonical: url },
     openGraph: {
       locale: 'ru_GE',
       url,
@@ -91,9 +146,10 @@ export async function generateMetadata({
 export default async function ProductDetailPage({
   params,
 }: {
-  params: { category: string; id: string };
+  params: Params;
 }) {
-  const product = await getProduct(params.category, params.id);
+  const { category, id } = await params;
+  const product = await getProduct(category, id);
 
   if (!product) return <ProductNotFound />;
 
@@ -101,11 +157,10 @@ export default async function ProductDetailPage({
   const absoluteImageUrls = allImages.map(url =>
     url.startsWith('/') ? `https://bazariara.ge${url}` : url
   );
-  
+
   const nextYear = new Date();
   nextYear.setFullYear(nextYear.getFullYear() + 1);
 
-  // === JSON-LD — только здесь, в серверном компоненте (убран дубль из client-page) ===
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
@@ -114,10 +169,7 @@ export default async function ProductDetailPage({
     description: product.description || '',
     sku: product.id.toString(),
     category: product.category,
-    brand: {
-      '@type': 'Brand',
-      name: 'BAZARI ARA',
-    },
+    brand: { '@type': 'Brand', name: 'BAZARI ARA' },
     offers: {
       '@type': 'Offer',
       priceCurrency: 'GEL',
@@ -130,18 +182,11 @@ export default async function ProductDetailPage({
       seller: {
         '@type': 'Organization',
         name: 'BAZARI ARA',
-        logo: {
-          '@type': 'ImageObject',
-          url: 'https://bazariara.ge/android-chrome-512x512.png',
-        },
+        logo: { '@type': 'ImageObject', url: 'https://bazariara.ge/android-chrome-512x512.png' },
       },
       shippingDetails: {
         '@type': 'OfferShippingDetails',
-        shippingRate: {
-          '@type': 'MonetaryAmount',
-          value: '10',
-          currency: 'GEL',
-        },
+        shippingRate: { '@type': 'MonetaryAmount', value: '10', currency: 'GEL' },
         shippingDestination: {
           '@type': 'DefinedRegion',
           addressCountry: 'GE',
