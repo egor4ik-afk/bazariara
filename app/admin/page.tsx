@@ -41,7 +41,7 @@ async function getRecentActivity() {
     ORDER BY updated_at DESC
     LIMIT 8
   `;
-  return rows as { id: number; external_id: string; name: string; price: string; in_stock: boolean; updated_at: string }[];
+  return rows as unknown as { id: number; external_id: string; name: string; price: string; in_stock: boolean; updated_at: string }[];
 }
 
 export default async function AdminPage() {
