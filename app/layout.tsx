@@ -1,4 +1,4 @@
-import { Metadata } from 'next'
+import { Metadata, Viewport } from 'next'
 import './globals.css'
 import { CartProvider } from '@/contexts/CartContext'
 import { OrderProvider } from '@/contexts/OrderContext'
@@ -11,6 +11,10 @@ const siteName = 'BAZARI ARA'
 const siteUrl = new URL('https://bazariara.ge')
 const description =
   'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!'
+
+export const viewport: Viewport = {
+  themeColor: '#1a202c',
+}
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
@@ -52,7 +56,6 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     site: '@bazariara',
   },
-  themeColor: '#1a202c',
   manifest: '/site.webmanifest',
   other: {
     'msapplication-TileColor': '#1a202c',
