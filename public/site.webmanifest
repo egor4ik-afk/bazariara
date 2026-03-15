@@ -1,44 +1,7 @@
 {
-  "name": "BAZARI ARA",
-  "short_name": "BAZARI ARA",
-  "description": "Все для дома, дачи и отдыха с быстрой доставкой по Тбилиси",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "orientation": "portrait-primary",
-  "theme_color": "#1a202c",
-  "background_color": "#ffffff",
+  "name": "Bazari Ara",
+  "short_name": "Bazari",
   "icons": [
-    {
-      "src": "/favicon.ico",
-      "sizes": "32x32",
-      "type": "image/x-icon"
-    },
-    {
-      "src": "/icon_32x32.png",
-      "sizes": "32x32",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon_96x96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon_128x128.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon_256x256.png",
-      "sizes": "256x256",
-      "type": "image/png"
-    },
-    {
-      "src": "/icon_512x512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
     {
       "src": "/web-app-manifest-192x192.png",
       "sizes": "192x192",
@@ -51,5 +14,8 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "theme_color": "#000000",
+  "background_color": "#589c20",
+  "display": "standalone"
 }

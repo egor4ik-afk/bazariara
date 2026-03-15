@@ -3,7 +3,32 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-type Product = Record<string, unknown> | null;
+type Product = {
+  id?: number;
+  external_id?: string;
+  source_url?: string;
+  name?: string;
+  name_ru?: string;
+  name_en?: string;
+  name_ka?: string;
+  description_ru?: string;
+  description_en?: string;
+  description_ka?: string;
+  sku?: string;
+  price?: string | number;
+  in_stock?: boolean;
+  availability_ru?: string;
+  category?: string;
+  category_ru?: string;
+  category_en?: string;
+  category_ka?: string;
+  sub_category?: string;
+  sub_category_ru?: string;
+  sub_category_en?: string;
+  sub_category_ka?: string;
+  image_url?: string;
+  images?: string[];
+} | null;
 
 const field = (label: string, children: React.ReactNode) => (
   <div style={{ marginBottom: 20 }}>
@@ -26,29 +51,29 @@ export default function ProductEditClient({ product }: { product: Product }) {
   const isNew = !product;
 
   const [form, setForm] = useState({
-    name_ru: String(product?.name_ru || ''),
-    name_en: String(product?.name_en || ''),
-    name_ka: String(product?.name_ka || ''),
-    description_ru: String(product?.description_ru || ''),
-    description_en: String(product?.description_en || ''),
-    description_ka: String(product?.description_ka || ''),
-    sku: String(product?.sku || ''),
-    price: String(product?.price || ''),
-    in_stock: Boolean(product?.in_stock ?? true),
-    availability_ru: String(product?.availability_ru || ''),
-    category_ru: String(product?.category_ru || product?.category || ''),
-    category_en: String(product?.category_en || ''),
-    category_ka: String(product?.category_ka || ''),
-    sub_category_ru: String(product?.sub_category_ru || product?.sub_category || ''),
-    sub_category_en: String(product?.sub_category_en || ''),
-    sub_category_ka: String(product?.sub_category_ka || ''),
-    image_url: String(product?.image_url || ''),
-    source_url: String(product?.source_url || ''),
+    name_ru:          String(product?.name_ru || ''),
+    name_en:          String(product?.name_en || ''),
+    name_ka:          String(product?.name_ka || ''),
+    description_ru:   String(product?.description_ru || ''),
+    description_en:   String(product?.description_en || ''),
+    description_ka:   String(product?.description_ka || ''),
+    sku:              String(product?.sku || ''),
+    price:            String(product?.price || ''),
+    in_stock:         Boolean(product?.in_stock ?? true),
+    availability_ru:  String(product?.availability_ru || ''),
+    category_ru:      String(product?.category_ru || product?.category || ''),
+    category_en:      String(product?.category_en || ''),
+    category_ka:      String(product?.category_ka || ''),
+    sub_category_ru:  String(product?.sub_category_ru || product?.sub_category || ''),
+    sub_category_en:  String(product?.sub_category_en || ''),
+    sub_category_ka:  String(product?.sub_category_ka || ''),
+    image_url:        String(product?.image_url || ''),
+    source_url:       String(product?.source_url || ''),
   });
 
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]   = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [msg, setMsg]         = useState('');
   const [msgType, setMsgType] = useState<'ok' | 'err'>('ok');
 
   function set(key: string, value: string | boolean) {
@@ -56,8 +81,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
   }
 
   async function save() {
-    setSaving(true);
-    setMsg('');
+    setSaving(true); setMsg('');
     const method = isNew ? 'POST' : 'PATCH';
     const url = isNew ? '/api/admin/products' : `/api/admin/products/${product?.id}`;
     const res = await fetch(url, {
@@ -67,12 +91,10 @@ export default function ProductEditClient({ product }: { product: Product }) {
     });
     if (res.ok) {
       const data = await res.json();
-      setMsgType('ok');
-      setMsg('Сохранено ✓');
+      setMsgType('ok'); setMsg('Сохранено ✓');
       if (isNew && data.id) router.push(`/admin/products/${data.id}`);
     } else {
-      setMsgType('err');
-      setMsg('Ошибка сохранения');
+      setMsgType('err'); setMsg('Ошибка сохранения');
     }
     setSaving(false);
   }
@@ -84,14 +106,11 @@ export default function ProductEditClient({ product }: { product: Product }) {
     if (res.ok) {
       router.push('/admin/products');
     } else {
-      setMsg('Ошибка удаления');
-      setMsgType('err');
-      setDeleting(false);
+      setMsg('Ошибка удаления'); setMsgType('err'); setDeleting(false);
     }
   }
 
   const mono = "'DM Mono', 'Fira Mono', monospace";
-
   const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
     <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginBottom: 20 }}>
       <h3 style={{ color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 20px', fontWeight: 500 }}>{title}</h3>
@@ -108,8 +127,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
   return (
     <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
-
-      {/* Header */}
       <div style={{ borderBottom: '1px solid #2a2d3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link href="/admin/products" style={{ color: '#555', textDecoration: 'none', fontSize: 13 }}>← Товары</Link>
@@ -125,8 +142,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
               {deleting ? 'Удаляем...' : 'Удалить'}
             </button>
           )}
-          {!isNew && !!product?.source_url && (
-            <a href={product.source_url as string} target="_blank" rel="noreferrer" style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#aaa', fontSize: 13, textDecoration: 'none' }}>
+          {!isNew && product?.source_url && (
+            <a href={product.source_url} target="_blank" rel="noreferrer" style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#aaa', fontSize: 13, textDecoration: 'none' }}>
               → gorgia.ge
             </a>
           )}
@@ -137,20 +154,17 @@ export default function ProductEditClient({ product }: { product: Product }) {
       </div>
 
       <div style={{ padding: '32px', maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-
         <div>
           <Section title="Название">
             {field('Русский', inp('name_ru', 'Название на русском'))}
             {field('English', inp('name_en', 'Product name in English'))}
             {field('ქართული', inp('name_ka', 'სახელი ქართულად'))}
           </Section>
-
           <Section title="Описание">
             {field('Русский', ta('description_ru', 'Описание...'))}
             {field('English', ta('description_en', 'Description...'))}
             {field('ქართული', ta('description_ka', 'აღწერა...'))}
           </Section>
-
           <Section title="Категория">
             {field('Категория (ru)', inp('category_ru'))}
             {field('Category (en)', inp('category_en'))}
@@ -171,8 +185,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
               <div style={{ display: 'flex', gap: 10 }}>
                 {([true, false] as const).map(v => (
                   <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="radio" name="in_stock" checked={form.in_stock === v} onChange={() => set('in_stock', v)}
-                      style={{ accentColor: '#c8f135' }} />
+                    <input type="radio" name="in_stock" checked={form.in_stock === v} onChange={() => set('in_stock', v)} style={{ accentColor: '#c8f135' }} />
                     <span style={{ color: v ? '#4ade80' : '#f87171', fontSize: 13 }}>{v ? 'В наличии' : 'Нет в наличии'}</span>
                   </label>
                 ))}
@@ -188,13 +201,13 @@ export default function ProductEditClient({ product }: { product: Product }) {
                 <img src={form.image_url} alt="" style={{ width: '100%', borderRadius: 8, maxHeight: 200, objectFit: 'contain', background: '#131620' }} />
               </div>
             )}
-            {!isNew && !!product?.images && (
+            {!isNew && product?.images && product.images.length > 0 && (
               <div>
                 <div style={{ color: '#555', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Все фото ({(product.images as string[]).length})
+                  Все фото ({product.images.length})
                 </div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {(product.images as string[]).map((img, i) => (
+                  {product.images.map((img, i) => (
                     <img key={i} src={img} alt="" style={{ width: 64, height: 64, borderRadius: 6, objectFit: 'cover', background: '#131620' }} />
                   ))}
                 </div>
@@ -206,7 +219,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
             {field('URL на gorgia.ge', inp('source_url', 'https://gorgia.ge/ka/...'))}
             {!isNew && (
               <div style={{ color: '#444', fontSize: 11, marginTop: 4 }}>
-                ID: {String(product?.id)} · external_id: {String(product?.external_id || '—')}
+                ID: {product?.id} · external_id: {product?.external_id || '—'}
               </div>
             )}
           </Section>

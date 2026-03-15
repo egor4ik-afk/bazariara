@@ -80,6 +80,7 @@ export default function AdminDashboardClient({ stats, recent }: { stats: Stats; 
         <nav style={{ display: 'flex', gap: 8 }}>
           <Link href="/admin" style={{ color: '#c8f135', fontSize: 13, padding: '6px 12px', borderRadius: 6, background: '#1e2a0e', textDecoration: 'none' }}>Дашборд</Link>
           <Link href="/admin/products" style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', borderRadius: 6, textDecoration: 'none' }}>Товары</Link>
+          <Link href="/admin/categories" style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', borderRadius: 6, textDecoration: 'none' }}>Категории</Link>
           <Link href="/" target="_blank" style={{ color: '#555', fontSize: 13, padding: '6px 12px', textDecoration: 'none' }}>→ Сайт</Link>
         </nav>
       </div>

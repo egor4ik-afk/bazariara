@@ -9,46 +9,61 @@ type Row = Record<string, unknown>;
 const PER_PAGE = 40;
 
 export default async function AdminProductsPage({ searchParams }: { searchParams: SP }) {
-  const params = await searchParams;
-  const search   = params.search || '';
-  const inStock  = params.in_stock;
-  const filter   = params.filter || '';
-  const category = params.category || '';
-  const page     = parseInt(params.page || '1');
-  const offset   = (page - 1) * PER_PAGE;
+  const params     = await searchParams;
+  const search     = params.search || '';
+  const inStock    = params.in_stock;
+  const filter     = params.filter || '';
+  const category   = params.category || '';
+  const page       = parseInt(params.page || '1');
+  const offset     = (page - 1) * PER_PAGE;
 
-  // Собираем все запросы с явными условиями — без sql.raw
   const inStockBool = inStock === 'true' ? true : inStock === 'false' ? false : null;
+  const searchPat   = search ? `%${search}%` : null;
+  const categoryPat = category ? `%${category}%` : null;
 
   const [countRows, rows, catRows] = await Promise.all([
-    sql`SELECT COUNT(*) AS total FROM products
-        WHERE source = 'gorgia'
-        AND (${search} = '' OR name_ru ILIKE ${'%' + search + '%'} OR name ILIKE ${'%' + search + '%'} OR sku ILIKE ${'%' + search + '%'} OR external_id ILIKE ${'%' + search + '%'})
-        AND (${inStockBool}::boolean IS NULL OR in_stock = ${inStockBool}::boolean)
-        AND (${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
-        AND (${filter} != 'no_sku' OR sku IS NULL OR sku = '')
-        AND (${category} = '' OR COALESCE(category_ru, category) ILIKE ${'%' + category + '%'})`,
-
-    sql`SELECT id, external_id, COALESCE(name_ru, name) AS name, sku, price, in_stock,
-               COALESCE(category_ru, category) AS category, image_url, updated_at
+    sql`SELECT COUNT(*) AS total
         FROM products
         WHERE source = 'gorgia'
-        AND (${search} = '' OR name_ru ILIKE ${'%' + search + '%'} OR name ILIKE ${'%' + search + '%'} OR sku ILIKE ${'%' + search + '%'} OR external_id ILIKE ${'%' + search + '%'})
+        AND (${searchPat}::text IS NULL
+             OR name_ru ILIKE ${searchPat}
+             OR name    ILIKE ${searchPat}
+             OR sku     ILIKE ${searchPat}
+             OR external_id ILIKE ${searchPat})
         AND (${inStockBool}::boolean IS NULL OR in_stock = ${inStockBool}::boolean)
-        AND (${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
-        AND (${filter} != 'no_sku' OR sku IS NULL OR sku = '')
-        AND (${category} = '' OR COALESCE(category_ru, category) ILIKE ${'%' + category + '%'})
+        AND (${filter}::text IS NULL OR ${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
+        AND (${filter}::text IS NULL OR ${filter} != 'no_sku'   OR sku IS NULL OR sku = '')
+        AND (${categoryPat}::text IS NULL OR COALESCE(category_ru, category) ILIKE ${categoryPat})`,
+
+    sql`SELECT id, external_id,
+               COALESCE(name_ru, name) AS name,
+               sku, price, in_stock,
+               COALESCE(category_ru, category) AS category,
+               image_url, updated_at
+        FROM products
+        WHERE source = 'gorgia'
+        AND (${searchPat}::text IS NULL
+             OR name_ru ILIKE ${searchPat}
+             OR name    ILIKE ${searchPat}
+             OR sku     ILIKE ${searchPat}
+             OR external_id ILIKE ${searchPat})
+        AND (${inStockBool}::boolean IS NULL OR in_stock = ${inStockBool}::boolean)
+        AND (${filter}::text IS NULL OR ${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
+        AND (${filter}::text IS NULL OR ${filter} != 'no_sku'   OR sku IS NULL OR sku = '')
+        AND (${categoryPat}::text IS NULL OR COALESCE(category_ru, category) ILIKE ${categoryPat})
         ORDER BY updated_at DESC
         LIMIT ${PER_PAGE} OFFSET ${offset}`,
 
     sql`SELECT DISTINCT COALESCE(category_ru, category) AS cat
-        FROM products WHERE source = 'gorgia' AND category IS NOT NULL ORDER BY 1`,
+        FROM products
+        WHERE source = 'gorgia' AND category IS NOT NULL
+        ORDER BY 1`,
   ]);
 
-  const total = Number(countRows[0].total);
+  const total      = Number(countRows[0].total);
   const totalPages = Math.ceil(total / PER_PAGE);
   const categories = (catRows as Row[]).map(r => r.cat as string).filter(Boolean);
-  const products = rows as Row[];
+  const products   = rows as Row[];
 
   function buildUrl(overrides: Record<string, string | undefined>) {
     const p = new URLSearchParams();
@@ -62,27 +77,23 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
 
   return (
     <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
-
-      {/* Header */}
       <div style={{ borderBottom: '1px solid #2a2d3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ width: 32, height: 32, background: '#c8f135', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⚡</div>
           <span style={{ fontWeight: 600, fontSize: 16 }}>bazariara.ge admin</span>
         </div>
         <nav style={{ display: 'flex', gap: 8 }}>
-          <Link href="/admin" style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', borderRadius: 6, textDecoration: 'none' }}>Дашборд</Link>
-          <Link href="/admin/products" style={{ color: '#c8f135', fontSize: 13, padding: '6px 12px', borderRadius: 6, background: '#1e2a0e', textDecoration: 'none' }}>Товары</Link>
+          <Link href="/admin"            style={{ color: '#aaa',    fontSize: 13, padding: '6px 12px', borderRadius: 6, textDecoration: 'none' }}>Дашборд</Link>
+          <Link href="/admin/products"   style={{ color: '#c8f135', fontSize: 13, padding: '6px 12px', borderRadius: 6, background: '#1e2a0e', textDecoration: 'none' }}>Товары</Link>
+          <Link href="/admin/categories" style={{ color: '#aaa',    fontSize: 13, padding: '6px 12px', borderRadius: 6, textDecoration: 'none' }}>Категории</Link>
           <Link href="/admin/products/new" style={{ color: '#0f1117', fontSize: 13, padding: '6px 14px', borderRadius: 6, background: '#c8f135', textDecoration: 'none', fontWeight: 600 }}>+ Добавить</Link>
         </nav>
       </div>
 
       <div style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto' }}>
-
-        {/* Filters */}
         <form method="GET" action="/admin/products" style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           <input name="search" defaultValue={search} placeholder="Поиск по имени, SKU..."
-            style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 280, outline: 'none' }}
-          />
+            style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 280, outline: 'none' }} />
           <select name="in_stock" defaultValue={inStock || ''} style={{ padding: '8px 12px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}>
             <option value="">Все</option>
             <option value="true">В наличии</option>
@@ -105,12 +116,10 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
           )}
         </form>
 
-        {/* Count */}
         <div style={{ color: '#555', fontSize: 12, marginBottom: 12 }}>
           Найдено: {total.toLocaleString()} товаров · стр. {page} из {totalPages}
         </div>
 
-        {/* Table */}
         <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, overflow: 'hidden' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
@@ -127,11 +136,10 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                 >
                   <td style={{ padding: '10px 16px', width: 52 }}>
-                    {p.image_url ? (
-                      <img src={p.image_url as string} alt="" width={40} height={40} style={{ borderRadius: 6, objectFit: 'cover', background: '#222' }} />
-                    ) : (
-                      <div style={{ width: 40, height: 40, borderRadius: 6, background: '#2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: 18 }}>□</div>
-                    )}
+                    {p.image_url
+                      ? <img src={p.image_url as string} alt="" width={40} height={40} style={{ borderRadius: 6, objectFit: 'cover', background: '#222' }} />
+                      : <div style={{ width: 40, height: 40, borderRadius: 6, background: '#2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: 18 }}>□</div>
+                    }
                   </td>
                   <td style={{ padding: '10px 16px', maxWidth: 320 }}>
                     <div style={{ color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name as string}</div>
@@ -159,7 +167,6 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
           </table>
         </div>
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'center', alignItems: 'center' }}>
             {page > 1 && <Link href={buildUrl({ page: String(page - 1) })} style={{ padding: '6px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#ccc', textDecoration: 'none', fontSize: 13 }}>← Назад</Link>}
