@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
-
+type Params = Promise<{ category: string; id: string }>;
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { category: string; id: string } }
+  { params }: { params: Params }
 ) {
-  const { category, id } = params;
+  const { category, id } = await params;
+
   if (!category || !id) {
     return NextResponse.json({ message: 'Category and ID are required' }, { status: 400 });
   }
@@ -39,8 +40,8 @@ export async function GET(
     return NextResponse.json({
       ...rows[0],
       categoryKey: category,
-      title: rows[0].name,
-      image_urls: (rows[0].images as string[])?.slice(1) || [],
+      title:       rows[0].name,
+      image_urls:  (rows[0].images as string[])?.slice(1) || [],
     }, {
       headers: { 'Cache-Control': 'public, s-maxage=600, stale-while-revalidate=1200' },
     });
