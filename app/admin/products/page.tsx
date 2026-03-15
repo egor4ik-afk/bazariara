@@ -17,30 +17,32 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
   const page     = parseInt(params.page || '1');
   const offset   = (page - 1) * PER_PAGE;
 
-  // Build filters
-  const conditions = [`source = 'gorgia'`];
-  const values: (string | boolean | number)[] = [];
-  let idx = 1;
-
-  if (search) {
-    conditions.push(`(name_ru ILIKE $${idx} OR name ILIKE $${idx} OR sku ILIKE $${idx} OR external_id ILIKE $${idx})`);
-    values.push(`%${search}%`); idx++;
-  }
-  if (inStock === 'true') { conditions.push(`in_stock = $${idx}`); values.push(true); idx++; }
-  if (inStock === 'false') { conditions.push(`in_stock = $${idx}`); values.push(false); idx++; }
-  if (filter === 'no_photo') { conditions.push(`(image_url IS NULL OR image_url = '')`); }
-  if (filter === 'no_sku') { conditions.push(`(sku IS NULL OR sku = '')`); }
-  if (category) { conditions.push(`COALESCE(category_ru, category) ILIKE $${idx}`); values.push(`%${category}%`); idx++; }
-
-  const where = `WHERE ${conditions.join(' AND ')}`;
+  // Собираем все запросы с явными условиями — без sql.raw
+  const inStockBool = inStock === 'true' ? true : inStock === 'false' ? false : null;
 
   const [countRows, rows, catRows] = await Promise.all([
-    sql(`SELECT COUNT(*) AS total FROM products ${where}`, values),
-    sql(`SELECT id, external_id, COALESCE(name_ru, name) AS name, sku, price, in_stock,
-                COALESCE(category_ru, category) AS category, image_url, updated_at
-         FROM products ${where} ORDER BY updated_at DESC LIMIT $${idx} OFFSET $${idx+1}`,
-      [...values, PER_PAGE, offset]),
-    sql`SELECT DISTINCT COALESCE(category_ru, category) AS cat FROM products WHERE source='gorgia' AND category IS NOT NULL ORDER BY 1`,
+    sql`SELECT COUNT(*) AS total FROM products
+        WHERE source = 'gorgia'
+        AND (${search} = '' OR name_ru ILIKE ${'%' + search + '%'} OR name ILIKE ${'%' + search + '%'} OR sku ILIKE ${'%' + search + '%'} OR external_id ILIKE ${'%' + search + '%'})
+        AND (${inStockBool}::boolean IS NULL OR in_stock = ${inStockBool}::boolean)
+        AND (${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
+        AND (${filter} != 'no_sku' OR sku IS NULL OR sku = '')
+        AND (${category} = '' OR COALESCE(category_ru, category) ILIKE ${'%' + category + '%'})`,
+
+    sql`SELECT id, external_id, COALESCE(name_ru, name) AS name, sku, price, in_stock,
+               COALESCE(category_ru, category) AS category, image_url, updated_at
+        FROM products
+        WHERE source = 'gorgia'
+        AND (${search} = '' OR name_ru ILIKE ${'%' + search + '%'} OR name ILIKE ${'%' + search + '%'} OR sku ILIKE ${'%' + search + '%'} OR external_id ILIKE ${'%' + search + '%'})
+        AND (${inStockBool}::boolean IS NULL OR in_stock = ${inStockBool}::boolean)
+        AND (${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
+        AND (${filter} != 'no_sku' OR sku IS NULL OR sku = '')
+        AND (${category} = '' OR COALESCE(category_ru, category) ILIKE ${'%' + category + '%'})
+        ORDER BY updated_at DESC
+        LIMIT ${PER_PAGE} OFFSET ${offset}`,
+
+    sql`SELECT DISTINCT COALESCE(category_ru, category) AS cat
+        FROM products WHERE source = 'gorgia' AND category IS NOT NULL ORDER BY 1`,
   ]);
 
   const total = Number(countRows[0].total);
@@ -119,7 +121,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
               </tr>
             </thead>
             <tbody>
-              {products.map((p, i) => (
+              {products.map((p) => (
                 <tr key={p.id as number} style={{ borderBottom: '1px solid #1e2130', transition: 'background 0.1s' }}
                   onMouseEnter={e => (e.currentTarget.style.background = '#1e2130')}
                   onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}

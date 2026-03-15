@@ -1,4 +1,3 @@
-import { Suspense } from 'react';
 import sql from '@/lib/db';
 import AdminDashboardClient from './DashboardClient';
 
@@ -46,6 +45,5 @@ async function getRecentActivity() {
 
 export default async function AdminPage() {
   const [stats, recent] = await Promise.all([getStats(), getRecentActivity()]);
-
   return <AdminDashboardClient stats={stats} recent={recent} />;
 }

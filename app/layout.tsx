@@ -14,22 +14,16 @@ const description =
 
 export const metadata: Metadata = {
   metadataBase: siteUrl,
-
   title: {
     default: siteName,
     template: `%s | ${siteName}`,
   },
   description,
-
   robots: {
     index: true,
     follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-    },
+    googleBot: { index: true, follow: true },
   },
-
   icons: {
     icon: [
       { url: '/favicon.ico' },
@@ -39,7 +33,6 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-touch-icon.png',
   },
-
   openGraph: {
     type: 'website',
     url: siteUrl.toString(),
@@ -55,12 +48,10 @@ export const metadata: Metadata = {
       },
     ],
   },
-
   twitter: {
     card: 'summary_large_image',
     site: '@bazariara',
   },
-
   themeColor: '#1a202c',
   manifest: '/site.webmanifest',
   other: {
@@ -68,11 +59,7 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
       <body className="flex flex-col min-h-screen">
@@ -86,7 +73,6 @@ export default function RootLayout({
           </OrderProvider>
         </LanguageProvider>
 
-        {/* ───────── Google Analytics ───────── */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
           strategy="afterInteractive"
@@ -100,42 +86,6 @@ export default function RootLayout({
             gtag('config', 'G-EN4C3S417X');
           `}
         </Script>
-
-        {/* ───────── Яндекс.Метрика ───────── */}
-        <Script id="yandex-metrika" strategy="afterInteractive">
-          {`
-            (function(m,e,t,r,i,k,a){
-              m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-              m[i].l=1*new Date();
-              k=e.createElement(t),a=e.getElementsByTagName(t)[0];
-              k.async=1;k.src=r;
-              a.parentNode.insertBefore(k,a);
-            })(window, document, "script", "https://mc.yandex.ru/metrika/tag.js", "ym");
-
-            ym(107711719, "init", {
-              clickmap:true,
-              trackLinks:true,
-              accurateTrackBounce:true,
-              webvisor:true,
-              ecommerce:"dataLayer"
-            });
-          `}
-        </Script>
-
-        {/* noscript версия */}
-        <div
-          dangerouslySetInnerHTML={{
-            __html: `
-              <noscript>
-                <div>
-                  <img src="https://mc.yandex.ru/watch/107711719"
-                       style="position:absolute; left:-9999px;"
-                       alt="" />
-                </div>
-              </noscript>
-            `,
-          }}
-        />
       </body>
     </html>
   )
