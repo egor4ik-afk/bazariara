@@ -1,73 +1,63 @@
 import { MetadataRoute } from 'next';
-import { database } from '@/lib/firebase/server';
+import sql from '@/lib/db';
 
 const URL = 'https://bazariara.ge';
 
-type Product = {
-  id: string;
-  categoryKey: string;
-};
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const productsRef = database.ref('products');
   const productEntries: MetadataRoute.Sitemap = [];
 
   try {
-    const snapshot = await productsRef.once('value');
-    if (snapshot.exists()) {
-      const categories = snapshot.val();
-      Object.keys(categories).forEach(categoryKey => {
-        // Добавляем саму категорию в sitemap
-        if (categoryKey !== 'top') { // 'top' можно исключить, если это не самостоятельная SEO-страница
-            productEntries.push({
-            url: `${URL}/?category=${categoryKey}`,
-            lastModified: new Date(),
-            changeFrequency: 'weekly',
-            priority: 0.9, // Высокий приоритет для посадочной страницы
-            });
-        }
+    const rows = await sql`
+      SELECT
+        external_id,
+        in_stock,
+        updated_at
+      FROM products
+      WHERE source = 'gorgia'
+        AND image_url IS NOT NULL
+    `;
 
-        const productsInCategory = categories[categoryKey];
-        if (productsInCategory && typeof productsInCategory === 'object') {
-            Object.keys(productsInCategory).forEach(productId => {
-                const product = productsInCategory[productId];
-                if (product && product.in_stock) {
-                    productEntries.push({
-                        url: `${URL}/products/${categoryKey}/${productId}`,
-                        lastModified: new Date(),
-                        changeFrequency: 'weekly',
-                        priority: 0.8,
-                    });
-                }
-            });
-        }
-      });
-    } else {
-      console.log("No products found for sitemap.");
+    const categoryKeys = new Set<string>();
+
+    for (const row of rows) {
+      const parts = (row.external_id as string).split('_');
+      const categoryKey = parts[0];
+      const productId   = parts.slice(1).join('_');
+
+      // Категория
+      if (categoryKey && categoryKey !== 'top') {
+        categoryKeys.add(categoryKey);
+      }
+
+      // Товар — только in_stock
+      if (row.in_stock && productId) {
+        productEntries.push({
+          url:             `${URL}/products/${categoryKey}/${productId}`,
+          lastModified:    row.updated_at ? new Date(row.updated_at as string) : new Date(),
+          changeFrequency: 'weekly',
+          priority:        0.8,
+        });
+      }
     }
+
+    // Страницы категорий
+    for (const categoryKey of categoryKeys) {
+      productEntries.push({
+        url:             `${URL}/?category=${categoryKey}`,
+        lastModified:    new Date(),
+        changeFrequency: 'weekly',
+        priority:        0.9,
+      });
+    }
+
   } catch (error) {
-    console.error('Error fetching products for sitemap:', error);
+    console.error('Sitemap error:', error);
   }
 
   return [
-    {
-      url: URL,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 1,
-    },
-    {
-        url: `${URL}/privacy-policy`,
-        lastModified: new Date(),
-        changeFrequency: 'yearly',
-        priority: 0.3,
-    },
-    {
-        url: `${URL}/returns`,
-        lastModified: new Date(),
-        changeFrequency: 'yearly',
-        priority: 0.4,
-    },
+    { url: URL,                      lastModified: new Date(), changeFrequency: 'monthly', priority: 1   },
+    { url: `${URL}/privacy-policy`,  lastModified: new Date(), changeFrequency: 'yearly',  priority: 0.3 },
+    { url: `${URL}/returns`,         lastModified: new Date(), changeFrequency: 'yearly',  priority: 0.4 },
     ...productEntries,
   ];
 }
