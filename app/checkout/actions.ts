@@ -30,7 +30,9 @@ async function getProductLink(categoryKey: string, productId: string): Promise<s
       LIMIT 1
     `;
     return rows[0] ? ((rows[0].gorgia_url || rows[0].source_url) as string | null) : null;
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 }
 
 async function sendTelegramNotification(
@@ -68,7 +70,9 @@ async function sendTelegramNotification(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'Markdown', disable_web_page_preview: true }),
     });
-  } catch (err) { console.error('Telegram error:', err); }
+  } catch (err) {
+    console.error('Telegram error:', err);
+  }
 }
 
 export async function handlePlaceOrder(orderDetails: OrderDetails) {
@@ -84,34 +88,45 @@ export async function handlePlaceOrder(orderDetails: OrderDetails) {
   const subtotal  = total - shippingCost;
 
   try {
+    // создаем таблицу, если нет
     await sql`
       CREATE TABLE IF NOT EXISTS orders (
-        id SERIAL PRIMARY KEY, customer JSONB NOT NULL, items JSONB NOT NULL,
-        subtotal NUMERIC(10,2), shipping NUMERIC(10,2), total NUMERIC(10,2),
+        id SERIAL PRIMARY KEY,
+        customer JSONB NOT NULL,
+        items JSONB NOT NULL,
+        subtotal NUMERIC(10,2),
+        shipping NUMERIC(10,2),
+        total NUMERIC(10,2),
         created_at TIMESTAMPTZ DEFAULT NOW()
       )
     `;
 
+    // получаем ссылки для каждого товара
+    const itemsWithLinks = await Promise.all(
+      items.map(async item => {
+        const link = await getProductLink(item.product.categoryKey, item.product.id);
+        return { ...item, link };
+      })
+    );
+
+    // сохраняем заказ с ссылками
     await sql`
       INSERT INTO orders (customer, items, subtotal, shipping, total, created_at)
       VALUES (
         ${JSON.stringify(customer)}::jsonb,
-        ${JSON.stringify(items.map(i => ({
-          id: i.product.id, title: i.product.title,
+        ${JSON.stringify(itemsWithLinks.map(i => ({
+          id: i.product.id,
+          title: i.product.title,
           price: parseFloat(String(i.product.price)),
-          quantity: i.quantity, category: i.product.category,
-          categoryKey: i.product.categoryKey, image_url: i.product.image_url ?? null,
+          quantity: i.quantity,
+          category: i.product.category,
+          categoryKey: i.product.categoryKey,
+          image_url: i.product.image_url ?? null,
+          link: i.link ?? null,
         })))}::jsonb,
         ${subtotal}, ${shippingCost}, ${total}, ${createdAt.toISOString()}
       )
     `;
-
-    const itemsWithLinks = await Promise.all(
-      items.map(async item => ({
-        ...item,
-        link: await getProductLink(item.product.categoryKey, item.product.id),
-      }))
-    );
 
     await sendTelegramNotification(customer, itemsWithLinks, total, shippingCost, createdAt);
     return { success: true };
