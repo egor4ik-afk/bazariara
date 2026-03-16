@@ -9,31 +9,26 @@ type Row = Record<string, unknown>;
 const PER_PAGE = 40;
 
 export default async function AdminProductsPage({ searchParams }: { searchParams: SP }) {
-  const params     = await searchParams;
-  const search     = params.search || '';
-  const inStock    = params.in_stock;
-  const filter     = params.filter || '';
-  const category   = params.category || '';
-  const page       = parseInt(params.page || '1');
-  const offset     = (page - 1) * PER_PAGE;
+  const params   = await searchParams;
+  const search   = params.search || '';
+  const inStock  = params.in_stock || '';
+  const filter   = params.filter || '';
+  const category = params.category || '';
+  const page     = parseInt(params.page || '1');
+  const offset   = (page - 1) * PER_PAGE;
 
-  const inStockBool = inStock === 'true' ? true : inStock === 'false' ? false : null;
-  const searchPat   = search ? `%${search}%` : null;
-  const categoryPat = category ? `%${category}%` : null;
+  const searchPat   = `%${search}%`;
+  const categoryPat = `%${category}%`;
 
   const [countRows, rows, catRows] = await Promise.all([
     sql`SELECT COUNT(*) AS total
         FROM products
         WHERE source = 'gorgia'
-        AND (${searchPat}::text IS NULL
-             OR name_ru ILIKE ${searchPat}
-             OR name    ILIKE ${searchPat}
-             OR sku     ILIKE ${searchPat}
-             OR external_id ILIKE ${searchPat})
-        AND (${inStockBool}::boolean IS NULL OR in_stock = ${inStockBool}::boolean)
-        AND (${filter}::text IS NULL OR ${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
-        AND (${filter}::text IS NULL OR ${filter} != 'no_sku'   OR sku IS NULL OR sku = '')
-        AND (${categoryPat}::text IS NULL OR COALESCE(category_ru, category) ILIKE ${categoryPat})`,
+        AND (${search} = '' OR name_ru ILIKE ${searchPat} OR name ILIKE ${searchPat} OR sku ILIKE ${searchPat} OR external_id ILIKE ${searchPat})
+        AND (${inStock} = '' OR in_stock = (${inStock} = 'true'))
+        AND (${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
+        AND (${filter} != 'no_sku' OR sku IS NULL OR sku = '')
+        AND (${category} = '' OR COALESCE(category_ru, category) ILIKE ${categoryPat})`,
 
     sql`SELECT id, external_id,
                COALESCE(name_ru, name) AS name,
@@ -42,15 +37,11 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                image_url, updated_at
         FROM products
         WHERE source = 'gorgia'
-        AND (${searchPat}::text IS NULL
-             OR name_ru ILIKE ${searchPat}
-             OR name    ILIKE ${searchPat}
-             OR sku     ILIKE ${searchPat}
-             OR external_id ILIKE ${searchPat})
-        AND (${inStockBool}::boolean IS NULL OR in_stock = ${inStockBool}::boolean)
-        AND (${filter}::text IS NULL OR ${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
-        AND (${filter}::text IS NULL OR ${filter} != 'no_sku'   OR sku IS NULL OR sku = '')
-        AND (${categoryPat}::text IS NULL OR COALESCE(category_ru, category) ILIKE ${categoryPat})
+        AND (${search} = '' OR name_ru ILIKE ${searchPat} OR name ILIKE ${searchPat} OR sku ILIKE ${searchPat} OR external_id ILIKE ${searchPat})
+        AND (${inStock} = '' OR in_stock = (${inStock} = 'true'))
+        AND (${filter} != 'no_photo' OR image_url IS NULL OR image_url = '')
+        AND (${filter} != 'no_sku' OR sku IS NULL OR sku = '')
+        AND (${category} = '' OR COALESCE(category_ru, category) ILIKE ${categoryPat})
         ORDER BY updated_at DESC
         LIMIT ${PER_PAGE} OFFSET ${offset}`,
 
@@ -94,7 +85,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
         <form method="GET" action="/admin/products" style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap', alignItems: 'center' }}>
           <input name="search" defaultValue={search} placeholder="Поиск по имени, SKU..."
             style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 280, outline: 'none' }} />
-          <select name="in_stock" defaultValue={inStock || ''} style={{ padding: '8px 12px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}>
+          <select name="in_stock" defaultValue={inStock} style={{ padding: '8px 12px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}>
             <option value="">Все</option>
             <option value="true">В наличии</option>
             <option value="false">Нет в наличии</option>
@@ -131,10 +122,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
             </thead>
             <tbody>
               {products.map((p) => (
-                <tr key={p.id as number} style={{ borderBottom: '1px solid #1e2130', transition: 'background 0.1s' }}
-                  onMouseEnter={e => (e.currentTarget.style.background = '#1e2130')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
+                <tr key={p.id as number} style={{ borderBottom: '1px solid #1e2130' }}>
                   <td style={{ padding: '10px 16px', width: 52 }}>
                     {p.image_url
                       ? <img src={p.image_url as string} alt="" width={40} height={40} style={{ borderRadius: 6, objectFit: 'cover', background: '#222' }} />

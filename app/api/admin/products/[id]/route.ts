@@ -42,7 +42,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       sub_category_ru = ${sub_category_ru || null},
       sub_category_en = ${sub_category_en || null},
       sub_category_ka = ${sub_category_ka || null},
-      image_url       = COALESCE(${image_url || null}, image_url),
+      images = ${JSON.stringify(body.images || [])}::jsonb,
+      image_url = ${body.image_url || null},
       source_url      = COALESCE(${source_url || null}, source_url),
       updated_at      = NOW()
     WHERE id = ${parseInt(id)} AND source = 'gorgia'

@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -30,6 +30,14 @@ type Product = {
   images?: string[];
 } | null;
 
+const inputStyle: React.CSSProperties = {
+  width: '100%', padding: '10px 14px', background: '#131620',
+  border: '1px solid #2a2d3a', borderRadius: 8, color: '#e2e4ec',
+  fontSize: 13, outline: 'none', boxSizing: 'border-box',
+  fontFamily: "'DM Mono', monospace",
+};
+const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
+
 const field = (label: string, children: React.ReactNode) => (
   <div style={{ marginBottom: 20 }}>
     <label style={{ display: 'block', color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</label>
@@ -37,47 +45,101 @@ const field = (label: string, children: React.ReactNode) => (
   </div>
 );
 
-const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 14px', background: '#131620',
-  border: '1px solid #2a2d3a', borderRadius: 8, color: '#e2e4ec',
-  fontSize: 13, outline: 'none', boxSizing: 'border-box',
-  fontFamily: "'DM Mono', monospace",
-};
-
-const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
-
 export default function ProductEditClient({ product }: { product: Product }) {
-  const router = useRouter();
-  const isNew = !product;
+  const router  = useRouter();
+  const isNew   = !product;
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // Инициализируем список фото из product.images
+  const [images, setImages] = useState<string[]>(
+    product?.images && product.images.length > 0
+      ? product.images
+      : product?.image_url ? [product.image_url] : []
+  );
+  const [uploading, setUploading] = useState<number | null>(null); // индекс загружаемого
 
   const [form, setForm] = useState({
-    name_ru:          String(product?.name_ru || ''),
-    name_en:          String(product?.name_en || ''),
-    name_ka:          String(product?.name_ka || ''),
-    description_ru:   String(product?.description_ru || ''),
-    description_en:   String(product?.description_en || ''),
-    description_ka:   String(product?.description_ka || ''),
-    sku:              String(product?.sku || ''),
-    price:            String(product?.price || ''),
-    in_stock:         Boolean(product?.in_stock ?? true),
-    availability_ru:  String(product?.availability_ru || ''),
-    category_ru:      String(product?.category_ru || product?.category || ''),
-    category_en:      String(product?.category_en || ''),
-    category_ka:      String(product?.category_ka || ''),
-    sub_category_ru:  String(product?.sub_category_ru || product?.sub_category || ''),
-    sub_category_en:  String(product?.sub_category_en || ''),
-    sub_category_ka:  String(product?.sub_category_ka || ''),
-    image_url:        String(product?.image_url || ''),
-    source_url:       String(product?.source_url || ''),
+    name_ru:         String(product?.name_ru || ''),
+    name_en:         String(product?.name_en || ''),
+    name_ka:         String(product?.name_ka || ''),
+    description_ru:  String(product?.description_ru || ''),
+    description_en:  String(product?.description_en || ''),
+    description_ka:  String(product?.description_ka || ''),
+    sku:             String(product?.sku || ''),
+    price:           String(product?.price || ''),
+    in_stock:        Boolean(product?.in_stock ?? true),
+    availability_ru: String(product?.availability_ru || ''),
+    category_ru:     String(product?.category_ru || product?.category || ''),
+    category_en:     String(product?.category_en || ''),
+    category_ka:     String(product?.category_ka || ''),
+    sub_category_ru: String(product?.sub_category_ru || product?.sub_category || ''),
+    sub_category_en: String(product?.sub_category_en || ''),
+    sub_category_ka: String(product?.sub_category_ka || ''),
+    source_url:      String(product?.source_url || ''),
   });
 
-  const [saving, setSaving]   = useState(false);
+  const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [msg, setMsg]         = useState('');
-  const [msgType, setMsgType] = useState<'ok' | 'err'>('ok');
+  const [msg, setMsg]           = useState('');
+  const [msgType, setMsgType]   = useState<'ok' | 'err'>('ok');
 
-  function set(key: string, value: string | boolean) {
+  function setField(key: string, value: string | boolean) {
     setForm(prev => ({ ...prev, [key]: value }));
+  }
+
+  // Загрузить файл → Vercel Blob → добавить в список
+  async function uploadFile(file: File, replaceIndex?: number) {
+    const idx = replaceIndex ?? images.length;
+    setUploading(idx);
+    try {
+      const res = await fetch(
+        `/api/admin/upload?filename=${encodeURIComponent(file.name)}`,
+        { method: 'POST', body: file }
+      );
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      const url: string = data.url;
+
+      setImages(prev => {
+        const next = [...prev];
+        if (replaceIndex !== undefined) {
+          next[replaceIndex] = url;
+        } else {
+          next.push(url);
+        }
+        return next;
+      });
+      setMsgType('ok');
+      setMsg('Фото загружено ✓');
+    } catch (e) {
+      setMsgType('err');
+      setMsg(`Ошибка загрузки: ${e}`);
+    }
+    setUploading(null);
+    if (fileRef.current) fileRef.current.value = '';
+  }
+
+  // Удалить фото из списка (и из Blob через API)
+  async function removeImage(idx: number) {
+    const url = images[idx];
+    setImages(prev => prev.filter((_, i) => i !== idx));
+
+    // Удаляем из Vercel Blob если это наш blob
+    if (url.includes('blob.vercel-storage.com')) {
+      try {
+        await fetch(`/api/admin/upload?url=${encodeURIComponent(url)}`, { method: 'DELETE' });
+      } catch { /* не критично */ }
+    }
+  }
+
+  // Сделать фото главным (переместить на позицию 0)
+  function makeMain(idx: number) {
+    setImages(prev => {
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.unshift(item);
+      return next;
+    });
   }
 
   async function save() {
@@ -87,7 +149,11 @@ export default function ProductEditClient({ product }: { product: Product }) {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        image_url: images[0] || null,
+        images:    images,
+      }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -103,11 +169,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
     if (!confirm('Удалить товар? Это необратимо.')) return;
     setDeleting(true);
     const res = await fetch(`/api/admin/products/${product?.id}`, { method: 'DELETE' });
-    if (res.ok) {
-      router.push('/admin/products');
-    } else {
-      setMsg('Ошибка удаления'); setMsgType('err'); setDeleting(false);
-    }
+    if (res.ok) router.push('/admin/products');
+    else { setMsg('Ошибка удаления'); setMsgType('err'); setDeleting(false); }
   }
 
   const mono = "'DM Mono', 'Fira Mono', monospace";
@@ -119,14 +182,16 @@ export default function ProductEditClient({ product }: { product: Product }) {
   );
 
   const inp = (key: string, placeholder = '') => (
-    <input value={form[key as keyof typeof form] as string} onChange={e => set(key, e.target.value)} placeholder={placeholder} style={inputStyle} />
+    <input value={form[key as keyof typeof form] as string} onChange={e => setField(key, e.target.value)} placeholder={placeholder} style={inputStyle} />
   );
   const ta = (key: string, placeholder = '') => (
-    <textarea value={form[key as keyof typeof form] as string} onChange={e => set(key, e.target.value)} placeholder={placeholder} style={textareaStyle} />
+    <textarea value={form[key as keyof typeof form] as string} onChange={e => setField(key, e.target.value)} placeholder={placeholder} style={textareaStyle} />
   );
 
   return (
     <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
+
+      {/* Header */}
       <div style={{ borderBottom: '1px solid #2a2d3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <Link href="/admin/products" style={{ color: '#555', textDecoration: 'none', fontSize: 13 }}>← Товары</Link>
@@ -147,13 +212,15 @@ export default function ProductEditClient({ product }: { product: Product }) {
               → gorgia.ge
             </a>
           )}
-          <button onClick={save} disabled={saving} style={{ padding: '8px 20px', background: saving ? '#444' : '#c8f135', border: 'none', borderRadius: 8, color: saving ? '#888' : '#0f1117', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
+          <button onClick={save} disabled={saving || uploading !== null} style={{ padding: '8px 20px', background: saving ? '#444' : '#c8f135', border: 'none', borderRadius: 8, color: saving ? '#888' : '#0f1117', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
             {saving ? 'Сохраняем...' : 'Сохранить'}
           </button>
         </div>
       </div>
 
       <div style={{ padding: '32px', maxWidth: 900, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+
+        {/* Левая колонка */}
         <div>
           <Section title="Название">
             {field('Русский', inp('name_ru', 'Название на русском'))}
@@ -175,17 +242,18 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
         </div>
 
+        {/* Правая колонка */}
         <div>
           <Section title="Коммерция">
             {field('SKU / Артикул', inp('sku', 'BM-001234'))}
             {field('Цена (GEL)', (
-              <input type="number" step="0.01" value={form.price} onChange={e => set('price', e.target.value)} style={inputStyle} placeholder="99.00" />
+              <input type="number" step="0.01" value={form.price} onChange={e => setField('price', e.target.value)} style={inputStyle} placeholder="99.00" />
             ))}
             {field('Наличие', (
               <div style={{ display: 'flex', gap: 10 }}>
                 {([true, false] as const).map(v => (
                   <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="radio" name="in_stock" checked={form.in_stock === v} onChange={() => set('in_stock', v)} style={{ accentColor: '#c8f135' }} />
+                    <input type="radio" name="in_stock" checked={form.in_stock === v} onChange={() => setField('in_stock', v)} style={{ accentColor: '#c8f135' }} />
                     <span style={{ color: v ? '#4ade80' : '#f87171', fontSize: 13 }}>{v ? 'В наличии' : 'Нет в наличии'}</span>
                   </label>
                 ))}
@@ -194,23 +262,82 @@ export default function ProductEditClient({ product }: { product: Product }) {
             {field('Наличие (текст)', inp('availability_ru', 'В наличии / Нет в наличии'))}
           </Section>
 
-          <Section title="Изображения">
-            {field('Главное фото (URL)', inp('image_url', 'https://...'))}
-            {form.image_url && (
-              <div style={{ marginTop: -12, marginBottom: 16 }}>
-                <img src={form.image_url} alt="" style={{ width: '100%', borderRadius: 8, maxHeight: 200, objectFit: 'contain', background: '#131620' }} />
-              </div>
-            )}
-            {!isNew && product?.images && product.images.length > 0 && (
-              <div>
-                <div style={{ color: '#555', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 8 }}>
-                  Все фото ({product.images.length})
+          {/* Фото */}
+          <Section title={`Фото (${images.length})`}>
+
+            {/* Скрытый input */}
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              multiple
+              style={{ display: 'none' }}
+              onChange={e => {
+                const files = Array.from(e.target.files || []);
+                files.forEach(f => uploadFile(f));
+              }}
+            />
+
+            {/* Кнопка добавить */}
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={uploading !== null}
+              style={{
+                width: '100%', padding: '10px', marginBottom: 16,
+                background: '#131620', border: '2px dashed #2a2d3a', borderRadius: 8,
+                color: uploading !== null ? '#666' : '#c8f135', fontSize: 13,
+                cursor: uploading !== null ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              }}
+            >
+              {uploading !== null ? '⟳ Загружаем...' : '+ Добавить фото'}
+            </button>
+
+            {/* Сетка фото */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {images.map((img, i) => (
+                <div key={i} style={{ position: 'relative', aspectRatio: '1', background: '#131620', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid #c8f135' : '2px solid #2a2d3a' }}>
+                  {uploading === i ? (
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11 }}>
+                      ⟳ загрузка…
+                    </div>
+                  ) : (
+                    <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  )}
+                  {/* Бейдж главного */}
+                  {i === 0 && (
+                    <div style={{ position: 'absolute', top: 4, left: 4, background: '#c8f135', color: '#0f1117', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>
+                      ГЛАВНОЕ
+                    </div>
+                  )}
+                  {/* Кнопки */}
+                  <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
+                    {i !== 0 && (
+                      <button
+                        onClick={() => makeMain(i)}
+                        title="Сделать главным"
+                        style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#c8f135', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >★</button>
+                    )}
+                    <button
+                      onClick={() => removeImage(i)}
+                      title="Удалить"
+                      style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#f87171', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >✕</button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {product.images.map((img, i) => (
-                    <img key={i} src={img} alt="" style={{ width: 64, height: 64, borderRadius: 6, objectFit: 'cover', background: '#131620' }} />
-                  ))}
-                </div>
+              ))}
+
+              {/* Placeholder для добавления */}
+              <div
+                onClick={() => fileRef.current?.click()}
+                style={{ aspectRatio: '1', background: '#131620', borderRadius: 8, border: '2px dashed #2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#444', fontSize: 24 }}
+              >+</div>
+            </div>
+
+            {images.length > 0 && (
+              <div style={{ color: '#444', fontSize: 11, marginTop: 8 }}>
+                ★ — сделать главным · ✕ — удалить · первое фото = главное
               </div>
             )}
           </Section>
