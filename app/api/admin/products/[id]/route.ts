@@ -10,17 +10,21 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const body = await req.json();
 
   const {
+    external_id,
     name_ru, name_en, name_ka,
     description_ru, description_en, description_ka,
     sku, price, in_stock,
     availability_ru, availability_ka,
     category_ru, category_en, category_ka,
     sub_category_ru, sub_category_en, sub_category_ka,
-    image_url, source_url,
+    image_url, source_url, images,
   } = body;
+
+  const imagesArray = Array.isArray(images) ? images : (image_url ? [image_url] : []);
 
   await sql`
     UPDATE products SET
+      external_id     = ${external_id || null},
       name            = COALESCE(${name_ru || null}, name),
       name_ru         = ${name_ru || null},
       name_en         = ${name_en || null},
@@ -42,8 +46,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
       sub_category_ru = ${sub_category_ru || null},
       sub_category_en = ${sub_category_en || null},
       sub_category_ka = ${sub_category_ka || null},
-      images = ${JSON.stringify(body.images || [])}::jsonb,
-      image_url = ${body.image_url || null},
+      images          = ${JSON.stringify(imagesArray)}::jsonb,
+      image_url       = ${image_url || null},
       source_url      = COALESCE(${source_url || null}, source_url),
       updated_at      = NOW()
     WHERE id = ${parseInt(id)} AND source = 'gorgia'

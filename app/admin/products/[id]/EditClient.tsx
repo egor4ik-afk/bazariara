@@ -30,6 +30,12 @@ type Product = {
   images?: string[];
 } | null;
 
+type CategoryOption = {
+  key: string;
+  name: string;
+  sub_categories: { key: string; name: string }[];
+};
+
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 14px', background: '#131620',
   border: '1px solid #2a2d3a', borderRadius: 8, color: '#e2e4ec',
@@ -37,37 +43,22 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "'DM Mono', monospace",
 };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
+const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer', appearance: 'none' };
 
-// ✅ ФИШ 2: Мемоизированные компоненты полей — фокус больше не теряется
 const InputField = memo(({ value, onChange, placeholder, type, step }: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  step?: string;
+  value: string; onChange: (v: string) => void;
+  placeholder?: string; type?: string; step?: string;
 }) => (
-  <input
-    type={type || 'text'}
-    step={step}
-    value={value}
-    onChange={e => onChange(e.target.value)}
-    placeholder={placeholder}
-    style={inputStyle}
-  />
+  <input type={type || 'text'} step={step} value={value}
+    onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
 ));
 InputField.displayName = 'InputField';
 
 const TextareaField = memo(({ value, onChange, placeholder }: {
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
+  value: string; onChange: (v: string) => void; placeholder?: string;
 }) => (
-  <textarea
-    value={value}
-    onChange={e => onChange(e.target.value)}
-    placeholder={placeholder}
-    style={textareaStyle}
-  />
+  <textarea value={value} onChange={e => onChange(e.target.value)}
+    placeholder={placeholder} style={textareaStyle} />
 ));
 TextareaField.displayName = 'TextareaField';
 
@@ -90,28 +81,32 @@ export default function ProductEditClient({ product }: { product: Product }) {
   const isNew   = !product;
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
+  const [subOptions, setSubOptions] = useState<{ key: string; name: string }[]>([]);
+
+  // Загружаем категории из API
+  useEffect(() => {
+    fetch('/api/products/categories')
+      .then(r => r.json())
+      .then(data => setCategoryOptions(data.categories || []))
+      .catch(console.error);
+  }, []);
+
   const [images, setImages] = useState<string[]>(
-    Array.isArray(product?.images)
-      ? product.images
-      : product?.image_url
-        ? [product.image_url]
-        : []
+    Array.isArray(product?.images) ? product.images
+      : product?.image_url ? [product.image_url] : []
   );
 
-  // ✅ ФИКС 1: Подхватываем фото после загрузки product (SSR/async)
   useEffect(() => {
-    if (product?.images && Array.isArray(product.images)) {
-      setImages(product.images);
-    } else if (product?.image_url) {
-      setImages([product.image_url]);
-    } else {
-      setImages([]);
-    }
+    if (product?.images && Array.isArray(product.images)) setImages(product.images);
+    else if (product?.image_url) setImages([product.image_url]);
+    else setImages([]);
   }, [product]);
 
   const [uploading, setUploading] = useState<number | null>(null);
 
   const [form, setForm] = useState({
+    external_id:     String(product?.external_id || ''),
     name_ru:         String(product?.name_ru || ''),
     name_en:         String(product?.name_en || ''),
     name_ka:         String(product?.name_ka || ''),
@@ -131,12 +126,17 @@ export default function ProductEditClient({ product }: { product: Product }) {
     source_url:      String(product?.source_url || ''),
   });
 
+  // Когда меняется категория — обновляем список подкатегорий
+  useEffect(() => {
+    const cat = categoryOptions.find(c => c.name === form.category_ru);
+    setSubOptions(cat?.sub_categories || []);
+  }, [form.category_ru, categoryOptions]);
+
   const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [msg, setMsg]           = useState('');
   const [msgType, setMsgType]   = useState<'ok' | 'err'>('ok');
 
-  // ✅ ФИКС 2: useCallback — setField не пересоздаётся каждый рендер
   const setField = useCallback((key: string, value: string | boolean) => {
     setForm(prev => ({ ...prev, [key]: value }));
   }, []);
@@ -145,28 +145,19 @@ export default function ProductEditClient({ product }: { product: Product }) {
     const idx = replaceIndex ?? images.length;
     setUploading(idx);
     try {
-      const res = await fetch(
-        `/api/admin/upload?filename=${encodeURIComponent(file.name)}`,
-        { method: 'POST', body: file }
-      );
+      const res = await fetch(`/api/admin/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
       const url: string = data.url;
-
       setImages(prev => {
         const next = [...prev];
-        if (replaceIndex !== undefined) {
-          next[replaceIndex] = url;
-        } else {
-          next.push(url);
-        }
+        if (replaceIndex !== undefined) next[replaceIndex] = url;
+        else next.push(url);
         return next;
       });
-      setMsgType('ok');
-      setMsg('Фото загружено ✓');
+      setMsgType('ok'); setMsg('Фото загружено ✓');
     } catch (e) {
-      setMsgType('err');
-      setMsg(`Ошибка загрузки: ${e}`);
+      setMsgType('err'); setMsg(`Ошибка загрузки: ${e}`);
     }
     setUploading(null);
     if (fileRef.current) fileRef.current.value = '';
@@ -175,21 +166,13 @@ export default function ProductEditClient({ product }: { product: Product }) {
   async function removeImage(idx: number) {
     const url = images[idx];
     setImages(prev => prev.filter((_, i) => i !== idx));
-
     if (url.includes('blob.vercel-storage.com')) {
-      try {
-        await fetch(`/api/admin/upload?url=${encodeURIComponent(url)}`, { method: 'DELETE' });
-      } catch { /* не критично */ }
+      try { await fetch(`/api/admin/upload?url=${encodeURIComponent(url)}`, { method: 'DELETE' }); } catch { }
     }
   }
 
   function makeMain(idx: number) {
-    setImages(prev => {
-      const next = [...prev];
-      const [item] = next.splice(idx, 1);
-      next.unshift(item);
-      return next;
-    });
+    setImages(prev => { const next = [...prev]; const [item] = next.splice(idx, 1); next.unshift(item); return next; });
   }
 
   async function save() {
@@ -199,11 +182,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...form,
-        image_url: images[0] || null,
-        images:    images,
-      }),
+      body: JSON.stringify({ ...form, image_url: images[0] || null, images }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -284,8 +263,21 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           <Section title="Категория">
+            {/* Дропдаун категории */}
             <FieldWrapper label="Категория (ru)">
-              <InputField value={form.category_ru} onChange={v => setField('category_ru', v)} />
+              <select
+                value={form.category_ru}
+                onChange={e => {
+                  setField('category_ru', e.target.value);
+                  setField('sub_category_ru', ''); // сбрасываем подкатегорию
+                }}
+                style={selectStyle}
+              >
+                <option value="">— выберите категорию —</option>
+                {categoryOptions.map(c => (
+                  <option key={c.key} value={c.name}>{c.name}</option>
+                ))}
+              </select>
             </FieldWrapper>
             <FieldWrapper label="Category (en)">
               <InputField value={form.category_en} onChange={v => setField('category_en', v)} />
@@ -293,8 +285,20 @@ export default function ProductEditClient({ product }: { product: Product }) {
             <FieldWrapper label="კატეგორია (ka)">
               <InputField value={form.category_ka} onChange={v => setField('category_ka', v)} />
             </FieldWrapper>
+
+            {/* Дропдаун подкатегории */}
             <FieldWrapper label="Подкатегория (ru)">
-              <InputField value={form.sub_category_ru} onChange={v => setField('sub_category_ru', v)} />
+              <select
+                value={form.sub_category_ru}
+                onChange={e => setField('sub_category_ru', e.target.value)}
+                style={selectStyle}
+                disabled={subOptions.length === 0}
+              >
+                <option value="">— выберите подкатегорию —</option>
+                {subOptions.map(s => (
+                  <option key={s.key} value={s.name}>{s.name}</option>
+                ))}
+              </select>
             </FieldWrapper>
             <FieldWrapper label="Subcategory (en)">
               <InputField value={form.sub_category_en} onChange={v => setField('sub_category_en', v)} />
@@ -331,29 +335,11 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
           {/* Фото */}
           <Section title={`Фото (${images.length})`}>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*"
-              multiple
-              style={{ display: 'none' }}
-              onChange={e => {
-                const files = Array.from(e.target.files || []);
-                files.forEach(f => uploadFile(f));
-              }}
-            />
+            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+              onChange={e => { Array.from(e.target.files || []).forEach(f => uploadFile(f)); }} />
 
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={uploading !== null}
-              style={{
-                width: '100%', padding: '10px', marginBottom: 16,
-                background: '#131620', border: '2px dashed #2a2d3a', borderRadius: 8,
-                color: uploading !== null ? '#666' : '#c8f135', fontSize: 13,
-                cursor: uploading !== null ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-              }}
-            >
+            <button onClick={() => fileRef.current?.click()} disabled={uploading !== null}
+              style={{ width: '100%', padding: '10px', marginBottom: 16, background: '#131620', border: '2px dashed #2a2d3a', borderRadius: 8, color: uploading !== null ? '#666' : '#c8f135', fontSize: 13, cursor: uploading !== null ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               {uploading !== null ? '⟳ Загружаем...' : '+ Добавить фото'}
             </button>
 
@@ -361,48 +347,36 @@ export default function ProductEditClient({ product }: { product: Product }) {
               {Array.isArray(images) && images.map((img, i) => (
                 <div key={img} style={{ position: 'relative', aspectRatio: '1', background: '#131620', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid #c8f135' : '2px solid #2a2d3a' }}>
                   {uploading === i ? (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11 }}>
-                      ⟳ загрузка…
-                    </div>
+                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11 }}>⟳ загрузка…</div>
                   ) : (
                     <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )}
                   {i === 0 && (
-                    <div style={{ position: 'absolute', top: 4, left: 4, background: '#c8f135', color: '#0f1117', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>
-                      ГЛАВНОЕ
-                    </div>
+                    <div style={{ position: 'absolute', top: 4, left: 4, background: '#c8f135', color: '#0f1117', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>ГЛАВНОЕ</div>
                   )}
                   <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
                     {i !== 0 && (
-                      <button
-                        onClick={() => makeMain(i)}
-                        title="Сделать главным"
-                        style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#c8f135', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                      >★</button>
+                      <button onClick={() => makeMain(i)} title="Сделать главным"
+                        style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#c8f135', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>
                     )}
-                    <button
-                      onClick={() => removeImage(i)}
-                      title="Удалить"
-                      style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#f87171', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    >✕</button>
+                    <button onClick={() => removeImage(i)} title="Удалить"
+                      style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#f87171', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                   </div>
                 </div>
               ))}
-
-              <div
-                onClick={() => fileRef.current?.click()}
-                style={{ aspectRatio: '1', background: '#131620', borderRadius: 8, border: '2px dashed #2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#444', fontSize: 24 }}
-              >+</div>
+              <div onClick={() => fileRef.current?.click()}
+                style={{ aspectRatio: '1', background: '#131620', borderRadius: 8, border: '2px dashed #2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#444', fontSize: 24 }}>+</div>
             </div>
 
             {images.length > 0 && (
-              <div style={{ color: '#444', fontSize: 11, marginTop: 8 }}>
-                ★ — сделать главным · ✕ — удалить · первое фото = главное
-              </div>
+              <div style={{ color: '#444', fontSize: 11, marginTop: 8 }}>★ — сделать главным · ✕ — удалить · первое фото = главное</div>
             )}
           </Section>
 
-          <Section title="Ссылка">
+          <Section title="Ссылка и идентификаторы">
+            <FieldWrapper label="external_id">
+              <InputField value={form.external_id} onChange={v => setField('external_id', v)} placeholder="ikea_71063" />
+            </FieldWrapper>
             <FieldWrapper label="URL на gorgia.ge">
               <InputField value={form.source_url} onChange={v => setField('source_url', v)} placeholder="https://gorgia.ge/ka/..." />
             </FieldWrapper>

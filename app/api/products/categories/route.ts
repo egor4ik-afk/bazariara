@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
-
-
 export async function GET(_req: NextRequest) {
   try {
     const rows = await sql`
@@ -32,7 +30,7 @@ export async function GET(_req: NextRequest) {
       name_en: string | null;
       image_url: string | null;
       total: number;
-      sub_categories: { key: string; name: string; name_en: string | null; image_url: string | null }[];
+      sub_categories: { key: string; name: string; name_en: string | null; image_url: string | null; count: number }[];
     }>();
 
     for (const row of rows) {
@@ -53,10 +51,11 @@ export async function GET(_req: NextRequest) {
       if (row.sub_category) {
         const subKey = (row.sub_category as string).toLowerCase().replace(/\s+/g, '-');
         entry.sub_categories.push({
-          key:      subKey,
-          name:     row.sub_category as string,
-          name_en:  row.sub_category_en as string | null,
+          key:       subKey,
+          name:      row.sub_category as string,
+          name_en:   row.sub_category_en as string | null,
           image_url: row.image_url as string | null,
+          count:     parseInt(row.total as string), // ✅ счётчик товаров в подкатегории
         });
       }
     }
