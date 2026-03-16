@@ -132,10 +132,37 @@ export default function ProductEditClient({ product }: { product: Product }) {
     setSubOptions(cat?.sub_categories || []);
   }, [form.category_ru, categoryOptions]);
 
-  const [saving, setSaving]     = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [msg, setMsg]           = useState('');
-  const [msgType, setMsgType]   = useState<'ok' | 'err'>('ok');
+  const [saving, setSaving]         = useState(false);
+  const [deleting, setDeleting]     = useState(false);
+  const [msg, setMsg]               = useState('');
+  const [msgType, setMsgType]       = useState<'ok' | 'err'>('ok');
+  const [generatingDesc, setGeneratingDesc] = useState(false);
+
+  async function generateDescription() {
+    if (!form.name_ru && !form.name_en && !form.name_ka) {
+      setMsg('Сначала введите название товара'); setMsgType('err'); return;
+    }
+    setGeneratingDesc(true); setMsg('');
+    try {
+      const res = await fetch('/api/admin/generate-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name_ru: form.name_ru, name_en: form.name_en, name_ka: form.name_ka,
+          category_ru: form.category_ru, sub_category_ru: form.sub_category_ru,
+        }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const data = await res.json();
+      if (data.ru) setField('description_ru', data.ru);
+      if (data.en) setField('description_en', data.en);
+      if (data.ka) setField('description_ka', data.ka);
+      setMsgType('ok'); setMsg('Описание сгенерировано ✓');
+    } catch (e) {
+      setMsgType('err'); setMsg(`Ошибка генерации: ${e}`);
+    }
+    setGeneratingDesc(false);
+  }
 
   const setField = useCallback((key: string, value: string | boolean) => {
     setForm(prev => ({ ...prev, [key]: value }));
@@ -251,6 +278,23 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           <Section title="Описание">
+            {/* Кнопка AI генерации */}
+            <button
+              onClick={generateDescription}
+              disabled={generatingDesc}
+              style={{
+                width: '100%', padding: '9px', marginBottom: 16,
+                background: generatingDesc ? '#1a1d27' : 'linear-gradient(135deg, #1a1d27 0%, #252a3a 100%)',
+                border: '1px solid #4a3f6b', borderRadius: 8,
+                color: generatingDesc ? '#666' : '#c8a6ff', fontSize: 13, fontWeight: 600,
+                cursor: generatingDesc ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                transition: 'all 0.2s',
+              }}
+            >
+              <span style={{ fontSize: 16 }}>✨</span>
+              {generatingDesc ? 'Генерируем...' : 'Сгенерировать описание AI (3 языка)'}
+            </button>
             <FieldWrapper label="Русский">
               <TextareaField value={form.description_ru} onChange={v => setField('description_ru', v)} placeholder="Описание..." />
             </FieldWrapper>
@@ -375,7 +419,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
           <Section title="Ссылка и идентификаторы">
             <FieldWrapper label="external_id">
-              <InputField value={form.external_id} onChange={v => setField('external_id', v)} placeholder="category_2323 необязательно" />
+              <InputField value={form.external_id} onChange={v => setField('external_id', v)} placeholder="ikea_71063" />
             </FieldWrapper>
             <FieldWrapper label="URL на gorgia.ge">
               <InputField value={form.source_url} onChange={v => setField('source_url', v)} placeholder="https://gorgia.ge/ka/..." />

@@ -51,13 +51,19 @@ export async function GET(_req: NextRequest) {
 
       if (row.sub_category) {
         const subKey = (row.sub_category as string).toLowerCase().replace(/\s+/g, '-');
-        entry.sub_categories.push({
-          key:       subKey,
-          name:      row.sub_category as string,
-          name_en:   row.sub_category_en as string | null,
-          image_url: row.image_url as string | null,
-          count:     parseInt(row.total as string),
-        });
+        const existing = entry.sub_categories.find(s => s.key === subKey);
+        if (existing) {
+          // Дедупликация — суммируем count
+          existing.count += parseInt(row.total as string);
+        } else {
+          entry.sub_categories.push({
+            key:       subKey,
+            name:      row.sub_category as string,
+            name_en:   row.sub_category_en as string | null,
+            image_url: row.image_url as string | null,
+            count:     parseInt(row.total as string),
+          });
+        }
       }
     }
 
