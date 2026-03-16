@@ -85,11 +85,17 @@ async function getProduct(category: string, id: string) {
         image_url, images
       FROM products
       WHERE source = 'gorgia'
-        AND external_id = ${`${category}_${id}`}
+        AND id = ${Number(id)}
       LIMIT 1
     `;
+
     if (!rows[0]) return null;
-    return toClientProduct(rows[0] as unknown as NeonProduct, category, id);
+
+    return toClientProduct(
+      rows[0] as unknown as NeonProduct,
+      category,
+      id
+    );
   } catch (err) {
     console.error('Ошибка при получении товара:', err);
     return null;

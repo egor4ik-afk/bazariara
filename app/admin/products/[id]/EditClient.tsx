@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -38,9 +38,49 @@ const inputStyle: React.CSSProperties = {
 };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
 
-const field = (label: string, children: React.ReactNode) => (
+// ✅ ФИШ 2: Мемоизированные компоненты полей — фокус больше не теряется
+const InputField = memo(({ value, onChange, placeholder, type, step }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  type?: string;
+  step?: string;
+}) => (
+  <input
+    type={type || 'text'}
+    step={step}
+    value={value}
+    onChange={e => onChange(e.target.value)}
+    placeholder={placeholder}
+    style={inputStyle}
+  />
+));
+InputField.displayName = 'InputField';
+
+const TextareaField = memo(({ value, onChange, placeholder }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) => (
+  <textarea
+    value={value}
+    onChange={e => onChange(e.target.value)}
+    placeholder={placeholder}
+    style={textareaStyle}
+  />
+));
+TextareaField.displayName = 'TextareaField';
+
+const FieldWrapper = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div style={{ marginBottom: 20 }}>
     <label style={{ display: 'block', color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</label>
+    {children}
+  </div>
+);
+
+const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginBottom: 20 }}>
+    <h3 style={{ color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 20px', fontWeight: 500 }}>{title}</h3>
     {children}
   </div>
 );
@@ -50,13 +90,26 @@ export default function ProductEditClient({ product }: { product: Product }) {
   const isNew   = !product;
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // Инициализируем список фото из product.images
   const [images, setImages] = useState<string[]>(
-    product?.images && product.images.length > 0
+    Array.isArray(product?.images)
       ? product.images
-      : product?.image_url ? [product.image_url] : []
+      : product?.image_url
+        ? [product.image_url]
+        : []
   );
-  const [uploading, setUploading] = useState<number | null>(null); // индекс загружаемого
+
+  // ✅ ФИКС 1: Подхватываем фото после загрузки product (SSR/async)
+  useEffect(() => {
+    if (product?.images && Array.isArray(product.images)) {
+      setImages(product.images);
+    } else if (product?.image_url) {
+      setImages([product.image_url]);
+    } else {
+      setImages([]);
+    }
+  }, [product]);
+
+  const [uploading, setUploading] = useState<number | null>(null);
 
   const [form, setForm] = useState({
     name_ru:         String(product?.name_ru || ''),
@@ -83,11 +136,11 @@ export default function ProductEditClient({ product }: { product: Product }) {
   const [msg, setMsg]           = useState('');
   const [msgType, setMsgType]   = useState<'ok' | 'err'>('ok');
 
-  function setField(key: string, value: string | boolean) {
+  // ✅ ФИКС 2: useCallback — setField не пересоздаётся каждый рендер
+  const setField = useCallback((key: string, value: string | boolean) => {
     setForm(prev => ({ ...prev, [key]: value }));
-  }
+  }, []);
 
-  // Загрузить файл → Vercel Blob → добавить в список
   async function uploadFile(file: File, replaceIndex?: number) {
     const idx = replaceIndex ?? images.length;
     setUploading(idx);
@@ -119,12 +172,10 @@ export default function ProductEditClient({ product }: { product: Product }) {
     if (fileRef.current) fileRef.current.value = '';
   }
 
-  // Удалить фото из списка (и из Blob через API)
   async function removeImage(idx: number) {
     const url = images[idx];
     setImages(prev => prev.filter((_, i) => i !== idx));
 
-    // Удаляем из Vercel Blob если это наш blob
     if (url.includes('blob.vercel-storage.com')) {
       try {
         await fetch(`/api/admin/upload?url=${encodeURIComponent(url)}`, { method: 'DELETE' });
@@ -132,7 +183,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
     }
   }
 
-  // Сделать фото главным (переместить на позицию 0)
   function makeMain(idx: number) {
     setImages(prev => {
       const next = [...prev];
@@ -174,19 +224,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
   }
 
   const mono = "'DM Mono', 'Fira Mono', monospace";
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginBottom: 20 }}>
-      <h3 style={{ color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 20px', fontWeight: 500 }}>{title}</h3>
-      {children}
-    </div>
-  );
-
-  const inp = (key: string, placeholder = '') => (
-    <input value={form[key as keyof typeof form] as string} onChange={e => setField(key, e.target.value)} placeholder={placeholder} style={inputStyle} />
-  );
-  const ta = (key: string, placeholder = '') => (
-    <textarea value={form[key as keyof typeof form] as string} onChange={e => setField(key, e.target.value)} placeholder={placeholder} style={textareaStyle} />
-  );
 
   return (
     <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
@@ -223,33 +260,61 @@ export default function ProductEditClient({ product }: { product: Product }) {
         {/* Левая колонка */}
         <div>
           <Section title="Название">
-            {field('Русский', inp('name_ru', 'Название на русском'))}
-            {field('English', inp('name_en', 'Product name in English'))}
-            {field('ქართული', inp('name_ka', 'სახელი ქართულად'))}
+            <FieldWrapper label="Русский">
+              <InputField value={form.name_ru} onChange={v => setField('name_ru', v)} placeholder="Название на русском" />
+            </FieldWrapper>
+            <FieldWrapper label="English">
+              <InputField value={form.name_en} onChange={v => setField('name_en', v)} placeholder="Product name in English" />
+            </FieldWrapper>
+            <FieldWrapper label="ქართული">
+              <InputField value={form.name_ka} onChange={v => setField('name_ka', v)} placeholder="სახელი ქართულად" />
+            </FieldWrapper>
           </Section>
+
           <Section title="Описание">
-            {field('Русский', ta('description_ru', 'Описание...'))}
-            {field('English', ta('description_en', 'Description...'))}
-            {field('ქართული', ta('description_ka', 'აღწერა...'))}
+            <FieldWrapper label="Русский">
+              <TextareaField value={form.description_ru} onChange={v => setField('description_ru', v)} placeholder="Описание..." />
+            </FieldWrapper>
+            <FieldWrapper label="English">
+              <TextareaField value={form.description_en} onChange={v => setField('description_en', v)} placeholder="Description..." />
+            </FieldWrapper>
+            <FieldWrapper label="ქართული">
+              <TextareaField value={form.description_ka} onChange={v => setField('description_ka', v)} placeholder="აღწერა..." />
+            </FieldWrapper>
           </Section>
+
           <Section title="Категория">
-            {field('Категория (ru)', inp('category_ru'))}
-            {field('Category (en)', inp('category_en'))}
-            {field('კატეგორია (ka)', inp('category_ka'))}
-            {field('Подкатегория (ru)', inp('sub_category_ru'))}
-            {field('Subcategory (en)', inp('sub_category_en'))}
-            {field('ქვეკატეგორია (ka)', inp('sub_category_ka'))}
+            <FieldWrapper label="Категория (ru)">
+              <InputField value={form.category_ru} onChange={v => setField('category_ru', v)} />
+            </FieldWrapper>
+            <FieldWrapper label="Category (en)">
+              <InputField value={form.category_en} onChange={v => setField('category_en', v)} />
+            </FieldWrapper>
+            <FieldWrapper label="კატეგორია (ka)">
+              <InputField value={form.category_ka} onChange={v => setField('category_ka', v)} />
+            </FieldWrapper>
+            <FieldWrapper label="Подкатегория (ru)">
+              <InputField value={form.sub_category_ru} onChange={v => setField('sub_category_ru', v)} />
+            </FieldWrapper>
+            <FieldWrapper label="Subcategory (en)">
+              <InputField value={form.sub_category_en} onChange={v => setField('sub_category_en', v)} />
+            </FieldWrapper>
+            <FieldWrapper label="ქვეკატეგორია (ka)">
+              <InputField value={form.sub_category_ka} onChange={v => setField('sub_category_ka', v)} />
+            </FieldWrapper>
           </Section>
         </div>
 
         {/* Правая колонка */}
         <div>
           <Section title="Коммерция">
-            {field('SKU / Артикул', inp('sku', 'BM-001234'))}
-            {field('Цена (GEL)', (
-              <input type="number" step="0.01" value={form.price} onChange={e => setField('price', e.target.value)} style={inputStyle} placeholder="99.00" />
-            ))}
-            {field('Наличие', (
+            <FieldWrapper label="SKU / Артикул">
+              <InputField value={form.sku} onChange={v => setField('sku', v)} placeholder="BM-001234" />
+            </FieldWrapper>
+            <FieldWrapper label="Цена (GEL)">
+              <InputField value={form.price} onChange={v => setField('price', v)} placeholder="99.00" type="number" step="0.01" />
+            </FieldWrapper>
+            <FieldWrapper label="Наличие">
               <div style={{ display: 'flex', gap: 10 }}>
                 {([true, false] as const).map(v => (
                   <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
@@ -258,14 +323,14 @@ export default function ProductEditClient({ product }: { product: Product }) {
                   </label>
                 ))}
               </div>
-            ))}
-            {field('Наличие (текст)', inp('availability_ru', 'В наличии / Нет в наличии'))}
+            </FieldWrapper>
+            <FieldWrapper label="Наличие (текст)">
+              <InputField value={form.availability_ru} onChange={v => setField('availability_ru', v)} placeholder="В наличии / Нет в наличии" />
+            </FieldWrapper>
           </Section>
 
           {/* Фото */}
           <Section title={`Фото (${images.length})`}>
-
-            {/* Скрытый input */}
             <input
               ref={fileRef}
               type="file"
@@ -278,7 +343,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
               }}
             />
 
-            {/* Кнопка добавить */}
             <button
               onClick={() => fileRef.current?.click()}
               disabled={uploading !== null}
@@ -293,10 +357,9 @@ export default function ProductEditClient({ product }: { product: Product }) {
               {uploading !== null ? '⟳ Загружаем...' : '+ Добавить фото'}
             </button>
 
-            {/* Сетка фото */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-              {images.map((img, i) => (
-                <div key={i} style={{ position: 'relative', aspectRatio: '1', background: '#131620', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid #c8f135' : '2px solid #2a2d3a' }}>
+              {Array.isArray(images) && images.map((img, i) => (
+                <div key={img} style={{ position: 'relative', aspectRatio: '1', background: '#131620', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid #c8f135' : '2px solid #2a2d3a' }}>
                   {uploading === i ? (
                     <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11 }}>
                       ⟳ загрузка…
@@ -304,13 +367,11 @@ export default function ProductEditClient({ product }: { product: Product }) {
                   ) : (
                     <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   )}
-                  {/* Бейдж главного */}
                   {i === 0 && (
                     <div style={{ position: 'absolute', top: 4, left: 4, background: '#c8f135', color: '#0f1117', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>
                       ГЛАВНОЕ
                     </div>
                   )}
-                  {/* Кнопки */}
                   <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
                     {i !== 0 && (
                       <button
@@ -328,7 +389,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
                 </div>
               ))}
 
-              {/* Placeholder для добавления */}
               <div
                 onClick={() => fileRef.current?.click()}
                 style={{ aspectRatio: '1', background: '#131620', borderRadius: 8, border: '2px dashed #2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#444', fontSize: 24 }}
@@ -343,7 +403,9 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           <Section title="Ссылка">
-            {field('URL на gorgia.ge', inp('source_url', 'https://gorgia.ge/ka/...'))}
+            <FieldWrapper label="URL на gorgia.ge">
+              <InputField value={form.source_url} onChange={v => setField('source_url', v)} placeholder="https://gorgia.ge/ka/..." />
+            </FieldWrapper>
             {!isNew && (
               <div style={{ color: '#444', fontSize: 11, marginTop: 4 }}>
                 ID: {product?.id} · external_id: {product?.external_id || '—'}

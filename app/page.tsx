@@ -12,7 +12,6 @@ export const revalidate = 600;
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 type Row = Record<string, unknown>;
 
-// ─── Метаданные ───────────────────────────────────────────────────────────────
 export async function generateMetadata({
   searchParams,
 }: {
@@ -41,11 +40,11 @@ export async function generateMetadata({
   let catName = category;
   try {
     const rows = await sql`
-                                                                    SELECT DISTINCT category FROM products
-                                                                          WHERE source = 'gorgia'
-                                                                                  AND SPLIT_PART(external_id, '_', 1) = ${category}
-                                                                                        LIMIT 1
-                                                                                            `;
+      SELECT DISTINCT category FROM products
+      WHERE source = 'gorgia'
+        AND SPLIT_PART(external_id, '_', 1) = ${category}
+      LIMIT 1
+    `;
     if (rows[0]?.category) catName = rows[0].category as string;
   } catch { }
 
@@ -65,13 +64,11 @@ export async function generateMetadata({
   };
 }
 
-// ─── Страница ─────────────────────────────────────────────────────────────────
 export default async function HomePage({
   searchParams,
 }: {
   searchParams: SearchParams;
 }) {
-  // Next.js 15: searchParams нужно await
   const params = await searchParams;
 
   const selectedCategory = params.category || 'all';
@@ -87,20 +84,30 @@ export default async function HomePage({
   let subCategoriesList: Category[] = [];
 
   try {
-    // ── Категории — фикс GROUP BY: используем алиасы ──────────────────────
+    // ── Категории с JOIN к таблице categories для кастомных превью ──────────
     const catRows = await sql`
-                                                                                                                                                                                                SELECT
-                                                                                                                                                                                                        SPLIT_PART(external_id, '_', 1) AS key,
-                                                                                                                                                                                                                MAX(category)     AS name,
-                                                                                                                                                                                                                        MAX(category_en)  AS name_en,
-                                                                                                                                                                                                                                MIN(image_url)    AS image_url
-                                                                                                                                                                                                                                      FROM products
-                                                                                                                                                                                                                                            WHERE source = 'gorgia'
-                                                                                                                                                                                                                                                    AND image_url IS NOT NULL
-                                                                                                                                                                                                                                                            AND category IS NOT NULL
-                                                                                                                                                                                                                                                                  GROUP BY SPLIT_PART(external_id, '_', 1)
-                                                                                                                                                                                                                                                                        ORDER BY MAX(category)
-                                                                                                                                                                                                                                                                            `;
+      SELECT
+        p.key,
+        p.name,
+        p.name_en,
+        -- ✅ Сначала берём из таблицы categories, fallback — MIN(image_url) товара
+        COALESCE(c.category_image, p.image_url) AS image_url
+      FROM (
+        SELECT
+          SPLIT_PART(external_id, '_', 1) AS key,
+          MAX(category)    AS name,
+          MAX(category_en) AS name_en,
+          MIN(image_url)   AS image_url
+        FROM products
+        WHERE source = 'gorgia'
+          AND image_url IS NOT NULL
+          AND category IS NOT NULL
+        GROUP BY SPLIT_PART(external_id, '_', 1)
+      ) p
+      LEFT JOIN categories c ON c.category_key = p.key
+      ORDER BY p.name
+    `;
+
     categoriesList = (catRows as Row[]).map((r) => ({
       key: r.key as string,
       name: r.name as string,
@@ -108,31 +115,31 @@ export default async function HomePage({
       imageUrl: (r.image_url as string) ?? '',
     }));
 
-    // ── Подкатегории ───────────────────────────────────────────────────────
+    // ── Подкатегории ────────────────────────────────────────────────────────
     if (selectedCategory !== 'all') {
       const subRows = await sql`
-                                                                                                                                                                                                                                                                                                                                  SELECT
-                                                                                                                                                                                                                                                                                                                                            LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) AS key,
-                                                                                                                                                                                                                                                                                                                                                      MAX(sub_category)     AS name,
-                                                                                                                                                                                                                                                                                                                                                                MAX(sub_category_en)  AS name_en,
-                                                                                                                                                                                                                                                                                                                                                                          MIN(image_url)        AS image_url
-                                                                                                                                                                                                                                                                                                                                                                                  FROM products
-                                                                                                                                                                                                                                                                                                                                                                                          WHERE source = 'gorgia'
-                                                                                                                                                                                                                                                                                                                                                                                                    AND image_url IS NOT NULL
-                                                                                                                                                                                                                                                                                                                                                                                                              AND SPLIT_PART(external_id, '_', 1) = ${selectedCategory}
-                                                                                                                                                                                                                                                                                                                                                                                                                        AND sub_category IS NOT NULL
-                                                                                                                                                                                                                                                                                                                                                                                                                                GROUP BY LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-'))
-                                                                                                                                                                                                                                                                                                                                                                                                                                        ORDER BY MAX(sub_category)
-                                                                                                                                                                                                                                                                                                                                                                                                                                              `;
+        SELECT
+          LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) AS key,
+          MAX(sub_category)    AS name,
+          MAX(sub_category_en) AS name_en,
+          MIN(image_url)       AS image_url
+        FROM products
+        WHERE source = 'gorgia'
+          AND image_url IS NOT NULL
+          AND SPLIT_PART(external_id, '_', 1) = ${selectedCategory}
+          AND sub_category IS NOT NULL
+        GROUP BY LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-'))
+        ORDER BY MAX(sub_category)
+      `;
       subCategoriesList = (subRows as Row[]).map((r) => ({
         key: r.key as string,
         name: r.name as string,
-        name_en: r.name_en as string ?? undefined,
+        name_en: (r.name_en as string) ?? undefined,
         imageUrl: (r.image_url as string) ?? '',
       }));
     }
 
-    // ── Динамические фильтры ───────────────────────────────────────────────
+    // ── Фильтры ─────────────────────────────────────────────────────────────
     const categoryFilter = selectedCategory !== 'all'
       ? sql`AND SPLIT_PART(external_id, '_', 1) = ${selectedCategory}`
       : sql``;
@@ -147,32 +154,32 @@ export default async function HomePage({
 
     const [countRows, productRows] = await Promise.all([
       sql`
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    SELECT COUNT(*) AS total
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            FROM products
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    WHERE source = 'gorgia'
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              AND image_url IS NOT NULL
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        ${categoryFilter}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  ${subcategoryFilter}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            ${searchFilter}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  `,
+        SELECT COUNT(*) AS total
+        FROM products
+        WHERE source = 'gorgia'
+          AND image_url IS NOT NULL
+          ${categoryFilter}
+          ${subcategoryFilter}
+          ${searchFilter}
+      `,
       sql`
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                SELECT
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          id, external_id, source_url, gorgia_url,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    COALESCE(name_ru, name) AS name,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              name_ru, name_en, name_ka,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        description_ru AS description,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  price, currency, in_stock, availability,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            category, category_en, sub_category, sub_category_en,
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      image_url, images
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              FROM products
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      WHERE source = 'gorgia'
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                AND image_url IS NOT NULL
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          ${categoryFilter}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ${subcategoryFilter}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ${searchFilter}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      ORDER BY in_stock DESC, updated_at DESC
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    `,
+        SELECT
+          id, external_id, source_url, gorgia_url,
+          COALESCE(name_ru, name) AS name,
+          name_ru, name_en, name_ka,
+          description_ru AS description,
+          price, currency, in_stock, availability,
+          category, category_en, sub_category, sub_category_en,
+          image_url, images
+        FROM products
+        WHERE source = 'gorgia'
+          AND image_url IS NOT NULL
+          ${categoryFilter}
+          ${subcategoryFilter}
+          ${searchFilter}
+        ORDER BY in_stock DESC, updated_at DESC
+        LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
+      `,
     ]);
 
     total = parseInt(countRows[0].total as string);
