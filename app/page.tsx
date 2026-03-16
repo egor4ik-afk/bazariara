@@ -12,11 +12,7 @@ export const revalidate = 600;
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 type Row = Record<string, unknown>;
 
-export async function generateMetadata({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}): Promise<Metadata> {
+export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const params = await searchParams;
   const category = params.category;
   const subcategory = params.subcategory;
@@ -39,10 +35,10 @@ export async function generateMetadata({
 
   let catName = category;
   try {
+    // ✅ category_key вместо SPLIT_PART
     const rows = await sql`
       SELECT DISTINCT category FROM products
-      WHERE source = 'gorgia'
-        AND SPLIT_PART(external_id, '_', 1) = ${category}
+      WHERE source = 'gorgia' AND category_key = ${category}
       LIMIT 1
     `;
     if (rows[0]?.category) catName = rows[0].category as string;
@@ -64,22 +60,18 @@ export async function generateMetadata({
   };
 }
 
-export default async function HomePage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
 
-  const selectedCategory = params.category || 'all';
+  const selectedCategory    = params.category || 'all';
   const selectedSubCategory = params.subcategory || 'all';
-  const searchQuery = params.search || '';
-  const currentPage = parseInt(params.page || '1', 10);
-  const ITEMS_PER_PAGE = 20;
-  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+  const searchQuery         = params.search || '';
+  const currentPage         = parseInt(params.page || '1', 10);
+  const ITEMS_PER_PAGE      = 20;
+  const offset              = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  let products: Product[] = [];
-  let total = 0;
+  let products: Product[]        = [];
+  let total                      = 0;
   let categoriesList: Category[] = [];
   let subCategoriesList: Category[] = [];
 
@@ -90,28 +82,28 @@ export default async function HomePage({
         p.key,
         p.name,
         p.name_en,
-        -- ✅ Сначала берём из таблицы categories, fallback — MIN(image_url) товара
         COALESCE(c.category_image, p.image_url) AS image_url
       FROM (
         SELECT
-          SPLIT_PART(external_id, '_', 1) AS key,
-          MAX(category)    AS name,
-          MAX(category_en) AS name_en,
-          MIN(image_url)   AS image_url
+          category_key              AS key,
+          MAX(category)             AS name,
+          MAX(category_en)          AS name_en,
+          MIN(image_url)            AS image_url
         FROM products
         WHERE source = 'gorgia'
           AND image_url IS NOT NULL
           AND category IS NOT NULL
-        GROUP BY SPLIT_PART(external_id, '_', 1)
+          AND category_key IS NOT NULL
+        GROUP BY category_key
       ) p
       LEFT JOIN categories c ON c.category_key = p.key
       ORDER BY p.name
     `;
 
     categoriesList = (catRows as Row[]).map((r) => ({
-      key: r.key as string,
-      name: r.name as string,
-      name_en: (r.name_en as string) || null,
+      key:      r.key as string,
+      name:     r.name as string,
+      name_en:  (r.name_en as string) || null,
       imageUrl: (r.image_url as string) ?? '',
     }));
 
@@ -126,22 +118,22 @@ export default async function HomePage({
         FROM products
         WHERE source = 'gorgia'
           AND image_url IS NOT NULL
-          AND SPLIT_PART(external_id, '_', 1) = ${selectedCategory}
+          AND category_key = ${selectedCategory}
           AND sub_category IS NOT NULL
         GROUP BY LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-'))
         ORDER BY MAX(sub_category)
       `;
       subCategoriesList = (subRows as Row[]).map((r) => ({
-        key: r.key as string,
-        name: r.name as string,
-        name_en: (r.name_en as string) ?? undefined,
+        key:      r.key as string,
+        name:     r.name as string,
+        name_en:  (r.name_en as string) ?? undefined,
         imageUrl: (r.image_url as string) ?? '',
       }));
     }
 
     // ── Фильтры ─────────────────────────────────────────────────────────────
     const categoryFilter = selectedCategory !== 'all'
-      ? sql`AND SPLIT_PART(external_id, '_', 1) = ${selectedCategory}`
+      ? sql`AND category_key = ${selectedCategory}`
       : sql``;
 
     const subcategoryFilter = selectedSubCategory !== 'all'
@@ -164,7 +156,7 @@ export default async function HomePage({
       `,
       sql`
         SELECT
-          id, external_id, source_url, gorgia_url,
+          id, external_id, category_key, source_url, gorgia_url,
           COALESCE(name_ru, name) AS name,
           name_ru, name_en, name_ka,
           description_ru AS description,
@@ -182,7 +174,7 @@ export default async function HomePage({
       `,
     ]);
 
-    total = parseInt(countRows[0].total as string);
+    total    = parseInt(countRows[0].total as string);
     products = productRows as unknown as Product[];
 
   } catch (error) {
@@ -206,9 +198,9 @@ export default async function HomePage({
         <HomeHeader
           categoryNames={selectedCategory !== 'all'
             ? (() => {
-              const cat = categoriesList.find(c => c.key === selectedCategory);
-              return cat ? { ru: cat.name, en: cat.name_en } : undefined;
-            })()
+                const cat = categoriesList.find(c => c.key === selectedCategory);
+                return cat ? { ru: cat.name, en: cat.name_en } : undefined;
+              })()
             : undefined}
         />
 

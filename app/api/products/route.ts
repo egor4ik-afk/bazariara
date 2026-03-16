@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 
-
-
 export async function GET(req: NextRequest) {
   const p            = req.nextUrl.searchParams;
   const lang         = (p.get('lang') || 'ru') as 'ru' | 'en' | 'ka';
@@ -17,16 +15,17 @@ export async function GET(req: NextRequest) {
   const nameField = lang === 'ka' ? sql`name_ka` : lang === 'en' ? sql`name_en` : sql`name_ru`;
   const descField = lang === 'ka' ? sql`description_ka` : lang === 'en' ? sql`description_en` : sql`description_ru`;
 
-  const categoryFilter    = category && category !== 'all'
-    ? sql`AND SPLIT_PART(external_id, '_', 1) = ${category}`
+  // ✅ Используем category_key вместо SPLIT_PART
+  const categoryFilter = category && category !== 'all'
+    ? sql`AND category_key = ${category}`
     : sql``;
-  const subcatFilter      = subcat && subcat !== 'all'
+  const subcatFilter = subcat && subcat !== 'all'
     ? sql`AND LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) = ${subcat.toLowerCase()}`
     : sql``;
-  const searchFilter      = search && search.length >= 2
+  const searchFilter = search && search.length >= 2
     ? sql`AND (name_ru ILIKE ${'%' + search + '%'} OR name ILIKE ${'%' + search + '%'})`
     : sql``;
-  const inStockFilter     = inStockParam !== null
+  const inStockFilter = inStockParam !== null
     ? sql`AND in_stock = ${inStockParam === 'true'}`
     : sql``;
 
@@ -39,7 +38,7 @@ export async function GET(req: NextRequest) {
       `,
       sql`
         SELECT
-          id, external_id, source_url,
+          id, external_id, category_key, source_url,
           COALESCE(${nameField}, name) AS name,
           name_ru, name_en, name_ka,
           COALESCE(${descField}, description) AS description,

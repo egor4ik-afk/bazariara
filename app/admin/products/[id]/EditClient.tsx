@@ -375,7 +375,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
           <Section title="Ссылка и идентификаторы">
             <FieldWrapper label="external_id">
-              <InputField value={form.external_id} onChange={v => setField('external_id', v)} placeholder="ikea_71063" />
+              <InputField value={form.external_id} onChange={v => setField('external_id', v)} placeholder="category_2323 необязательно" />
             </FieldWrapper>
             <FieldWrapper label="URL на gorgia.ge">
               <InputField value={form.source_url} onChange={v => setField('source_url', v)} placeholder="https://gorgia.ge/ka/..." />

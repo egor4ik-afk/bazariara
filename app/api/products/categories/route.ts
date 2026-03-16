@@ -5,7 +5,7 @@ export async function GET(_req: NextRequest) {
   try {
     const rows = await sql`
       SELECT
-        SPLIT_PART(external_id, '_', 1) AS category_key,
+        category_key,
         category,
         category_en,
         sub_category,
@@ -17,8 +17,9 @@ export async function GET(_req: NextRequest) {
       WHERE source = 'gorgia'
         AND image_url IS NOT NULL
         AND category IS NOT NULL
+        AND category_key IS NOT NULL
       GROUP BY
-        SPLIT_PART(external_id, '_', 1),
+        category_key,
         category, category_en,
         sub_category, sub_category_en
       ORDER BY category, sub_category
@@ -55,7 +56,7 @@ export async function GET(_req: NextRequest) {
           name:      row.sub_category as string,
           name_en:   row.sub_category_en as string | null,
           image_url: row.image_url as string | null,
-          count:     parseInt(row.total as string), // ✅ счётчик товаров в подкатегории
+          count:     parseInt(row.total as string),
         });
       }
     }

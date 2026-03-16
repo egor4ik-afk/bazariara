@@ -27,9 +27,14 @@ export default function ProductCard({ product, index }: ProductCardProps) {
     (product.category || '');
 
   const images = getAllImages(product);
-  const [catKey, prodId] = product.external_id.split('_');
 
-  // Конвертируем Neon Product → CartContext Product
+  // ✅ category_key из БД, fallback — первая часть external_id
+  const catKey = (product as any).category_key
+    || (product.external_id ? product.external_id.split('_')[0] : 'unknown');
+
+  // ✅ prodId — всегда числовой id из БД
+  const prodId = String(product.id);
+
   const cartProduct: CartProduct = {
     id:              String(product.id),
     title:           name,

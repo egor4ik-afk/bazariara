@@ -19,9 +19,14 @@ export async function POST(req: NextRequest) {
 
   const imagesArray = Array.isArray(images) ? images : (image_url ? [image_url] : []);
 
+  // category_key: из external_id если есть, иначе из category_ru
+  const category_key = external_id
+    ? external_id.split('_')[0]
+    : (category_ru || '').toLowerCase().replace(/\s+/g, '-') || null;
+
   const rows = await sql`
     INSERT INTO products (
-      source, external_id,
+      source, external_id, category_key,
       name, name_ru, name_en, name_ka,
       description, description_ru, description_en, description_ka,
       sku, price, in_stock,
@@ -30,7 +35,7 @@ export async function POST(req: NextRequest) {
       sub_category, sub_category_ru, sub_category_en, sub_category_ka,
       image_url, images, source_url
     ) VALUES (
-      'gorgia', ${external_id || null},
+      'gorgia', ${external_id || null}, ${category_key},
       ${name_ru || null}, ${name_ru || null}, ${name_en || null}, ${name_ka || null},
       ${description_ru || null}, ${description_ru || null}, ${description_en || null}, ${description_ka || null},
       ${sku || null},

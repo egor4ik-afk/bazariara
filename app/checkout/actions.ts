@@ -22,14 +22,15 @@ interface OrderDetails {
   shippingCost: number;
 }
 
-async function getProductLink(categoryKey: string, productId: string): Promise<string | null> {
+// ✅ Ищем source_url по числовому id товара
+async function getProductLink(productId: string): Promise<string | null> {
   try {
     const rows = await sql`
-      SELECT gorgia_url, source_url FROM products
-      WHERE external_id = ${`${categoryKey}_${productId}`} AND source = 'gorgia'
+      SELECT source_url FROM products
+      WHERE id = ${parseInt(productId)}
       LIMIT 1
     `;
-    return rows[0] ? ((rows[0].gorgia_url || rows[0].source_url) as string | null) : null;
+    return rows[0]?.source_url as string | null ?? null;
   } catch {
     return null;
   }
@@ -57,18 +58,39 @@ async function sendTelegramNotification(
 
   const itemsList = items.map((item, i) => {
     const price = parseFloat(String(item.product.price));
-    const name  = item.link ? `[${item.product.title}](${item.link})` : item.product.title;
+    const name  = item.link
+      ? `[${item.product.title}](${item.link})`
+      : item.product.title;
     return `${i + 1}. ${name}\n   ${item.quantity} x ₾${price.toFixed(2)} = ₾${(price * item.quantity).toFixed(2)}`;
   }).join('\n\n');
 
   const subtotal = total - shippingCost;
-  const message = `🛒 *НОВЫЙ ЗАКАЗ*\n\n👤 *${customer.name}*\n${contactDetails}\n\n📦 *Заказ:*\n${itemsList}\n\nПодытог: ₾${subtotal.toFixed(2)}\n${shippingCost > 0 ? `Доставка: ₾${shippingCost.toFixed(2)}` : 'Доставка: БЕСПЛАТНО'}\n*💰 ИТОГО: ₾${total.toFixed(2)}*\n\n📅 ${createdAt.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi' })}`.trim();
+  const message = [
+    `🛒 *НОВЫЙ ЗАКАЗ*`,
+    ``,
+    `👤 *${customer.name}*`,
+    contactDetails,
+    ``,
+    `📦 *Заказ:*`,
+    itemsList,
+    ``,
+    `Подытог: ₾${subtotal.toFixed(2)}`,
+    shippingCost > 0 ? `Доставка: ₾${shippingCost.toFixed(2)}` : `Доставка: БЕСПЛАТНО`,
+    `*💰 ИТОГО: ₾${total.toFixed(2)}*`,
+    ``,
+    `📅 ${createdAt.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi' })}`,
+  ].filter(s => s !== undefined).join('\n').trim();
 
   try {
     await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: CHAT_ID, text: message, parse_mode: 'Markdown', disable_web_page_preview: true }),
+      body: JSON.stringify({
+        chat_id: CHAT_ID,
+        text: message,
+        parse_mode: 'Markdown',
+        disable_web_page_preview: true,
+      }),
     });
   } catch (err) {
     console.error('Telegram error:', err);
@@ -88,7 +110,6 @@ export async function handlePlaceOrder(orderDetails: OrderDetails) {
   const subtotal  = total - shippingCost;
 
   try {
-    // создаем таблицу, если нет
     await sql`
       CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
@@ -101,28 +122,27 @@ export async function handlePlaceOrder(orderDetails: OrderDetails) {
       )
     `;
 
-    // получаем ссылки для каждого товара
+    // ✅ Загружаем source_url по числовому id для каждого товара
     const itemsWithLinks = await Promise.all(
       items.map(async item => {
-        const link = await getProductLink(item.product.categoryKey, item.product.id);
+        const link = await getProductLink(item.product.id);
         return { ...item, link };
       })
     );
 
-    // сохраняем заказ с ссылками
     await sql`
       INSERT INTO orders (customer, items, subtotal, shipping, total, created_at)
       VALUES (
         ${JSON.stringify(customer)}::jsonb,
         ${JSON.stringify(itemsWithLinks.map(i => ({
-          id: i.product.id,
-          title: i.product.title,
-          price: parseFloat(String(i.product.price)),
-          quantity: i.quantity,
-          category: i.product.category,
+          id:          i.product.id,
+          title:       i.product.title,
+          price:       parseFloat(String(i.product.price)),
+          quantity:    i.quantity,
+          category:    i.product.category,
           categoryKey: i.product.categoryKey,
-          image_url: i.product.image_url ?? null,
-          link: i.link ?? null,
+          image_url:   i.product.image_url ?? null,
+          link:        i.link ?? null,
         })))}::jsonb,
         ${subtotal}, ${shippingCost}, ${total}, ${createdAt.toISOString()}
       )

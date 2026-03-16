@@ -22,9 +22,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
 
   const imagesArray = Array.isArray(images) ? images : (image_url ? [image_url] : []);
 
+  const category_key = external_id
+    ? external_id.split('_')[0]
+    : (category_ru || '').toLowerCase().replace(/\s+/g, '-') || null;
+
   await sql`
     UPDATE products SET
       external_id     = ${external_id || null},
+      category_key    = ${category_key},
       name            = COALESCE(${name_ru || null}, name),
       name_ru         = ${name_ru || null},
       name_en         = ${name_en || null},
