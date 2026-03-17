@@ -9,54 +9,80 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   const { id } = await params;
   const body = await req.json();
 
-  const {
-    external_id,
-    name_ru, name_en, name_ka,
-    description_ru, description_en, description_ka,
-    sku, price, in_stock,
-    availability_ru, availability_ka,
-    category_ru, category_en, category_ka,
-    sub_category_ru, sub_category_en, sub_category_ka,
-    image_url, source_url, images,
-  } = body;
+  // Берём только те поля которые реально пришли в body (не undefined)
+  const has = (key: string) => key in body && body[key] !== undefined;
 
-  const imagesArray = Array.isArray(images) ? images : (image_url ? [image_url] : []);
+  const updates: string[] = [];
+  const values: unknown[]  = [];
+  let   idx = 1;
 
-  const category_key = external_id
-    ? external_id.split('_')[0]
-    : (category_ru || '').toLowerCase().replace(/\s+/g, '-') || null;
+  const maybe = (col: string, key: string, transform?: (v: unknown) => unknown) => {
+    if (!has(key)) return;
+    const val = transform ? transform(body[key]) : (body[key] ?? null);
+    updates.push(`${col} = $${idx++}`);
+    values.push(val);
+  };
 
-  await sql`
-    UPDATE products SET
-      external_id     = ${external_id || null},
-      category_key    = ${category_key},
-      name            = COALESCE(${name_ru || null}, name),
-      name_ru         = ${name_ru || null},
-      name_en         = ${name_en || null},
-      name_ka         = ${name_ka || null},
-      description     = ${description_ru || description_ka || null},
-      description_ru  = ${description_ru || null},
-      description_en  = ${description_en || null},
-      description_ka  = ${description_ka || null},
-      sku             = ${sku || null},
-      price           = ${price ? parseFloat(price) : null},
-      in_stock        = ${Boolean(in_stock)},
-      availability_ru = ${availability_ru || null},
-      availability_ka = ${availability_ka || null},
-      category        = COALESCE(${category_ru || null}, category),
-      category_ru     = ${category_ru || null},
-      category_en     = ${category_en || null},
-      category_ka     = ${category_ka || null},
-      sub_category    = COALESCE(${sub_category_ru || null}, sub_category),
-      sub_category_ru = ${sub_category_ru || null},
-      sub_category_en = ${sub_category_en || null},
-      sub_category_ka = ${sub_category_ka || null},
-      images          = ${JSON.stringify(imagesArray)}::jsonb,
-      image_url       = ${image_url || null},
-      source_url      = COALESCE(${source_url || null}, source_url),
-      updated_at      = NOW()
-    WHERE id = ${parseInt(id)} AND source = 'gorgia'
-  `;
+  maybe('external_id',     'external_id');
+  maybe('name',            'name_ru');
+  maybe('name_ru',         'name_ru');
+  maybe('name_en',         'name_en');
+  maybe('name_ka',         'name_ka');
+  maybe('description',     'description_ru');
+  maybe('description_ru',  'description_ru');
+  maybe('description_en',  'description_en');
+  maybe('description_ka',  'description_ka');
+  maybe('sku',             'sku');
+  maybe('price',           'price',    v => v ? parseFloat(String(v)) : null);
+  maybe('in_stock',        'in_stock', v => Boolean(v));
+  maybe('availability_ru', 'availability_ru');
+  maybe('availability_ka', 'availability_ka');
+  maybe('category',        'category_ru');
+  maybe('category_ru',     'category_ru');
+  maybe('category_en',     'category_en');
+  maybe('category_ka',     'category_ka');
+  maybe('sub_category',    'sub_category_ru');
+  maybe('sub_category_ru', 'sub_category_ru');
+  maybe('sub_category_en', 'sub_category_en');
+  maybe('sub_category_ka', 'sub_category_ka');
+  maybe('image_url',       'image_url');
+  maybe('source_url',      'source_url');
+
+  // images — особый случай: jsonb
+  if (has('images') || has('image_url')) {
+    const imgs  = body.images;
+    const imgUrl = body.image_url;
+    const arr   = Array.isArray(imgs) ? imgs : (imgUrl ? [imgUrl] : undefined);
+    if (arr !== undefined) {
+      updates.push(`images = $${idx++}::jsonb`);
+      values.push(JSON.stringify(arr));
+    }
+  }
+
+  // category_key
+  if (has('external_id') || has('category_ru')) {
+    const eid = body.external_id;
+    const cat = body.category_ru;
+    const key = eid
+      ? eid.split('_')[0]
+      : cat ? cat.toLowerCase().replace(/\s+/g, '-') : null;
+    if (key) {
+      updates.push(`category_key = $${idx++}`);
+      values.push(key);
+    }
+  }
+
+  if (updates.length === 0) {
+    return NextResponse.json({ ok: true, message: 'nothing to update' });
+  }
+
+  updates.push(`updated_at = NOW()`);
+  values.push(parseInt(id));
+
+  await sql.unsafe(
+    `UPDATE products SET ${updates.join(', ')} WHERE id = $${idx} AND source = 'gorgia'`,
+    values as any
+  );
 
   return NextResponse.json({ ok: true });
 }

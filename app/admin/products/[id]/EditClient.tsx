@@ -76,15 +76,46 @@ const Section = ({ title, children }: { title: string; children: React.ReactNode
   </div>
 );
 
+function Toast({ msg, type, onClose }: { msg: string; type: 'ok' | 'err'; onClose: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 4000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  return (
+    <div style={{
+      position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
+      zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12,
+      padding: '12px 20px', borderRadius: 10,
+      background: type === 'ok' ? '#0d2a1a' : '#2a0d0d',
+      border: `1px solid ${type === 'ok' ? '#1a5c30' : '#5c1a1a'}`,
+      color: type === 'ok' ? '#4ade80' : '#f87171',
+      fontSize: 13, fontFamily: "'DM Mono', monospace",
+      boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+      animation: 'slideDown 0.2s ease',
+      whiteSpace: 'nowrap',
+    }}>
+      <span style={{ fontSize: 16 }}>{type === 'ok' ? '✓' : '✕'}</span>
+      <span>{msg}</span>
+      <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontSize: 16, opacity: 0.6, padding: '0 0 0 8px' }}>×</button>
+      <style>{`@keyframes slideDown { from { opacity:0; transform:translateX(-50%) translateY(-10px); } to { opacity:1; transform:translateX(-50%) translateY(0); } }`}</style>
+    </div>
+  );
+}
+
 export default function ProductEditClient({ product }: { product: Product }) {
   const router  = useRouter();
   const isNew   = !product;
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+  const showToast = useCallback((msg: string, type: 'ok' | 'err' = 'ok') => {
+    setToast({ msg, type });
+  }, []);
+
   const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
   const [subOptions, setSubOptions] = useState<{ key: string; name: string }[]>([]);
 
-  // Загружаем категории из API
   useEffect(() => {
     fetch('/api/products/categories')
       .then(r => r.json())
@@ -105,7 +136,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
   const [uploading, setUploading] = useState<number | null>(null);
 
-  const [form, setForm] = useState({
+  const [form, setFormState] = useState({
     external_id:     String(product?.external_id || ''),
     name_ru:         String(product?.name_ru || ''),
     name_en:         String(product?.name_en || ''),
@@ -126,23 +157,24 @@ export default function ProductEditClient({ product }: { product: Product }) {
     source_url:      String(product?.source_url || ''),
   });
 
-  // Когда меняется категория — обновляем список подкатегорий
   useEffect(() => {
     const cat = categoryOptions.find(c => c.name === form.category_ru);
     setSubOptions(cat?.sub_categories || []);
   }, [form.category_ru, categoryOptions]);
 
-  const [saving, setSaving]         = useState(false);
-  const [deleting, setDeleting]     = useState(false);
-  const [msg, setMsg]               = useState('');
-  const [msgType, setMsgType]       = useState<'ok' | 'err'>('ok');
+  const [saving, setSaving]     = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
+
+  const setField = useCallback((key: string, value: string | boolean) => {
+    setFormState(prev => ({ ...prev, [key]: value }));
+  }, []);
 
   async function generateDescription() {
     if (!form.name_ru && !form.name_en && !form.name_ka) {
-      setMsg('Сначала введите название товара'); setMsgType('err'); return;
+      showToast('Сначала введите название товара', 'err'); return;
     }
-    setGeneratingDesc(true); setMsg('');
+    setGeneratingDesc(true);
     try {
       const res = await fetch('/api/admin/generate-description', {
         method: 'POST',
@@ -150,6 +182,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
         body: JSON.stringify({
           name_ru: form.name_ru, name_en: form.name_en, name_ka: form.name_ka,
           category_ru: form.category_ru, sub_category_ru: form.sub_category_ru,
+          provider: 'yandex',
+          mode: 'description',
         }),
       });
       if (!res.ok) throw new Error(await res.text());
@@ -157,66 +191,82 @@ export default function ProductEditClient({ product }: { product: Product }) {
       if (data.ru) setField('description_ru', data.ru);
       if (data.en) setField('description_en', data.en);
       if (data.ka) setField('description_ka', data.ka);
-      setMsgType('ok'); setMsg('Описание сгенерировано ✓');
+      showToast('Описание сгенерировано ✓', 'ok');
     } catch (e) {
-      setMsgType('err'); setMsg(`Ошибка генерации: ${e}`);
+      showToast(`Ошибка генерации: ${e}`, 'err');
     }
     setGeneratingDesc(false);
   }
-
-  const setField = useCallback((key: string, value: string | boolean) => {
-    setForm(prev => ({ ...prev, [key]: value }));
-  }, []);
 
   async function uploadFile(file: File, replaceIndex?: number) {
     const idx = replaceIndex ?? images.length;
     setUploading(idx);
     try {
-      const res = await fetch(`/api/admin/upload?filename=${encodeURIComponent(file.name)}`, { method: 'POST', body: file });
+      const res = await fetch(
+        `/api/admin/upload?filename=${encodeURIComponent(file.name)}`,
+        { method: 'POST', body: file }
+      );
       if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+
+      // API возвращает готовый CDN url: https://cdn.relaxdev.ru/bazariara/admin/...
       const url: string = data.url;
+
       setImages(prev => {
         const next = [...prev];
         if (replaceIndex !== undefined) next[replaceIndex] = url;
         else next.push(url);
         return next;
       });
-      setMsgType('ok'); setMsg('Фото загружено ✓');
+      showToast('Фото загружено ✓', 'ok');
     } catch (e) {
-      setMsgType('err'); setMsg(`Ошибка загрузки: ${e}`);
+      showToast(`Ошибка загрузки: ${e}`, 'err');
     }
     setUploading(null);
     if (fileRef.current) fileRef.current.value = '';
   }
 
   async function removeImage(idx: number) {
-    const url = images[idx];
+    const cdnUrl = images[idx];
     setImages(prev => prev.filter((_, i) => i !== idx));
-    if (url.includes('blob.vercel-storage.com')) {
-      try { await fetch(`/api/admin/upload?url=${encodeURIComponent(url)}`, { method: 'DELETE' }); } catch { }
+    try {
+      await fetch(`/api/admin/upload?url=${encodeURIComponent(cdnUrl)}`, { method: 'DELETE' });
+    } catch (e) {
+      console.error('Ошибка удаления файла:', e);
     }
   }
 
   function makeMain(idx: number) {
-    setImages(prev => { const next = [...prev]; const [item] = next.splice(idx, 1); next.unshift(item); return next; });
+    setImages(prev => {
+      const next = [...prev];
+      const [item] = next.splice(idx, 1);
+      next.unshift(item);
+      return next;
+    });
   }
 
   async function save() {
-    setSaving(true); setMsg('');
+    setSaving(true);
     const method = isNew ? 'POST' : 'PATCH';
-    const url = isNew ? '/api/admin/products' : `/api/admin/products/${product?.id}`;
+    const url    = isNew ? '/api/admin/products' : `/api/admin/products/${product?.id}`;
+
+    // images уже содержат правильные CDN urls — без замен
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, image_url: images[0] || null, images }),
+      body: JSON.stringify({
+        ...form,
+        image_url: images[0] || null,
+        images,
+      }),
     });
+
     if (res.ok) {
       const data = await res.json();
-      setMsgType('ok'); setMsg('Сохранено ✓');
+      showToast('Сохранено ✓', 'ok');
       if (isNew && data.id) router.push(`/admin/products/${data.id}`);
     } else {
-      setMsgType('err'); setMsg('Ошибка сохранения');
+      showToast('Ошибка сохранения', 'err');
     }
     setSaving(false);
   }
@@ -226,13 +276,15 @@ export default function ProductEditClient({ product }: { product: Product }) {
     setDeleting(true);
     const res = await fetch(`/api/admin/products/${product?.id}`, { method: 'DELETE' });
     if (res.ok) router.push('/admin/products');
-    else { setMsg('Ошибка удаления'); setMsgType('err'); setDeleting(false); }
+    else { showToast('Ошибка удаления', 'err'); setDeleting(false); }
   }
 
   const mono = "'DM Mono', 'Fira Mono', monospace";
 
   return (
     <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
+
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header */}
       <div style={{ borderBottom: '1px solid #2a2d3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -244,18 +296,20 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </span>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          {msg && <span style={{ fontSize: 12, color: msgType === 'ok' ? '#4ade80' : '#f87171' }}>{msg}</span>}
           {!isNew && (
-            <button onClick={deleteProduct} disabled={deleting} style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 8, color: '#f87171', fontSize: 13, cursor: 'pointer' }}>
+            <button onClick={deleteProduct} disabled={deleting}
+              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 8, color: '#f87171', fontSize: 13, cursor: 'pointer' }}>
               {deleting ? 'Удаляем...' : 'Удалить'}
             </button>
           )}
           {!isNew && product?.source_url && (
-            <a href={product.source_url} target="_blank" rel="noreferrer" style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#aaa', fontSize: 13, textDecoration: 'none' }}>
+            <a href={product.source_url} target="_blank" rel="noreferrer"
+              style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#aaa', fontSize: 13, textDecoration: 'none' }}>
               → gorgia.ge
             </a>
           )}
-          <button onClick={save} disabled={saving || uploading !== null} style={{ padding: '8px 20px', background: saving ? '#444' : '#c8f135', border: 'none', borderRadius: 8, color: saving ? '#888' : '#0f1117', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
+          <button onClick={save} disabled={saving || uploading !== null}
+            style={{ padding: '8px 20px', background: saving ? '#444' : '#c8f135', border: 'none', borderRadius: 8, color: saving ? '#888' : '#0f1117', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
             {saving ? 'Сохраняем...' : 'Сохранить'}
           </button>
         </div>
@@ -278,7 +332,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           <Section title="Описание">
-            {/* Кнопка AI генерации */}
             <button
               onClick={generateDescription}
               disabled={generatingDesc}
@@ -307,14 +360,10 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           <Section title="Категория">
-            {/* Дропдаун категории */}
             <FieldWrapper label="Категория (ru)">
               <select
                 value={form.category_ru}
-                onChange={e => {
-                  setField('category_ru', e.target.value);
-                  setField('sub_category_ru', ''); // сбрасываем подкатегорию
-                }}
+                onChange={e => { setField('category_ru', e.target.value); setField('sub_category_ru', ''); }}
                 style={selectStyle}
               >
                 <option value="">— выберите категорию —</option>
@@ -330,7 +379,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
               <InputField value={form.category_ka} onChange={v => setField('category_ka', v)} />
             </FieldWrapper>
 
-            {/* Дропдаун подкатегории */}
             <FieldWrapper label="Подкатегория (ru)">
               <select
                 value={form.sub_category_ru}
@@ -390,11 +438,10 @@ export default function ProductEditClient({ product }: { product: Product }) {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {Array.isArray(images) && images.map((img, i) => (
                 <div key={img} style={{ position: 'relative', aspectRatio: '1', background: '#131620', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid #c8f135' : '2px solid #2a2d3a' }}>
-                  {uploading === i ? (
-                    <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11 }}>⟳ загрузка…</div>
-                  ) : (
-                    <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  )}
+                  {uploading === i
+                    ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11 }}>⟳ загрузка…</div>
+                    : <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  }
                   {i === 0 && (
                     <div style={{ position: 'absolute', top: 4, left: 4, background: '#c8f135', color: '#0f1117', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>ГЛАВНОЕ</div>
                   )}

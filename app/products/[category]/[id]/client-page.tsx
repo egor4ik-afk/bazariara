@@ -11,7 +11,7 @@ import { Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 
-type Product = {
+export type Product = {
   id: string;
   external_id?: string;
   categoryKey: string;
