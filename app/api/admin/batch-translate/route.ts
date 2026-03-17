@@ -11,20 +11,20 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-002'];
 
 function buildDescriptionPrompt(name: string, cat: string) {
-  return `You are a product copywriter for an online store in Georgia (country).
-Write a short product description (2-3 sentences, max 200 chars each) for:
-Product: ${name}
-Category: ${cat}
-
-Return ONLY this JSON (no markdown, no newlines inside values):
+  return `You are a product copywriter for an online store in Georgia (country).\
+Write a short product description (2-3 sentences, max 200 chars each) for:\
+Product: ${name}\
+Category: ${cat}\
+\
+Return ONLY this JSON (no markdown, no newlines inside values):\
 {"ru":"описание на русском","en":"description in english","ka":"აღწერა ქართულად"}`;
 }
 
 function buildNamePrompt(name: string) {
-  return `Translate this product name into English and Georgian.
-Product name: ${name}
-
-Return ONLY this JSON (no markdown, no newlines inside values):
+  return `Translate this product name into English and Georgian.\
+Product name: ${name}\
+\
+Return ONLY this JSON (no markdown, no newlines inside values):\
 {"ru":"${name}","en":"translation in english","ka":"თარგმანი ქართულად"}`;
 }
 
@@ -75,17 +75,40 @@ async function generateWithYandex(prompt: string): Promise<{ ru: string; en: str
     baseURL: 'https://ai.api.cloud.yandex.net/v1',
     defaultHeaders: { 'OpenAI-Project': YANDEX_FOLDER },
   });
-  const response = await client.responses.create({
-    model: `gpt://${YANDEX_FOLDER}/yandexgpt-5.1/latest`,
-    instructions: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
-    input: prompt,
-    temperature: 0.3,
-    max_output_tokens: 2000,
-  } as any);
-  const raw = (response as any).output_text
-    ?? (response as any).output?.[0]?.content?.[0]?.text
-    ?? '';
-  return parseJson(raw);
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await client.responses.create({
+      model: `gpt://${YANDEX_FOLDER}/yandexgpt-5.1/latest`,
+      instructions: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
+      input: prompt,
+      temperature: 0.3,
+      max_output_tokens: 4000,
+    } as any);
+
+    const raw = (response as any).output_text
+      ?? (response as any).output?.[0]?.content?.[0]?.text
+      ?? '';
+
+    // Проверяем что грузинский текст не обрезан — ищем закрывающую }
+    const hasCompleteJson = raw.includes('}');
+    // Проверяем что ka не обрезан посередине слова
+    const kaMatch = raw.match(/"ka"\s*:\s*"([^"]*)"/);
+    const kaComplete = kaMatch ? !kaMatch[1].match(/[\u10D0-\u10FF]$/) || raw.includes('"}') : true;
+
+    if (hasCompleteJson && kaComplete) {
+      try {
+        return parseJson(raw);
+      } catch {
+        console.warn(`Attempt ${attempt} parse failed, retrying...`);
+      }
+    } else {
+      console.warn(`Attempt ${attempt} response truncated, retrying...`);
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  throw new Error('Yandex returned truncated response after 3 attempts');
 }
 
 async function generateWithGemini(prompt: string): Promise<{ ru: string; en: string; ka: string }> {

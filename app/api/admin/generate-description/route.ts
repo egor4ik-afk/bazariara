@@ -29,21 +29,47 @@ async function translateWithGemini(name: string, cat: string, mode: 'description
   throw new Error('All Gemini models exhausted');
 }
 
-async function translateWithYandex(name: string, cat: string, mode: 'description' | 'name') {
+async function translateWithYandex(name: string, cat: string, mode: 'description' | 'name'): Promise<{ ru: string; en: string; ka: string }> {
   const client = new OpenAI({
     apiKey: YANDEX_API_KEY,
     baseURL: 'https://ai.api.cloud.yandex.net/v1',
     defaultHeaders: { 'OpenAI-Project': YANDEX_FOLDER },
   });
   const prompt = mode === 'description' ? buildDescriptionPrompt(name, cat) : buildNamePrompt(name);
-  const response = await client.responses.create({
-    model: `gpt://${YANDEX_FOLDER}/${YANDEX_MODEL}`,
-    instructions: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
-    input: prompt,
-    temperature: 0.3,
-    max_output_tokens: 500,
-  } as any);
-  return parseJson((response as any).output_text || '');
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await client.responses.create({
+      model: `gpt://${YANDEX_FOLDER}/${YANDEX_MODEL}`,
+      instructions: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
+      input: prompt,
+      temperature: 0.3,
+      max_output_tokens: 5000,
+    } as any);
+
+    const raw = (response as any).output_text
+      ?? (response as any).output?.[0]?.content?.[0]?.text
+      ?? '';
+
+    // Проверяем что грузинский текст не обрезан — ищем закрывающую }
+    const hasCompleteJson = raw.includes('}');
+    // Проверяем что ka не обрезан посередине слова
+    const kaMatch = raw.match(/"ka"\s*:\s*"([^"]*)"/);
+    const kaComplete = kaMatch ? !kaMatch[1].match(/[\u10D0-\u10FF]$/) || raw.includes('"}') : true;
+
+    if (hasCompleteJson && kaComplete) {
+      try {
+        return parseJson(raw);
+      } catch {
+        console.warn(`Attempt ${attempt} parse failed, retrying...`);
+      }
+    } else {
+      console.warn(`Attempt ${attempt} response truncated, retrying...`);
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  throw new Error('Yandex returned truncated response after 3 attempts');
 }
 
 function buildDescriptionPrompt(name: string, cat: string) {
@@ -87,7 +113,7 @@ function parseJson(text: string): { ru: string; en: string; ka: string } {
     };
   } catch {
     const get = (key: string) => {
-      const m = clean.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+      const m = clean.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\]|\\.)*)"`));
       return m ? m[1] : '';
     };
     return {
@@ -137,7 +163,7 @@ export async function POST(req: NextRequest) {
       result = await translateWithYandex(name, cat, mode);
     } else {
       if (!GEMINI_API_KEY) return NextResponse.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 });
-      result = await translateWithGemini(name, cat, mode);
+      result = await translateWithYandex(name, cat, mode);
     }
     return NextResponse.json(result);
   } catch (e: any) {
