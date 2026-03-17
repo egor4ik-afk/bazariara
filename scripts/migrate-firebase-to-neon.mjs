@@ -20,61 +20,15 @@ if (!DATABASE_URL) {
 
 const sql = neon(DATABASE_URL);
 
-// ─── Создаём таблицы ──────────────────────────────────────────────────────────
-async function createTables() {
-  console.log('📦 Создаём таблицы...');
-  await sql`
-    CREATE TABLE IF NOT EXISTS products (
-      id              SERIAL PRIMARY KEY,
-      external_id     TEXT,
-      source          TEXT NOT NULL DEFAULT 'gorgia',
-      source_url      TEXT,
+// ─── НАСТРОЙКИ ИМПОРТА ────────────────────────────────────────────────────────
+const TARGET_CATEGORY = 'power_banks_and_accessories';
 
-      -- Основное поле (ru — приоритет)
-      name            TEXT NOT NULL,
+// Укажи здесь конкретные ID, которые нужно импортировать.
+// Если оставить массив пустым [], скрипт загрузит все товары из TARGET_CATEGORY.
+const TARGET_IDS = [701, 702, 703, 704, 705, 706, 707]; 
 
-      -- Двуязычные поля (ru + en, ka добавит скрапер позже)
-      name_ru         TEXT,
-      name_en         TEXT,
-      name_ka         TEXT,
 
-      description     TEXT,
-      description_ru  TEXT,
-      description_en  TEXT,
-      description_ka  TEXT,
-
-      price           NUMERIC(10,2),
-      currency        TEXT DEFAULT 'GEL',
-      in_stock        BOOLEAN DEFAULT TRUE,
-      availability    TEXT,
-
-      -- Категории
-      category        TEXT,
-      category_en     TEXT,
-      sub_category    TEXT,
-      sub_category_en TEXT,
-
-      -- Фото: главное + дополнительные
-      image_url       TEXT,
-      images          JSONB DEFAULT '[]',
-
-      -- Оригинальная ссылка на gorgia.ge
-      gorgia_url      TEXT,
-
-      created_at      TIMESTAMPTZ DEFAULT NOW(),
-      updated_at      TIMESTAMPTZ DEFAULT NOW()
-    )
-  `;
-
-  await sql`CREATE INDEX IF NOT EXISTS idx_products_source    ON products(source)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_products_category  ON products(category)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_products_in_stock  ON products(in_stock)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_products_price     ON products(price)`;
-
-  console.log('✅ Таблицы созданы');
-}
-
-// ─── Мигрируем данные ─────────────────────────────────────────────────────────
+// ─── Добавляем данные в БД ────────────────────────────────────────────────────
 async function migrate() {
   // Ищем JSON файл
   const possiblePaths = [
@@ -95,109 +49,143 @@ async function migrate() {
   }
 
   if (!firebaseData) {
-    console.error('❌ JSON файл не найден. Положи его в корень проекта и назови:');
-    console.error('   bazarge-95f65-default-rtdb-export.json');
+    console.error('❌ JSON файл не найден.');
     process.exit(1);
   }
 
   console.log(`📂 Читаем: ${usedPath}`);
 
   const categories = firebaseData.products || {};
-  const categoryKeys = Object.keys(categories);
-  console.log(`📁 Категорий: ${categoryKeys.join(', ')}`);
+  
+  // Проверяем, есть ли нужная категория в файле
+  if (!categories[TARGET_CATEGORY]) {
+    console.error(`❌ Категория "${TARGET_CATEGORY}" не найдена в JSON файле!`);
+    return;
+  }
+
+  const items = categories[TARGET_CATEGORY];
+  let itemList = Object.values(items);
+
+  // Фильтруем товары, если указаны конкретные ID
+  if (TARGET_IDS.length > 0) {
+    itemList = itemList.filter(item => TARGET_IDS.includes(Number(item.id)));
+  }
+
+  console.log(`\n⏳ Обработка категории: ${TARGET_CATEGORY}`);
+  console.log(`🎯 Найдено товаров для импорта: ${itemList.length}`);
 
   let total = 0;
   let inserted = 0;
   let skipped = 0;
 
-  for (const categoryKey of categoryKeys) {
-    const items = categories[categoryKey];
-    const itemList = Object.values(items);
+  for (const item of itemList) {
+    total++;
 
-    console.log(`\n⏳ Категория: ${categoryKey} (${itemList.length} товаров)`);
+    // Считаем, сколько картинок было у товара изначально
+    let imagesCount = 0;
+    if (item.image_url) imagesCount += 1;
+    if (item.image_urls && Array.isArray(item.image_urls)) {
+      imagesCount += item.image_urls.length;
+    }
 
-    for (const item of itemList) {
-      total++;
+    // Генерируем правильные ссылки на Yandex S3
+    const yandexImages = [];
+    for (let i = 0; i < imagesCount; i++) {
+      // Подставляем правильный путь с .jpg, как ты показывал в примере
+      yandexImages.push(`https://storage.yandexcloud.net/izipost/products/${TARGET_CATEGORY}/${item.id}/${i}.jpg`);
+    }
 
-      // Собираем все фото в один массив
-      const allImages = [];
-      if (item.image_url)  allImages.push(item.image_url);
-      if (item.image_urls) allImages.push(...item.image_urls);
+    // Главное фото — это индекс 0 (если картинки вообще есть)
+    const mainImageUrl = yandexImages.length > 0 ? yandexImages[0] : null;
 
-      // Уникальные URL без дублей
-      const uniqueImages = [...new Set(allImages)];
-
-      try {
-        await sql`
-          INSERT INTO products (
-            external_id,
-            source,
-            source_url,
-            name,
-            name_ru,
-            name_en,
-            description,
-            description_ru,
-            description_en,
-            price,
-            currency,
-            in_stock,
-            availability,
-            category,
-            category_en,
-            sub_category,
-            sub_category_en,
-            image_url,
-            images,
-            gorgia_url
-          ) VALUES (
-            ${`${categoryKey}_${item.id}`},
-            'gorgia',
-            ${item.link || null},
-            ${item.title || item.title_en || ''},
-            ${item.title     || null},
-            ${item.title_en  || null},
-            ${item.description    || item.description_en || null},
-            ${item.description    || null},
-            ${item.description_en || null},
-            ${item.price ? parseFloat(item.price) : null},
-            'GEL',
-            ${item.in_stock === true || item.availability === 'В наличии'},
-            ${item.availability || null},
-            ${item.category    || null},
-            ${item.category_en || null},
-            ${item.sub_category    || null},
-            ${item.sub_category_en || null},
-            ${item.image_url || null},
-            ${JSON.stringify(uniqueImages)},
-            ${item.link || null}
-          )
-          ON CONFLICT DO NOTHING
-        `;
-        inserted++;
-        process.stdout.write(`  ✅ [${inserted}] ${item.title || item.title_en}\n`);
-      } catch (err) {
-        skipped++;
-        console.error(`  ❌ Ошибка: ${item.title} — ${err.message}`);
-      }
+    try {
+      await sql`
+        INSERT INTO products (
+          external_id,
+          source,
+          source_url,
+          name,
+          name_ru,
+          name_en,
+          name_ka,
+          description,
+          description_ru,
+          description_en,
+          description_ka,
+          price,
+          currency,
+          in_stock,
+          availability,
+          availability_ru,
+          availability_ka,
+          category,
+          category_ru,
+          category_en,
+          category_ka,
+          sub_category,
+          sub_category_ru,
+          sub_category_en,
+          sub_category_ka,
+          category_key,
+          image_url,
+          images,
+          gorgia_url,
+          sku,
+          other
+        ) VALUES (
+          ${`${TARGET_CATEGORY}_${item.id}`},
+          'gorgia',
+          ${item.link || null},
+          ${item.title || item.title_en || ''},
+          ${item.title     || null},
+          ${item.title_en  || null},
+          null,
+          ${item.description    || item.description_en || null},
+          ${item.description    || null},
+          ${item.description_en || null},
+          null,
+          ${item.price ? parseFloat(item.price) : null},
+          'GEL',
+          ${item.in_stock === true || item.availability === 'В наличии'},
+          ${item.availability || null},
+          ${item.availability || null},
+          null,
+          ${item.category    || null},
+          ${item.category    || null},
+          ${item.category_en || null},
+          null,
+          ${item.sub_category    || null},
+          ${item.sub_category    || null},
+          ${item.sub_category_en || null},
+          null,
+          ${TARGET_CATEGORY},
+          ${mainImageUrl},
+          ${JSON.stringify(yandexImages)}::jsonb,
+          ${item.link || null},
+          null,
+          '{}'::jsonb
+        )
+        ON CONFLICT (external_id) DO NOTHING
+      `;
+      inserted++;
+      process.stdout.write(`  ✅ [${inserted}] ${item.title || item.title_en} (${yandexImages.length} фото)\n`);
+    } catch (err) {
+      skipped++;
+      console.error(`  ❌ Ошибка при добавлении ID ${item.id}: ${err.message}`);
     }
   }
 
   console.log('\n─────────────────────────────────');
   console.log(`✅ Готово!`);
-  console.log(`   Всего в JSON:  ${total}`);
-  console.log(`   Вставлено:     ${inserted}`);
-  console.log(`   Пропущено:     ${skipped}`);
+  console.log(`   Успешно добавлено:     ${inserted}`);
+  console.log(`   Пропущено (дубли/ошибки): ${skipped}`);
   console.log('─────────────────────────────────');
 }
 
 // ─── Запуск ───────────────────────────────────────────────────────────────────
 async function main() {
-  console.log('🚀 Миграция Firebase → Neon PostgreSQL\n');
-  await createTables();
+  console.log('🚀 Старт импорта точечных товаров в Neon PostgreSQL...\n');
   await migrate();
-  console.log('\n🎉 Миграция завершена!');
-  console.log('   Проверь: https://console.neon.tech → твой проект → Tables');
 }
 
 main().catch(err => {

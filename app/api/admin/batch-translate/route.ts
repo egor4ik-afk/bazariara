@@ -10,47 +10,35 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 
 const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-002'];
 
-function buildDescriptionPrompt(name: string, cat: string) {
-  return `You are a product copywriter for an online store in Georgia (country).\
-Write a short product description (2-3 sentences, max 200 chars each) for:\
-Product: ${name}\
-Category: ${cat}\
-\
-Return ONLY this JSON (no markdown, no newlines inside values):\
-{"ru":"описание на русском","en":"description in english","ka":"აღწერა ქართულად"}`;
-}
+// ─── TRANSLATOR HELPER ────────────────────────────────────────────────────────
 
-function buildNamePrompt(name: string) {
-  return `Translate this product name into English and Georgian.\
-Product name: ${name}\
-\
-Return ONLY this JSON (no markdown, no newlines inside values):\
-{"ru":"${name}","en":"translation in english","ka":"თარგმანი ქართულად"}`;
-}
-
-function parseJson(text: string): { ru: string; en: string; ka: string } {
-  let clean = text.replace(/```json\s*|\s*```/g, '').trim();
-  const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('No JSON found in response');
-  clean = match[0];
-  clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  clean = clean.replace(/"((?:[^"\\]|\\.)*)"/g, (m) => m.replace(/[\n\r\t]/g, ' '));
-
+async function translateText(text: string, targetLang: string): Promise<string> {
+  if (!text) return '';
   try {
-    const parsed = JSON.parse(clean);
-    return {
-      ru: String(parsed.ru || '').slice(0, 500),
-      en: String(parsed.en || '').slice(0, 500),
-      ka: String(parsed.ka || '').slice(0, 500),
-    };
-  } catch {
-    const get = (key: string) => {
-      const m = clean.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
-      return m ? m[1].replace(/\\n/g, ' ').replace(/\\t/g, ' ') : '';
-    };
-    return { ru: get('ru').slice(0, 500), en: get('en').slice(0, 500), ka: get('ka').slice(0, 500) };
+    const res = await fetch(
+      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ru&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`,
+      { method: 'GET' }
+    );
+    if (!res.ok) throw new Error(`Translation API error: ${res.status}`);
+    const data = await res.json();
+    return data[0].map((t: any) => t[0]).join('');
+  } catch (err) {
+    console.error(`Translation to ${targetLang} failed:`, err);
+    return text; // Fallback to original if translation fails
   }
 }
+
+// ─── PROMPTS ──────────────────────────────────────────────────────────────────
+
+function buildDescriptionPrompt(name: string, cat: string) {
+  return `Ты копирайтер для интернет-магазина. Напиши краткое и продающее описание товара на русском языке (2-3 предложения, максимум 300 символов).
+Товар: ${name}
+Категория: ${cat}
+
+Верни ТОЛЬКО текст описания, без маркдауна, кавычек и лишних слов.`;
+}
+
+// ─── PROVIDERS ────────────────────────────────────────────────────────────────
 
 function is429(e: any): boolean {
   return (
@@ -69,54 +57,34 @@ function isNotFound(e: any): boolean {
   );
 }
 
-async function generateWithYandex(prompt: string): Promise<{ ru: string; en: string; ka: string }> {
+async function generateWithYandex(prompt: string): Promise<string> {
   const client = new OpenAI({
     apiKey: YANDEX_API_KEY,
     baseURL: 'https://ai.api.cloud.yandex.net/v1',
     defaultHeaders: { 'OpenAI-Project': YANDEX_FOLDER },
   });
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const response = await client.responses.create({
-      model: `gpt://${YANDEX_FOLDER}/yandexgpt-5.1/latest`,
-      instructions: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
-      input: prompt,
-      temperature: 0.3,
-      max_output_tokens: 4000,
-    } as any);
+  const response = await client.responses.create({
+    model: `gpt://${YANDEX_FOLDER}/yandexgpt-5.1/latest`,
+    instructions: 'Ты профессиональный копирайтер. Верни только текст ответа без лишних комментариев.',
+    input: prompt,
+    temperature: 0.3,
+    max_output_tokens: 2000,
+  } as any);
 
-    const raw = (response as any).output_text
-      ?? (response as any).output?.[0]?.content?.[0]?.text
-      ?? '';
+  const raw = (response as any).output_text
+    ?? (response as any).output?.[0]?.content?.[0]?.text
+    ?? '';
 
-    // Проверяем что грузинский текст не обрезан — ищем закрывающую }
-    const hasCompleteJson = raw.includes('}');
-    // Проверяем что ka не обрезан посередине слова
-    const kaMatch = raw.match(/"ka"\s*:\s*"([^"]*)"/);
-    const kaComplete = kaMatch ? !kaMatch[1].match(/[\u10D0-\u10FF]$/) || raw.includes('"}') : true;
-
-    if (hasCompleteJson && kaComplete) {
-      try {
-        return parseJson(raw);
-      } catch {
-        console.warn(`Attempt ${attempt} parse failed, retrying...`);
-      }
-    } else {
-      console.warn(`Attempt ${attempt} response truncated, retrying...`);
-    }
-
-    await new Promise(r => setTimeout(r, 300));
-  }
-
-  throw new Error('Yandex returned truncated response after 3 attempts');
+  return raw.trim();
 }
 
-async function generateWithGemini(prompt: string): Promise<{ ru: string; en: string; ka: string }> {
+async function generateWithGemini(prompt: string): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
   for (const model of GEMINI_MODELS) {
     try {
       const response = await ai.models.generateContent({ model, contents: prompt });
-      return parseJson(response.text || '');
+      return (response.text || '').trim();
     } catch (e: any) {
       if (is429(e) || isNotFound(e)) {
         console.warn(`${model} failed (${e?.status}), trying next…`);
@@ -128,36 +96,61 @@ async function generateWithGemini(prompt: string): Promise<{ ru: string; en: str
   throw new Error('All Gemini models exhausted');
 }
 
+// ─── MAIN GENERATOR ───────────────────────────────────────────────────────────
+
 async function generate(
   name: string,
   cat: string,
   mode: 'description' | 'name',
   provider: string
 ): Promise<{ ru: string; en: string; ka: string }> {
-  const prompt = mode === 'description' ? buildDescriptionPrompt(name, cat) : buildNamePrompt(name);
+  
+  // Если нам нужно перевести ИМЯ, мы не используем ИИ, сразу используем Google Translate.
+  // Это быстрее, дешевле и надежнее.
+  if (mode === 'name') {
+    const [en, ka] = await Promise.all([
+      translateText(name, 'en'),
+      translateText(name, 'ka')
+    ]);
+    return { ru: name, en, ka };
+  }
+
+  // Если нужно сгенерировать ОПИСАНИЕ
+  const prompt = buildDescriptionPrompt(name, cat);
+  let textRu = '';
 
   if (provider === 'yandex') {
     if (!YANDEX_API_KEY) throw new Error('YANDEX_API_KEY not set');
     try {
-      return await generateWithYandex(prompt);
+      textRu = await generateWithYandex(prompt);
     } catch (e: any) {
-      // Fallback to Gemini if Yandex fails
       console.warn('Yandex failed, falling back to Gemini:', e?.message);
       if (!GEMINI_API_KEY) throw e;
-      return await generateWithGemini(prompt);
+      textRu = await generateWithGemini(prompt);
     }
   } else {
     if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not set');
     try {
-      return await generateWithGemini(prompt);
+      textRu = await generateWithGemini(prompt);
     } catch (e: any) {
-      // Fallback to Yandex if Gemini fails
       console.warn('Gemini failed, falling back to Yandex:', e?.message);
       if (!YANDEX_API_KEY) throw e;
-      return await generateWithYandex(prompt);
+      textRu = await generateWithYandex(prompt);
     }
   }
+
+  // Получили текст на русском. Теперь переводим на en и ka.
+  const cleanRu = textRu.replace(/```.*?```/gs, '').trim(); // очищаем от случайного маркдауна
+  
+  const [en, ka] = await Promise.all([
+    translateText(cleanRu, 'en'),
+    translateText(cleanRu, 'ka')
+  ]);
+
+  return { ru: cleanRu.slice(0, 500), en: en.slice(0, 500), ka: ka.slice(0, 500) };
 }
+
+// ─── API HANDLER ──────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
