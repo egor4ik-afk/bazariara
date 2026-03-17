@@ -11,8 +11,8 @@ const CategoryIcon = () => (
   </svg>
 );
 
-type SubCategoryInfo = { name: string; name_en: string | null; key: string; count: number; };
-type CategoryInfo    = { name: string; name_en: string | null; key: string; total: number; sub_categories: SubCategoryInfo[]; };
+type SubCategoryInfo = { name: string; name_en: string | null; name_ka?: string | null; key: string; count: number; };
+type CategoryInfo    = { name: string; name_en: string | null; name_ka?: string | null; key: string; total: number; sub_categories: SubCategoryInfo[]; };
 
 export default function SidebarMenu() {
   const { t, language } = useLanguage();
@@ -49,8 +49,12 @@ export default function SidebarMenu() {
     };
   }, [isOpen]);
 
-  const getName = (item: { name: string; name_en: string | null }) =>
-    language === 'en' ? (item.name_en || item.name) : item.name;
+  // Универсальный выбор имени по языку
+  const getName = (item: { name: string; name_en: string | null; name_ka?: string | null }) => {
+    if (language === 'en') return item.name_en || item.name;
+    if (language === 'ka') return item.name_ka || item.name;
+    return item.name;
+  };
 
   const totalProducts = categories.reduce((sum, c) => sum + c.total, 0);
 
@@ -64,8 +68,7 @@ export default function SidebarMenu() {
         {['top', 'mid', 'bottom'].map((pos, i) => (
           <span key={pos} className={`block w-7 h-[3px] bg-lime-400 rounded-sm transition-all duration-300 ease-in-out
             group-hover:shadow-[0_0_10px_#a3e635]
-            ${isOpen ? i === 0 ? 'rotate-45 translate-y-[8px]' : i === 1 ? 'opacity-0' : '-rotate-45 -translate-y-[8px]' : ''}`}
-          />
+            ${isOpen ? i === 0 ? 'rotate-45 translate-y-[8px]' : i === 1 ? 'opacity-0' : '-rotate-45 -translate-y-[8px]' : ''}`}/>
         ))}
       </button>
 

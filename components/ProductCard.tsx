@@ -15,6 +15,7 @@ interface ProductCardProps {
 export default function ProductCard({ product, index }: ProductCardProps) {
   const { language, t } = useLanguage();
 
+  // ✅ Учитываем все языки с fallback
   const name =
     language === 'ru' ? (product.name_ru || product.name_en || product.name_ka || product.name) :
     language === 'en' ? (product.name_en || product.name_ru || product.name_ka || product.name) :
@@ -23,31 +24,34 @@ export default function ProductCard({ product, index }: ProductCardProps) {
 
   const category =
     language === 'en' ? (product.category_en || product.category || '') :
-    language === 'ka' ? (product.category || '') :
+    language === 'ka' ? (product.category_ka || product.category || '') :
     (product.category || '');
 
   const images = getAllImages(product);
 
-  // ✅ category_key из БД, fallback — первая часть external_id
+  // category_key из БД или fallback на external_id
   const catKey = (product as any).category_key
     || (product.external_id ? product.external_id.split('_')[0] : 'unknown');
 
-  // ✅ prodId — всегда числовой id из БД
   const prodId = String(product.id);
 
   const cartProduct: CartProduct = {
     id:              String(product.id),
     title:           name,
     title_en:        product.name_en || undefined,
+    title_ka:        product.name_ka || undefined,
     price:           product.price ?? 0,
     image_url:       product.image_url || undefined,
     category:        product.category || '',
     category_en:     product.category_en || undefined,
+    category_ka:     product.category_ka || undefined,
     categoryKey:     catKey,
     description:     product.description_ru || product.description || undefined,
     description_en:  product.description_en || undefined,
+    description_ka:  product.description_ka || undefined,
     sub_category:    product.sub_category || undefined,
     sub_category_en: product.sub_category_en || undefined,
+    sub_category_ka: product.sub_category_ka || undefined,
     subCategoryKey:  product.sub_category
       ? product.sub_category.toLowerCase().replace(/\s+/g, '-')
       : undefined,

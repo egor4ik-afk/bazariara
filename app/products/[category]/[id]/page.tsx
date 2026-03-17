@@ -25,15 +25,15 @@ type NeonProduct = {
   in_stock: boolean;
   category: string | null;
   category_en: string | null;
+  category_ka: string | null;
   sub_category: string | null;
   sub_category_en: string | null;
+  sub_category_ka: string | null;
   image_url: string | null;
   images: string[] | string | null;
 };
 
-// Конвертируем Neon → формат который ожидает client-page
 function toClientProduct(p: NeonProduct, category: string, id: string) {
-  // Парсим images если это строка
   let imgs: string[] = [];
   if (typeof p.images === 'string') {
     try { imgs = JSON.parse(p.images); } catch { imgs = []; }
@@ -49,7 +49,6 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
     external_id:     p.external_id,
     categoryKey:     category,
 
-    // Все три языка
     title:           p.name_ru || p.name_en || p.name_ka || p.name,
     title_en:        p.name_en || undefined,
     title_ka:        p.name_ka || undefined,
@@ -60,9 +59,11 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
 
     category:        p.category || '',
     category_en:     p.category_en || undefined,
+    category_ka:     p.category_ka || undefined,
 
     sub_category:    p.sub_category || undefined,
     sub_category_en: p.sub_category_en || undefined,
+    sub_category_ka: p.sub_category_ka || undefined,
 
     price:           p.price ?? 0,
     in_stock:        p.in_stock,
@@ -81,7 +82,8 @@ async function getProduct(category: string, id: string) {
         name, name_ru, name_en, name_ka,
         description, description_ru, description_en, description_ka,
         price, currency, in_stock,
-        category, category_en, sub_category, sub_category_en,
+        category, category_en, category_ka,
+        sub_category, sub_category_en, sub_category_ka,
         image_url, images
       FROM products
       WHERE source = 'gorgia'
@@ -91,23 +93,14 @@ async function getProduct(category: string, id: string) {
 
     if (!rows[0]) return null;
 
-    return toClientProduct(
-      rows[0] as unknown as NeonProduct,
-      category,
-      id
-    );
+    return toClientProduct(rows[0] as unknown as NeonProduct, category, id);
   } catch (err) {
     console.error('Ошибка при получении товара:', err);
     return null;
   }
 }
 
-// === SEO: Метаданные ===
-export async function generateMetadata({
-  params,
-}: {
-  params: Params;
-}): Promise<Metadata> {
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { category, id } = await params;
   const product = await getProduct(category, id);
 
@@ -148,12 +141,7 @@ export async function generateMetadata({
   };
 }
 
-// === Страница товара ===
-export default async function ProductDetailPage({
-  params,
-}: {
-  params: Params;
-}) {
+export default async function ProductDetailPage({ params }: { params: Params }) {
   const { category, id } = await params;
   const product = await getProduct(category, id);
 

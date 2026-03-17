@@ -23,8 +23,10 @@ type Product = {
   description_ka?: string;
   category: string;
   category_en?: string;
+  category_ka?: string;
   sub_category?: string;
   sub_category_en?: string;
+  sub_category_ka?: string;
   price: number;
   in_stock: boolean;
   currency?: string;
@@ -43,15 +45,17 @@ function RelatedProductCard({ category, id }: { category: string; id: string }) 
       .then(data => {
         if (!data) return;
         setProduct({
-          id:          data.id ? String(data.id) : id,
+          id: data.id ? String(data.id) : id,
           categoryKey: category,
-          title:       data.name || data.title || '',
-          title_en:    data.name_en || data.title_en,
-          title_ka:    data.name_ka,
-          price:       data.price ?? 0,
-          image_url:   data.image_url,
-          in_stock:    data.in_stock,
-          category:    data.category || '',
+          title: data.name || data.title || '',
+          title_en: data.name_en || data.title_en,
+          title_ka: data.name_ka || data.title_ka,
+          price: data.price ?? 0,
+          image_url: data.image_url,
+          in_stock: data.in_stock,
+          category: data.category || '',
+          category_en: data.category_en,
+          category_ka: data.category_ka,
         });
       })
       .catch(console.error);
@@ -59,8 +63,8 @@ function RelatedProductCard({ category, id }: { category: string; id: string }) 
 
   const getTitle = () => {
     if (!product) return '';
-    if (language === 'en') return product.title_en || product.title;
     if (language === 'ka') return product.title_ka || product.title;
+    if (language === 'en') return product.title_en || product.title;
     return product.title;
   };
 
@@ -97,24 +101,43 @@ export default function ProductDetailClient({ product }: { product: Product }) {
   const router = useRouter();
   const { t, language } = useLanguage();
 
-  const getTitle       = () => language === 'en' ? product.title_en || product.title : language === 'ka' ? product.title_ka || product.title : product.title;
-  const getDescription = () => language === 'en' ? product.description_en || product.description : language === 'ka' ? product.description_ka || product.description : product.description;
-  const getCategory    = () => language === 'en' ? product.category_en || product.category : product.category;
-  const getSubCategory = () => language === 'en' ? product.sub_category_en || product.sub_category : product.sub_category;
+  const getTitle = () => {
+    if (language === 'ka') return product.title_ka || product.title;
+    if (language === 'en') return product.title_en || product.title;
+    return product.title;
+  };
+
+  const getDescription = () => {
+    if (language === 'ka') return product.description_ka || product.description;
+    if (language === 'en') return product.description_en || product.description;
+    return product.description;
+  };
+
+  const getCategory = () => {
+    if (language === 'ka') return product.category_ka || product.category;
+    if (language === 'en') return product.category_en || product.category;
+    return product.category;
+  };
+
+  const getSubCategory = () => {
+    if (language === 'ka') return product.sub_category_ka || product.sub_category;
+    if (language === 'en') return product.sub_category_en || product.sub_category;
+    return product.sub_category;
+  };
 
   const cartProduct = { ...product, title: getTitle() };
-  const cartItem    = cartItems.find(i => i.id === product.id && i.category === product.category);
+  const cartItem = cartItems.find(i => i.id === product.id && i.category === product.category);
   const [inputValue, setInputValue] = useState<string | number>('');
 
   useEffect(() => { if (cartItem) setInputValue(cartItem.quantity); }, [cartItem]);
 
-  const allImages      = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
-  const uniqueImages   = [...new Set(allImages)];
+  const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
+  const uniqueImages = [...new Set(allImages)];
 
   const handleAddToCart = () => addToCart(cartProduct);
-  const handleIncrease  = () => { if (!cartItem) return; const q = cartItem.quantity + 1; setInputValue(q); updateQuantity(cartItem.id, q, cartItem.category); };
-  const handleDecrease  = () => { if (!cartItem) return; if (cartItem.quantity > 1) { const q = cartItem.quantity - 1; setInputValue(q); updateQuantity(cartItem.id, q, cartItem.category); } else removeFromCart(cartItem.id, cartItem.category); };
-  const handleBlur      = () => { if (!cartItem) return; const q = parseInt(inputValue.toString(), 10); if (!isNaN(q) && q > 0) updateQuantity(cartItem.id, q, cartItem.category); else setInputValue(cartItem.quantity); };
+  const handleIncrease = () => { if (!cartItem) return; const q = cartItem.quantity + 1; setInputValue(q); updateQuantity(cartItem.id, q, cartItem.category); };
+  const handleDecrease = () => { if (!cartItem) return; if (cartItem.quantity > 1) { const q = cartItem.quantity - 1; setInputValue(q); updateQuantity(cartItem.id, q, cartItem.category); } else removeFromCart(cartItem.id, cartItem.category); };
+  const handleBlur = () => { if (!cartItem) return; const q = parseInt(inputValue.toString(), 10); if (!isNaN(q) && q > 0) updateQuantity(cartItem.id, q, cartItem.category); else setInputValue(cartItem.quantity); };
 
   return (
     <div className="bg-gray-900 min-h-screen text-white">
@@ -192,7 +215,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 try {
                   const parts = new URL(link).pathname.split('/');
                   if (parts.length >= 4) return <RelatedProductCard key={i} category={parts[2]} id={parts[3]} />;
-                } catch {}
+                } catch { }
                 return null;
               })}
             </div>

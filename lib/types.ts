@@ -1,13 +1,13 @@
 export type Lang = 'ru' | 'en' | 'ka';
 
 // Тип категории — точно соответствует InteractiveFilters + CategoryCarousel
-export interface Category {
+export type Category = {
   key: string;
   name: string;
-  name_en?: string | null;
-  name_ka?: string | null;
+  name_en: string | null;
+  name_ka: string | null;
   imageUrl: string;
-}
+};
 
 export interface Product {
   id: number;
@@ -24,6 +24,8 @@ export interface Product {
 
   // Обратная совместимость — QuantityInput и другие компоненты используют title/categoryKey
   title?: string;
+  title_en?: string;
+  title_ka?: string;
   categoryKey?: string;
 
   description: string | null;
@@ -38,8 +40,11 @@ export interface Product {
 
   category: string | null;
   category_en: string | null;
+  category_ka: string | null;
+  
   sub_category: string | null;
   sub_category_en: string | null;
+  sub_category_ka: string | null;
 
   // Главное фото
   image_url: string | null;

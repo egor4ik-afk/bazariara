@@ -35,7 +35,6 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 
   let catName = category;
   try {
-    // ✅ category_key вместо SPLIT_PART
     const rows = await sql`
       SELECT DISTINCT category FROM products
       WHERE source = 'gorgia' AND category_key = ${category}
@@ -70,25 +69,26 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const ITEMS_PER_PAGE      = 20;
   const offset              = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  let products: Product[]        = [];
-  let total                      = 0;
-  let categoriesList: Category[] = [];
+  let products: Product[]           = [];
+  let total                         = 0;
+  let categoriesList: Category[]    = [];
   let subCategoriesList: Category[] = [];
 
   try {
-    // ── Категории с JOIN к таблице categories для кастомных превью ──────────
     const catRows = await sql`
       SELECT
         p.key,
         p.name,
         p.name_en,
+        p.name_ka,
         COALESCE(c.category_image, p.image_url) AS image_url
       FROM (
         SELECT
-          category_key              AS key,
-          MAX(category)             AS name,
-          MAX(category_en)          AS name_en,
-          MIN(image_url)            AS image_url
+          category_key     AS key,
+          MAX(category)    AS name,
+          MAX(category_en) AS name_en,
+          MAX(category_ka) AS name_ka,
+          MIN(image_url)   AS image_url
         FROM products
         WHERE source = 'gorgia'
           AND image_url IS NOT NULL
@@ -104,17 +104,18 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       key:      r.key as string,
       name:     r.name as string,
       name_en:  (r.name_en as string) || null,
+      name_ka:  (r.name_ka as string) || null,
       imageUrl: (r.image_url as string) ?? '',
     }));
 
-    // ── Подкатегории ────────────────────────────────────────────────────────
     if (selectedCategory !== 'all') {
       const subRows = await sql`
         SELECT
           LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) AS key,
-          MAX(sub_category)    AS name,
-          MAX(sub_category_en) AS name_en,
-          MIN(image_url)       AS image_url
+          MAX(sub_category)     AS name,
+          MAX(sub_category_en)  AS name_en,
+          MAX(sub_category_ka)  AS name_ka,
+          MIN(image_url)        AS image_url
         FROM products
         WHERE source = 'gorgia'
           AND image_url IS NOT NULL
@@ -126,12 +127,12 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
       subCategoriesList = (subRows as Row[]).map((r) => ({
         key:      r.key as string,
         name:     r.name as string,
-        name_en:  (r.name_en as string) ?? undefined,
+        name_en:  (r.name_en as string) ?? null,
+        name_ka:  (r.name_ka as string) ?? null,
         imageUrl: (r.image_url as string) ?? '',
       }));
     }
 
-    // ── Фильтры ─────────────────────────────────────────────────────────────
     const categoryFilter = selectedCategory !== 'all'
       ? sql`AND category_key = ${selectedCategory}`
       : sql``;
@@ -161,7 +162,8 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           name_ru, name_en, name_ka,
           description_ru AS description,
           price, currency, in_stock, availability,
-          category, category_en, sub_category, sub_category_en,
+          category, category_en, category_ka,
+          sub_category, sub_category_en, sub_category_ka,
           image_url, images
         FROM products
         WHERE source = 'gorgia'
@@ -199,7 +201,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           categoryNames={selectedCategory !== 'all'
             ? (() => {
                 const cat = categoriesList.find(c => c.key === selectedCategory);
-                return cat ? { ru: cat.name, en: cat.name_en } : undefined;
+                return cat ? { ru: cat.name, en: cat.name_en, ka: cat.name_ka } : undefined;
               })()
             : undefined}
         />

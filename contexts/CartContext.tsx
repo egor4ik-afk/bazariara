@@ -17,21 +17,30 @@ export type ProductInCart = {
   subCategoryKey?: string;
 };
 
+// CartContext.tsx — обновить тип Product
 export type Product = {
   id: string;
+  external_id?: string;
+  categoryKey: string;
+  subCategoryKey?: string;
   title: string;
   title_en?: string;
-  price: number | string;  // принимаем и строку и число
-  image_url?: string;
-  category: string;
-  category_en?: string;
-  categoryKey: string;
+  title_ka?: string;
   description?: string;
   description_en?: string;
+  description_ka?: string;
+  category: string;
+  category_en?: string;
+  category_ka?: string;
   sub_category?: string;
   sub_category_en?: string;
-  subCategoryKey?: string;
+  sub_category_ka?: string;
+  price: number;
   in_stock: boolean;
+  currency?: string;
+  image_url?: string;
+  image_urls?: string[];
+  links?: string[];
 };
 
 type CartContextType = {

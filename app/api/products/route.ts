@@ -15,7 +15,6 @@ export async function GET(req: NextRequest) {
   const nameField = lang === 'ka' ? sql`name_ka` : lang === 'en' ? sql`name_en` : sql`name_ru`;
   const descField = lang === 'ka' ? sql`description_ka` : lang === 'en' ? sql`description_en` : sql`description_ru`;
 
-  // ✅ Используем category_key вместо SPLIT_PART
   const categoryFilter = category && category !== 'all'
     ? sql`AND category_key = ${category}`
     : sql``;
@@ -43,7 +42,8 @@ export async function GET(req: NextRequest) {
           name_ru, name_en, name_ka,
           COALESCE(${descField}, description) AS description,
           price, currency, in_stock, availability,
-          category, category_en, sub_category, sub_category_en,
+          category, category_en, category_ka,
+          sub_category, sub_category_en, sub_category_ka,
           image_url, images, updated_at
         FROM products
         WHERE source = 'gorgia' AND image_url IS NOT NULL

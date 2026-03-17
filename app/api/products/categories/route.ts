@@ -8,8 +8,10 @@ export async function GET(_req: NextRequest) {
         category_key,
         category,
         category_en,
+        category_ka,
         sub_category,
         sub_category_en,
+        sub_category_ka,
         MIN(image_url) AS image_url,
         COUNT(*) AS total,
         COUNT(*) FILTER (WHERE in_stock = true) AS in_stock_count
@@ -20,8 +22,8 @@ export async function GET(_req: NextRequest) {
         AND category_key IS NOT NULL
       GROUP BY
         category_key,
-        category, category_en,
-        sub_category, sub_category_en
+        category, category_en, category_ka,
+        sub_category, sub_category_en, sub_category_ka
       ORDER BY category, sub_category
     `;
 
@@ -29,9 +31,17 @@ export async function GET(_req: NextRequest) {
       key: string;
       name: string;
       name_en: string | null;
+      name_ka: string | null;
       image_url: string | null;
       total: number;
-      sub_categories: { key: string; name: string; name_en: string | null; image_url: string | null; count: number }[];
+      sub_categories: {
+        key: string;
+        name: string;
+        name_en: string | null;
+        name_ka: string | null;
+        image_url: string | null;
+        count: number;
+      }[];
     }>();
 
     for (const row of rows) {
@@ -41,6 +51,7 @@ export async function GET(_req: NextRequest) {
           key,
           name:           row.category as string,
           name_en:        row.category_en as string | null,
+          name_ka:        row.category_ka as string | null,
           image_url:      row.image_url as string | null,
           total:          0,
           sub_categories: [],
@@ -53,13 +64,13 @@ export async function GET(_req: NextRequest) {
         const subKey = (row.sub_category as string).toLowerCase().replace(/\s+/g, '-');
         const existing = entry.sub_categories.find(s => s.key === subKey);
         if (existing) {
-          // Дедупликация — суммируем count
           existing.count += parseInt(row.total as string);
         } else {
           entry.sub_categories.push({
             key:       subKey,
             name:      row.sub_category as string,
             name_en:   row.sub_category_en as string | null,
+            name_ka:   row.sub_category_ka as string | null,
             image_url: row.image_url as string | null,
             count:     parseInt(row.total as string),
           });

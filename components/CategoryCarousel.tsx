@@ -4,10 +4,10 @@ import { useRef, useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type Category = {
+  key: string;
   name: string;
   name_en?: string | null;
   name_ka?: string | null;
-  key: string;
   imageUrl?: string;
 };
 
@@ -27,10 +27,12 @@ export default function CategoryCarousel({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+
     const handleScroll = () => {
       const maxScroll = el.scrollWidth - el.clientWidth;
       setScrollProgress(maxScroll > 0 ? (el.scrollLeft / maxScroll) * 100 : 0);
     };
+
     el.addEventListener('scroll', handleScroll);
     return () => el.removeEventListener('scroll', handleScroll);
   }, []);
@@ -38,15 +40,17 @@ export default function CategoryCarousel({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el || !selectedCategory) return;
-    el.querySelector<HTMLButtonElement>(`#category-${selectedCategory}`)
-      ?.scrollIntoView({ behavior: 'smooth', inline: 'center' });
+    const btn = el.querySelector<HTMLButtonElement>(`#category-${selectedCategory}`);
+    btn?.scrollIntoView({ behavior: 'smooth', inline: 'center' });
   }, [selectedCategory, categories]);
 
-  // Перевод из данных БД с fallback на русский
+  // Функция перевода с fallback на русский
   const getName = (cat: Category) => {
-    if (language === 'en') return cat.name_en || cat.name;
-    if (language === 'ka') return cat.name_ka || cat.name;
-    return cat.name;
+    switch (language) {
+      case 'en': return cat.name_en || cat.name;
+      case 'ka': return cat.name_ka || cat.name;
+      default:   return cat.name;
+    }
   };
 
   return (
@@ -64,8 +68,8 @@ export default function CategoryCarousel({
             className={`flex flex-col items-center justify-between flex-shrink-0 w-40 sm:w-48 md:w-52 rounded-2xl overflow-hidden snap-start transition-all duration-300
               ${selectedCategory === category.key
                 ? 'ring-2 ring-lime-500 shadow-md shadow-lime-500/30 scale-[1.04]'
-                : 'ring-1 ring-gray-700 hover:ring-lime-400 hover:scale-[1.03]'
-              }`}
+                : 'ring-1 ring-gray-700 hover:ring-lime-400 hover:scale-[1.03]'}`
+            }
           >
             <div className="w-full flex justify-center items-center bg-gray-900">
               <img
@@ -78,9 +82,8 @@ export default function CategoryCarousel({
             <span className={`w-full text-center py-1.5 text-[11px] sm:text-sm font-semibold tracking-wide truncate
               ${selectedCategory === category.key
                 ? 'bg-lime-500 text-gray-900'
-                : 'bg-gray-800 text-gray-100'
-              }`}
-            >
+                : 'bg-gray-800 text-gray-100'}`
+            }>
               {getName(category)}
             </span>
           </button>
