@@ -2,46 +2,138 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-// Все категории gorgia.ge с URL для парсинга
 const GORGIA_CATALOG: { category: string; sub_category: string; url: string }[] = [
-  // IKEA
-  { category: 'IKEA', sub_category: 'Столы',        url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-magidebi-da-merxebi/' },
-  { category: 'IKEA', sub_category: 'Стулья',       url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-stulebida-skamebi/' },
-  { category: 'IKEA', sub_category: 'Шкафы',        url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-karebiani-satumebi/' },
-  { category: 'IKEA', sub_category: 'Гостиная',     url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-sadzineo-aveji/' },
-  { category: 'IKEA', sub_category: 'Спальня',      url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-saZinao-aveji/' },
-  { category: 'IKEA', sub_category: 'Освещение',    url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-ganaTeba/' },
-  { category: 'IKEA', sub_category: 'Кухня',        url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-samzareulosaTvis/' },
-  { category: 'IKEA', sub_category: 'Ванная',       url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-abazanisaTvis/' },
-  { category: 'IKEA', sub_category: 'Детская',      url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-saTamaSoebi-da-bavSvTa-aveji/' },
-  { category: 'IKEA', sub_category: 'Текстиль',     url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-tekstili/' },
-  { category: 'IKEA', sub_category: 'Декор',        url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-dekoracia/' },
-  // Климатическое оборудование
-  { category: 'Климатическое оборудование', sub_category: 'Кондиционеры',   url: 'https://gorgia.ge/ka/klimaturi-teqnika/kondicionerebi/' },
-  { category: 'Климатическое оборудование', sub_category: 'Вентиляция',     url: 'https://gorgia.ge/ka/klimaturi-teqnika/saventilacio-sistemebi/' },
-  { category: 'Климатическое оборудование', sub_category: 'Водонагреватели',url: 'https://gorgia.ge/ka/klimaturi-teqnika/wylis-gamaTbobeli/' },
-  { category: 'Климатическое оборудование', sub_category: 'Коллекторы',     url: 'https://gorgia.ge/ka/klimaturi-teqnika/kolektorebi/' },
-  { category: 'Климатическое оборудование', sub_category: 'Обогреватели',   url: 'https://gorgia.ge/ka/klimaturi-teqnika/gamaTbobeli-aparatebi/' },
-  // Мебель
-  { category: 'Мебель', sub_category: 'Столы',         url: 'https://gorgia.ge/ka/avejis-maRazia/magidebidamerxebi/' },
-  { category: 'Мебель', sub_category: 'Стулья',        url: 'https://gorgia.ge/ka/avejis-maRazia/skrebi/' },
-  { category: 'Мебель', sub_category: 'Вешалки',       url: 'https://gorgia.ge/ka/avejis-maRazia/vesalkebi/' },
-  { category: 'Мебель', sub_category: 'Тумбочки',      url: 'https://gorgia.ge/ka/avejis-maRazia/tumbo/' },
-  { category: 'Мебель', sub_category: 'Уличная мебель',url: 'https://gorgia.ge/ka/avejis-maRazia/quchis-aveji/' },
-  { category: 'Мебель', sub_category: 'Детская мебель',url: 'https://gorgia.ge/ka/avejis-maRazia/bavSvTa-aveji/' },
-  // Остальные
-  { category: 'Сад',       sub_category: '', url: 'https://gorgia.ge/ka/baRi-da-aivani/' },
-  { category: 'Туризм',    sub_category: '', url: 'https://gorgia.ge/ka/turizmi-da-dasveneba/' },
-  { category: 'Сантехника',sub_category: 'Смесители', url: 'https://gorgia.ge/ka/santeknika/smesitelebi/' },
-  { category: 'Сантехника',sub_category: 'Раковины',  url: 'https://gorgia.ge/ka/santeknika/rakovina/' },
-  { category: 'Освещение', sub_category: 'Настольные лампы', url: 'https://gorgia.ge/ka/ganateba/magidis-naTurebi/' },
-  { category: 'Игрушки',   sub_category: '', url: 'https://gorgia.ge/ka/saTamaSoebi/' },
-  { category: 'Товары для животных', sub_category: '', url: 'https://gorgia.ge/ka/cxovelebisTvis/' },
-  { category: 'Обогреватели', sub_category: '', url: 'https://gorgia.ge/ka/klimaturi-teqnika/gamaTbobeli-aparatebi/' },
+  // ===== IKEA =====
+  { category: 'IKEA', sub_category: 'Столы и рабочие места',       url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-magidebi-da-merxebi/' },
+  { category: 'IKEA', sub_category: 'Стулья',                       url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-stulebida-skamebi/' },
+  { category: 'IKEA', sub_category: 'Шкафы',                        url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-karebiani-satumebi/' },
+  { category: 'IKEA', sub_category: 'Гостиная',                     url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-sadzineo-aveji/' },
+  { category: 'IKEA', sub_category: 'Спальня',                      url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-saZinao-aveji/' },
+  { category: 'IKEA', sub_category: 'Офис и рабочий кабинет',       url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/ikeas-samushao-otaxi/' },
+  { category: 'IKEA', sub_category: 'Вся мебель IKEA',              url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-aveji/' },
+  { category: 'IKEA', sub_category: 'Освещение',                    url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-ganateba/' },
+  { category: 'IKEA', sub_category: 'Кухня',                        url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-samzareulo/' },
+  { category: 'IKEA', sub_category: 'Ванная',                       url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-saabazano/' },
+  { category: 'IKEA', sub_category: 'Детская',                      url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-sabavshvo-otaxi/' },
+  { category: 'IKEA', sub_category: 'Текстиль',                     url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-teqstili/' },
+  { category: 'IKEA', sub_category: 'Декор',                        url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-saxlis-dekori/' },
+  { category: 'IKEA', sub_category: 'Организация и хранение',       url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-saxlis-movla-da-organizeba/' },
+  { category: 'IKEA', sub_category: 'Экстерьер',                    url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-eqsterieri/' },
+
+  // ===== Мебель =====
+  { category: 'Мебель', sub_category: 'Столы',                      url: 'https://gorgia.ge/ka/aveji/magidebi-da-merxebi/' },
+  { category: 'Мебель', sub_category: 'Стулья',                     url: 'https://gorgia.ge/ka/aveji/skamebi/' },
+  { category: 'Мебель', sub_category: 'Мягкая мебель',              url: 'https://gorgia.ge/ka/aveji/rbili-aveji/' },
+  { category: 'Мебель', sub_category: 'Шкафы и стеллажи',           url: 'https://gorgia.ge/ka/aveji/karadebi-da-taroebi/' },
+  { category: 'Мебель', sub_category: 'Спальня',                    url: 'https://gorgia.ge/ka/aveji/sadzinebeli/' },
+  { category: 'Мебель', sub_category: 'Кухонная мебель',            url: 'https://gorgia.ge/ka/aveji/samzareulos-aveji/' },
+  { category: 'Мебель', sub_category: 'Тумбочки и комоды',          url: 'https://gorgia.ge/ka/aveji/komodi-da-tumbo/' },
+  { category: 'Мебель', sub_category: 'Зеркала',                    url: 'https://gorgia.ge/ka/aveji/sarke/' },
+  { category: 'Мебель', sub_category: 'Фурнитура',                  url: 'https://gorgia.ge/ka/aveji/furnituris-aqsesuarebi/' },
+  { category: 'Мебель', sub_category: 'Детская мебель',             url: 'https://gorgia.ge/ka/sabavshvo/sabavshvo-aveji/' },
+  { category: 'Мебель', sub_category: 'Уличная мебель',             url: 'https://gorgia.ge/ka/aveji/gare-aveji/' },
+
+  // ===== Климатическое оборудование =====
+  { category: 'Климатическое оборудование', sub_category: 'Центральное отопление',   url: 'https://gorgia.ge/ka/klimaturi-teqnika/centraluri-gatbobis-sistema/' },
+  { category: 'Климатическое оборудование', sub_category: 'Кондиционеры',             url: 'https://gorgia.ge/ka/klimaturi-teqnika/kondicioneri/' },
+  { category: 'Климатическое оборудование', sub_category: 'Вентиляторы',              url: 'https://gorgia.ge/ka/klimaturi-teqnika/ventilatorebi/' },
+  { category: 'Климатическое оборудование', sub_category: 'Водонагреватели',          url: 'https://gorgia.ge/ka/klimaturi-teqnika/wylis-gamacxeleblebi/' },
+  { category: 'Климатическое оборудование', sub_category: 'Обогреватели',             url: 'https://gorgia.ge/ka/klimaturi-teqnika/gamatboblebi/' },
+  { category: 'Климатическое оборудование', sub_category: 'Вентиляция',               url: 'https://gorgia.ge/ka/klimaturi-teqnika/saventilacio-sistemebi/' },
+  { category: 'Климатическое оборудование', sub_category: 'Коллекторы и бойлеры',    url: 'https://gorgia.ge/ka/klimaturi-teqnika/koleqtorebi-da-boilerebi/' },
+
+  // ===== Сантехника =====
+  { category: 'Сантехника', sub_category: 'Мебель для ванной',       url: 'https://gorgia.ge/ka/santeqnika/saabazanos-aveji/' },
+  { category: 'Сантехника', sub_category: 'Смесители и душевые',     url: 'https://gorgia.ge/ka/santeqnika/onkanebi-da-sashxape-sistemebi/' },
+  { category: 'Сантехника', sub_category: 'Ванны и душевые кабины',  url: 'https://gorgia.ge/ka/santeqnika/abazana-da-sashxape-kabina/' },
+  { category: 'Сантехника', sub_category: 'Унитазы',                  url: 'https://gorgia.ge/ka/santeqnika/unitazi-da-makompleqteblebi/' },
+  { category: 'Сантехника', sub_category: 'Водоснабжение',            url: 'https://gorgia.ge/ka/santeqnika/wyalmomarageba-da-sakanalizacio-sistemebi/' },
+  { category: 'Сантехника', sub_category: 'Аксессуары',               url: 'https://gorgia.ge/ka/santeqnika/saabazanos-da-tualetis-aqsesuarebi/' },
+  { category: 'Сантехника', sub_category: 'Раковины',                 url: 'https://gorgia.ge/ka/santeqnika/xelsabani-da-aqsesuarebi/' },
+  { category: 'Сантехника', sub_category: 'Биде и писсуары',          url: 'https://gorgia.ge/ka/santeqnika/bide-da-pisuari/' },
+  { category: 'Сантехника', sub_category: 'Безопасность и изоляция',  url: 'https://gorgia.ge/ka/santeqnika/saxandzro-usafrtxoeba-da-tboizolacia/' },
+
+  // ===== Освещение =====
+  { category: 'Освещение', sub_category: 'Внутреннее освещение',          url: 'https://gorgia.ge/ka/ganateba/shida-ganateba/' },
+  { category: 'Освещение', sub_category: 'Настольные лампы и торшеры',    url: 'https://gorgia.ge/ka/ganateba/magidis-sanatebi-da-torsherebi/' },
+  { category: 'Освещение', sub_category: 'Уличное освещение',             url: 'https://gorgia.ge/ka/ganateba/gare-ganateba/' },
+  { category: 'Освещение', sub_category: 'Техническое освещение',         url: 'https://gorgia.ge/ka/ganateba/teqnikuri-ganateba/' },
+  { category: 'Освещение', sub_category: 'Кабели и удлинители',           url: 'https://gorgia.ge/ka/ganateba/damagrdzeleblebi-da-gadamyvanebi/' },
+  { category: 'Освещение', sub_category: 'Монтажное оборудование',        url: 'https://gorgia.ge/ka/ganateba/samontajo-mowyobilobebi-da-aqsesuarebi/' },
+  { category: 'Освещение', sub_category: 'Батарейки',                     url: 'https://gorgia.ge/ka/ganateba/elementebi-da-batareebi/' },
+
+  // ===== Ремонт =====
+  { category: 'Ремонт', sub_category: 'Двери',                       url: 'https://gorgia.ge/ka/remonti/kari/' },
+  { category: 'Ремонт', sub_category: 'Полы',                        url: 'https://gorgia.ge/ka/remonti/iataki/' },
+  { category: 'Ремонт', sub_category: 'Плитка',                      url: 'https://gorgia.ge/ka/remonti/keramikuli-filebi/' },
+  { category: 'Ремонт', sub_category: 'Обои',                        url: 'https://gorgia.ge/ka/remonti/shpaleri-da-penoplastis-karnizebi/' },
+  { category: 'Ремонт', sub_category: 'Краски',                      url: 'https://gorgia.ge/ka/remonti/laq-sagebavebi/' },
+  { category: 'Ремонт', sub_category: 'Потолки',                     url: 'https://gorgia.ge/ka/remonti/samontajo-cheri/' },
+  { category: 'Ремонт', sub_category: 'Окна',                        url: 'https://gorgia.ge/ka/remonti/fanjara/' },
+
+  // ===== Строительство =====
+  { category: 'Строительство', sub_category: 'Кирпич и блоки',       url: 'https://gorgia.ge/ka/mshenebloba/aguri-da-bloki/' },
+  { category: 'Строительство', sub_category: 'Изоляция',              url: 'https://gorgia.ge/ka/mshenebloba/saizolacio-masalebi/' },
+  { category: 'Строительство', sub_category: 'Сухие смеси',           url: 'https://gorgia.ge/ka/mshenebloba/samsheneblo-fxvnilebi/' },
+  { category: 'Строительство', sub_category: 'Клеи и герметики',      url: 'https://gorgia.ge/ka/mshenebloba/webo-da-sahermetizacio-masalebi/' },
+  { category: 'Строительство', sub_category: 'Расходные материалы',   url: 'https://gorgia.ge/ka/mshenebloba/saxarji-masala/' },
+  { category: 'Строительство', sub_category: 'Строительный профиль',  url: 'https://gorgia.ge/ka/mshenebloba/samsheneblo-propili-da-sxva-aqsesuarebi/' },
+  { category: 'Строительство', sub_category: 'Кровля и фасады',       url: 'https://gorgia.ge/ka/mshenebloba/saxuravebi-da-fasadis-sistemebi/' },
+  { category: 'Строительство', sub_category: 'Лестницы',              url: 'https://gorgia.ge/ka/mshenebloba/kibis-safexurebi-da-moajirebi/' },
+  { category: 'Строительство', sub_category: 'Краски интерьер',       url: 'https://gorgia.ge/ka/interieri/laq-sagebavebi/' },
+
+  // ===== Инструменты =====
+  { category: 'Инструменты', sub_category: 'Сверление и перфораторы', url: 'https://gorgia.ge/ka/xelsawyoebi/saxvreti-da-satex-sangrevi/' },
+  { category: 'Инструменты', sub_category: 'Пилы и резка',            url: 'https://gorgia.ge/ka/xelsawyoebi/saxerxi-da-sachrelebi/' },
+  { category: 'Инструменты', sub_category: 'Лестницы',                url: 'https://gorgia.ge/ka/xelsawyoebi/kibeebi/' },
+  { category: 'Инструменты', sub_category: 'Сварка',                  url: 'https://gorgia.ge/ka/xelsawyoebi/shesadugeblebi/' },
+  { category: 'Инструменты', sub_category: 'Спецодежда и защита',     url: 'https://gorgia.ge/ka/xelsawyoebi/uniforma-da-usafrtxoeba/' },
+  { category: 'Инструменты', sub_category: 'Крепёж',                  url: 'https://gorgia.ge/ka/xelsawyoebi/mafiqsireblebi/' },
+  { category: 'Инструменты', sub_category: 'Измерительные инструменты', url: 'https://gorgia.ge/ka/xelsawyoebi/sazomebi-da-mosanishnebi/' },
+  { category: 'Инструменты', sub_category: 'Шлифовка',                url: 'https://gorgia.ge/ka/xelsawyoebi/salesi/' },
+  { category: 'Инструменты', sub_category: 'Автоаксессуары',          url: 'https://gorgia.ge/ka/xelsawyoebi/saavtomobilo-aqsesuarebi/' },
+  { category: 'Инструменты', sub_category: 'Генераторы и компрессоры',url: 'https://gorgia.ge/ka/xelsawyoebi/energiis-da-haeris-warmomqmneli/' },
+  { category: 'Инструменты', sub_category: 'Смешивание',              url: 'https://gorgia.ge/ka/xelsawyoebi/shereva-gazaveba/' },
+  { category: 'Инструменты', sub_category: 'Уборка и мойка',          url: 'https://gorgia.ge/ka/xelsawyoebi/sawmendi-da-wnevit-sarecxi/' },
+
+  // ===== Сад =====
+  { category: 'Сад', sub_category: 'Садовая мебель',                  url: 'https://gorgia.ge/ka/aveji/gare-aveji/' },
+  { category: 'Сад', sub_category: 'Бассейны',                        url: 'https://gorgia.ge/ka/bagi/auzi-da-wylis-aqsesuarebi/' },
+  { category: 'Сад', sub_category: 'Инструменты и инвентарь',         url: 'https://gorgia.ge/ka/bagi/bagis-xelsawyoebi-da-inventrai/' },
+  { category: 'Сад', sub_category: 'Напитки и пикник',                url: 'https://gorgia.ge/ka/bagi/inventari-sasmelebistvis/' },
+  { category: 'Сад', sub_category: 'Заборы и ограждения',             url: 'https://gorgia.ge/ka/bagi/gobeebi-da-barierebi/' },
+  { category: 'Сад', sub_category: 'Пикник и отдых',                  url: 'https://gorgia.ge/ka/bagi/sapiknike-inventari/' },
+  { category: 'Сад', sub_category: 'Декор сада',                      url: 'https://gorgia.ge/ka/bagi/bagis-dekori-da-aqsesuarebi/' },
+  { category: 'Сад', sub_category: 'Полив',                           url: 'https://gorgia.ge/ka/bagi/sarwyavi-sistemebi/' },
+  { category: 'Сад', sub_category: 'Рабочая одежда',                  url: 'https://gorgia.ge/ka/bagi/bagis-samushao-samosi/' },
+  { category: 'Сад', sub_category: 'Растения',                        url: 'https://gorgia.ge/ka/bagi/mcenareebi/' },
+  { category: 'Сад', sub_category: 'Уличные полы',                    url: 'https://gorgia.ge/ka/remonti/iataki/eqsterieris-iataki/' },
+
+  // ===== Техника =====
+  { category: 'Техника', sub_category: 'Мелкая кухонная техника',     url: 'https://gorgia.ge/ka/teqnika/samzareulos-wvrili-teqnika/' },
+  { category: 'Техника', sub_category: 'Крупная техника',             url: 'https://gorgia.ge/ka/teqnika/samzareulos-msxvili-teqnika/' },
+  { category: 'Техника', sub_category: 'Бытовая техника',             url: 'https://gorgia.ge/ka/teqnika/teqnika-saxlistvis/' },
+  { category: 'Техника', sub_category: 'Уход за собой',               url: 'https://gorgia.ge/ka/teqnika/tavis-movla/' },
+
+  // ===== Дом и быт =====
+  { category: 'Дом и быт', sub_category: 'Кухонная утварь',           url: 'https://gorgia.ge/ka/sayofacxovrebo/churcheli-da-samzareulos-aqsesuarebi/' },
+  { category: 'Дом и быт', sub_category: 'Сковороды и кастрюли',      url: 'https://gorgia.ge/ka/sayofacxovrebo/samzareulo-inventari/tafa-da-qvabi/' },
+  { category: 'Дом и быт', sub_category: 'Кухонный инвентарь',        url: 'https://gorgia.ge/ka/sayofacxovrebo/samzareulo-inventari/' },
+  { category: 'Дом и быт', sub_category: 'Уход за домом',             url: 'https://gorgia.ge/ka/sayofacxovrebo/sayofacxovrebo-movlis-sashualebebi/' },
+  { category: 'Дом и быт', sub_category: 'Декор',                     url: 'https://gorgia.ge/ka/sayofacxovrebo/saxlis-dekori/' },
+  { category: 'Дом и быт', sub_category: 'Праздничные товары',        url: 'https://gorgia.ge/ka/sayofacxovrebo/sadgesaswaulo-nivtebi/' },
+
+  // ===== Товары для животных =====
+  { category: 'Товары для животных', sub_category: 'Инвентарь',       url: 'https://gorgia.ge/ka/cxovelebis-movla/zoo-inventari/' },
+  { category: 'Товары для животных', sub_category: 'Корм',            url: 'https://gorgia.ge/ka/cxovelebis-movla/sakvebi/' },
+
+  // ===== Детские товары =====
+  { category: 'Детские товары', sub_category: 'Мебель',               url: 'https://gorgia.ge/ka/sabavshvo/sabavshvo-aveji/' },
+  { category: 'Детские товары', sub_category: 'Детские лампы',        url: 'https://gorgia.ge/ka/sabavshvo/sabavshvo-magidis-sanatebi/' },
+  { category: 'Детские товары', sub_category: 'IKEA детская',         url: 'https://gorgia.ge/ka/ikeas-produqcia/ikeas-sabavshvo-otaxi/' },
 ];
 
 type DbCategory = { category: string | null; sub_category: string | null; cnt: number };
-type JobStatus  = { status: 'idle' | 'running' | 'done' | 'error'; message: string };
 
 const mono = "'DM Mono', 'Fira Mono', monospace";
 
@@ -66,8 +158,8 @@ function RunBtn({ label, url, color = '#c8f135', small = false }: { label: strin
     setTimeout(() => setS('idle'), 8000);
   }
 
-  const bg = s === 'running' ? '#333' : s === 'done' ? '#1a3a1a' : s === 'error' ? '#3a1a1a' : color;
-  const tc = s === 'running' ? '#888' : s === 'done' ? '#4ade80' : s === 'error' ? '#f87171' : '#0f1117';
+  const bg  = s === 'running' ? '#333' : s === 'done' ? '#1a3a1a' : s === 'error' ? '#3a1a1a' : color;
+  const tc  = s === 'running' ? '#888' : s === 'done' ? '#4ade80' : s === 'error' ? '#f87171' : '#0f1117';
   const lbl = s === 'running' ? '⟳ …' : s === 'done' ? '✓ ' + msg : s === 'error' ? '✕ ' + msg : label;
 
   return (
@@ -81,12 +173,12 @@ function RunBtn({ label, url, color = '#c8f135', small = false }: { label: strin
 }
 
 export default function AdminCategoriesPage() {
-  const [dbCats, setDbCats]         = useState<DbCategory[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [customUrl, setCustomUrl]   = useState('');
-  const [customCat, setCustomCat]   = useState('');
-  const [customSub, setCustomSub]   = useState('');
-  const [search, setSearch]         = useState('');
+  const [dbCats, setDbCats]       = useState<DbCategory[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [customUrl, setCustomUrl] = useState('');
+  const [customCat, setCustomCat] = useState('');
+  const [customSub, setCustomSub] = useState('');
+  const [search, setSearch]       = useState('');
 
   useEffect(() => {
     fetch('/api/admin/categories-stats')
@@ -95,32 +187,25 @@ export default function AdminCategoriesPage() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Категории из каталога, отфильтрованные поиском
   const filtered = GORGIA_CATALOG.filter(c =>
     !search ||
     c.category.toLowerCase().includes(search.toLowerCase()) ||
     c.sub_category.toLowerCase().includes(search.toLowerCase())
   );
 
-  // Группируем по категории
   const grouped: Record<string, typeof GORGIA_CATALOG> = {};
   for (const c of filtered) {
     if (!grouped[c.category]) grouped[c.category] = [];
     grouped[c.category].push(c);
   }
 
-  // Находим кол-во товаров из БД для категории/подкатегории
   function getCount(category: string, sub: string) {
-    const row = dbCats.find(r =>
-      r.category === category && (sub ? r.sub_category === sub : true)
-    );
+    const row = dbCats.find(r => r.category === category && (sub ? r.sub_category === sub : true));
     return row?.cnt ?? 0;
   }
 
   function getCategoryTotal(category: string) {
-    return dbCats
-      .filter(r => r.category === category)
-      .reduce((s, r) => s + r.cnt, 0);
+    return dbCats.filter(r => r.category === category).reduce((s, r) => s + r.cnt, 0);
   }
 
   const nullCount = dbCats.find(r => r.category === null)?.cnt ?? 0;
@@ -135,8 +220,8 @@ export default function AdminCategoriesPage() {
           <span style={{ fontWeight: 600, fontSize: 16 }}>bazariara.ge admin</span>
         </div>
         <nav style={{ display: 'flex', gap: 8 }}>
-          <Link href="/admin"          style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', textDecoration: 'none' }}>Дашборд</Link>
-          <Link href="/admin/products" style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', textDecoration: 'none' }}>Товары</Link>
+          <Link href="/admin"           style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', textDecoration: 'none' }}>Дашборд</Link>
+          <Link href="/admin/products"  style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', textDecoration: 'none' }}>Товары</Link>
           <Link href="/admin/categories" style={{ color: '#c8f135', fontSize: 13, padding: '6px 12px', borderRadius: 6, background: '#1e2a0e', textDecoration: 'none' }}>Категории</Link>
         </nav>
       </div>
@@ -152,21 +237,20 @@ export default function AdminCategoriesPage() {
           </div>
         </div>
 
-        {/* Поиск по каталогу */}
+        {/* Поиск */}
         <div style={{ marginBottom: 20, display: 'flex', gap: 12, alignItems: 'center' }}>
           <input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
+            value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Поиск категории..."
             style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 280, outline: 'none' }}
           />
           {search && <button onClick={() => setSearch('')} style={{ color: '#666', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>✕ сбросить</button>}
+          <span style={{ color: '#444', fontSize: 12 }}>{filtered.length} категорий</span>
         </div>
 
         {/* Таблица категорий */}
         {Object.entries(grouped).map(([cat, subs]) => (
           <div key={cat} style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, marginBottom: 16, overflow: 'hidden' }}>
-            {/* Заголовок категории */}
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e2130' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{cat}</span>
@@ -175,36 +259,32 @@ export default function AdminCategoriesPage() {
               <RunBtn
                 label="▶ Парсить всю категорию"
                 url={`/api/admin/trigger-category?category=${encodeURIComponent(cat)}`}
-                color="#60a5fa"
-                small
+                color="#60a5fa" small
               />
             </div>
-
-            {/* Подкатегории */}
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <tbody>
                 {subs.map((s, i) => {
                   const cnt = s.sub_category ? getCount(s.category, s.sub_category) : getCategoryTotal(s.category);
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid #1e2130' }}>
-                      <td style={{ padding: '10px 20px', color: s.sub_category ? '#aaa' : '#888', width: 220 }}>
+                      <td style={{ padding: '10px 20px', color: s.sub_category ? '#aaa' : '#888', width: 240 }}>
                         {s.sub_category || <span style={{ color: '#555', fontStyle: 'italic' }}>все товары</span>}
                       </td>
-                      <td style={{ padding: '10px 12px' }}>
+                      <td style={{ padding: '10px 12px', width: 80 }}>
                         {!loading && cnt > 0
                           ? badge(cnt)
-                          : !loading && <span style={{ color: '#444', fontSize: 11 }}>нет товаров</span>
+                          : !loading && <span style={{ color: '#333', fontSize: 11 }}>—</span>
                         }
                       </td>
-                      <td style={{ padding: '10px 12px', color: '#555', fontSize: 11, maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '10px 12px', color: '#333', fontSize: 11, maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.url}
                       </td>
                       <td style={{ padding: '10px 16px', textAlign: 'right' }}>
                         <RunBtn
                           label="▶ Парсить"
                           url={`/api/admin/trigger-category?url=${encodeURIComponent(s.url)}&category=${encodeURIComponent(s.category)}&sub_category=${encodeURIComponent(s.sub_category)}`}
-                          color="#2a3a0a"
-                          small
+                          color="#2a3a0a" small
                         />
                       </td>
                     </tr>
@@ -215,48 +295,33 @@ export default function AdminCategoriesPage() {
           </div>
         ))}
 
-        {/* Добавить новую категорию вручную */}
+        {/* Новая категория вручную */}
         <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginTop: 24 }}>
           <h3 style={{ color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
-            Новая категория / произвольный URL
+            Произвольный URL
           </h3>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>URL категории gorgia.ge</div>
-              <input
-                value={customUrl}
-                onChange={e => setCustomUrl(e.target.value)}
-                placeholder="https://gorgia.ge/ka/..."
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 340, outline: 'none' }}
-              />
+              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>URL</div>
+              <input value={customUrl} onChange={e => setCustomUrl(e.target.value)} placeholder="https://gorgia.ge/ka/..."
+                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 340, outline: 'none' }} />
             </div>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Категория (ru)</div>
-              <input
-                value={customCat}
-                onChange={e => setCustomCat(e.target.value)}
-                placeholder="Мебель"
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 160, outline: 'none' }}
-              />
+              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Категория</div>
+              <input value={customCat} onChange={e => setCustomCat(e.target.value)} placeholder="Мебель"
+                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 160, outline: 'none' }} />
             </div>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Подкатегория (ru)</div>
-              <input
-                value={customSub}
-                onChange={e => setCustomSub(e.target.value)}
-                placeholder="Диваны"
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 160, outline: 'none' }}
-              />
+              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Подкатегория</div>
+              <input value={customSub} onChange={e => setCustomSub(e.target.value)} placeholder="Диваны"
+                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 160, outline: 'none' }} />
             </div>
             <RunBtn
-              label="▶ Запустить парсинг"
+              label="▶ Запустить"
               url={`/api/admin/trigger-category?url=${encodeURIComponent(customUrl)}&category=${encodeURIComponent(customCat)}&sub_category=${encodeURIComponent(customSub)}`}
               color="#c8f135"
             />
           </div>
-          <p style={{ color: '#444', fontSize: 12, marginTop: 10 }}>
-            Можно вставить любую страницу каталога gorgia.ge — агент обойдёт все страницы пагинации
-          </p>
         </div>
 
       </div>
