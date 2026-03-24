@@ -1,7 +1,7 @@
 import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
 import { Metadata } from 'next';
-import ProductNotFound from './not-found';
+import { notFound } from 'next/navigation';
 
 export const revalidate = 600;
 
@@ -145,7 +145,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const { category, id } = await params;
   const product = await getProduct(category, id);
 
-  if (!product) return <ProductNotFound />;
+  if (!product) notFound();
 
   const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
   const absoluteImageUrls = allImages.map(url =>
