@@ -1,7 +1,7 @@
 import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 export const revalidate = 600;
 
@@ -44,10 +44,13 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
   const allImages = [p.image_url, ...imgs].filter(Boolean) as string[];
   const uniqueImages = [...new Set(allImages)];
 
+  const trueCategoryKey = p.external_id ? p.external_id.split('_')[0] : category;
+
   return {
     id:              String(p.id),
     external_id:     p.external_id,
-    categoryKey:     category,
+    categoryKey:     category, 
+    trueCategoryKey: trueCategoryKey,
 
     title:           p.name_ru || p.name_en || p.name_ka || p.name,
     title_en:        p.name_en || undefined,
@@ -117,7 +120,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     : `Купите ${product.title} за ${product.price} ₾ с доставкой по Тбилиси за 2 часа.`;
   const description = rawDescription.slice(0, 160);
   const image = product.image_url || '/default-product.png';
-  const url = `https://bazariara.ge/products/${product.categoryKey}/${product.id}`;
+  const url = `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`;
 
   return {
     title,
@@ -147,6 +150,10 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
 
   if (!product) notFound();
 
+  if (category !== product.trueCategoryKey) {
+    redirect(`/products/${product.trueCategoryKey}/${product.id}`);
+  }
+
   const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
   const absoluteImageUrls = allImages.map(url =>
     url.startsWith('/') ? `https://bazariara.ge${url}` : url
@@ -172,7 +179,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       availability: product.in_stock
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
-      url: `https://bazariara.ge/products/${product.categoryKey}/${product.id}`,
+      url: `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`,
       seller: {
         '@type': 'Organization',
         name: 'BAZARI ARA',
