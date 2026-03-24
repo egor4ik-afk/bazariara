@@ -1,16 +1,13 @@
+
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import InteractiveFilters from '@/components/InteractiveFilters';
 import ProductCard from '@/components/ProductCard';
 import HomeHeader from '@/components/HomeHeader';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
-import sql from '@/lib/db';
-import { Product, Category } from '@/lib/types';
-
-export const revalidate = 600;
+import { getCategories, getSubCategories, getProducts } from './actions';
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
-type Row = Record<string, unknown>;
 
 export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
   const params = await searchParams;
@@ -33,15 +30,9 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
     };
   }
 
-  let catName = category;
-  try {
-    const rows = await sql`
-      SELECT DISTINCT category FROM products
-      WHERE source = 'gorgia' AND category_key = ${category}
-      LIMIT 1
-    `;
-    if (rows[0]?.category) catName = rows[0].category as string;
-  } catch { }
+  const categories = await getCategories();
+  const cat = categories.find(c => c.key === category)
+  const catName = cat ? cat.name : category;
 
   if (subcategory && subcategory !== 'all') {
     const subName = subcategory.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
@@ -67,121 +58,10 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const searchQuery         = params.search || '';
   const currentPage         = parseInt(params.page || '1', 10);
   const ITEMS_PER_PAGE      = 20;
-  const offset              = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  let products: Product[]           = [];
-  let total                         = 0;
-  let categoriesList: Category[]    = [];
-  let subCategoriesList: Category[] = [];
-
-  try {
-    const catRows = await sql`
-      SELECT
-        p.key,
-        p.name,
-        p.name_en,
-        p.name_ka,
-        COALESCE(c.category_image, p.image_url) AS image_url
-      FROM (
-        SELECT
-          category_key     AS key,
-          MAX(category)    AS name,
-          MAX(category_en) AS name_en,
-          MAX(category_ka) AS name_ka,
-          MIN(image_url)   AS image_url
-        FROM products
-        WHERE source = 'gorgia'
-          AND image_url IS NOT NULL
-          AND category IS NOT NULL
-          AND category_key IS NOT NULL
-        GROUP BY category_key
-      ) p
-      LEFT JOIN categories c ON c.category_key = p.key
-      ORDER BY p.name
-    `;
-
-    categoriesList = (catRows as Row[]).map((r) => ({
-      key:      r.key as string,
-      name:     r.name as string,
-      name_en:  (r.name_en as string) || null,
-      name_ka:  (r.name_ka as string) || null,
-      imageUrl: (r.image_url as string) ?? '',
-    }));
-
-    if (selectedCategory !== 'all') {
-      const subRows = await sql`
-        SELECT
-          LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) AS key,
-          MAX(sub_category)     AS name,
-          MAX(sub_category_en)  AS name_en,
-          MAX(sub_category_ka)  AS name_ka,
-          MIN(image_url)        AS image_url
-        FROM products
-        WHERE source = 'gorgia'
-          AND image_url IS NOT NULL
-          AND category_key = ${selectedCategory}
-          AND sub_category IS NOT NULL
-        GROUP BY LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-'))
-        ORDER BY MAX(sub_category)
-      `;
-      subCategoriesList = (subRows as Row[]).map((r) => ({
-        key:      r.key as string,
-        name:     r.name as string,
-        name_en:  (r.name_en as string) ?? null,
-        name_ka:  (r.name_ka as string) ?? null,
-        imageUrl: (r.image_url as string) ?? '',
-      }));
-    }
-
-    const categoryFilter = selectedCategory !== 'all'
-      ? sql`AND category_key = ${selectedCategory}`
-      : sql``;
-
-    const subcategoryFilter = selectedSubCategory !== 'all'
-      ? sql`AND LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) = ${selectedSubCategory.toLowerCase()}`
-      : sql``;
-
-    const searchFilter = searchQuery.length >= 2
-      ? sql`AND (name_ru ILIKE ${'%' + searchQuery + '%'} OR name ILIKE ${'%' + searchQuery + '%'})`
-      : sql``;
-
-    const [countRows, productRows] = await Promise.all([
-      sql`
-        SELECT COUNT(*) AS total
-        FROM products
-        WHERE source = 'gorgia'
-          AND image_url IS NOT NULL
-          ${categoryFilter}
-          ${subcategoryFilter}
-          ${searchFilter}
-      `,
-      sql`
-        SELECT
-          id, external_id, category_key, source_url, gorgia_url,
-          COALESCE(name_ru, name) AS name,
-          name_ru, name_en, name_ka,
-          description_ru AS description,
-          price, currency, in_stock, availability,
-          category, category_en, category_ka,
-          sub_category, sub_category_en, sub_category_ka,
-          image_url, images
-        FROM products
-        WHERE source = 'gorgia'
-          AND image_url IS NOT NULL
-          ${categoryFilter}
-          ${subcategoryFilter}
-          ${searchFilter}
-        ORDER BY in_stock DESC, updated_at DESC
-        LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}
-      `,
-    ]);
-
-    total    = parseInt(countRows[0].total as string);
-    products = productRows as unknown as Product[];
-
-  } catch (error) {
-    console.error('Neon fetch error:', error);
-  }
+  const categoriesList = await getCategories();
+  const subCategoriesList = await getSubCategories(selectedCategory);
+  const { products, total } = await getProducts(selectedCategory, selectedSubCategory, searchQuery, currentPage);
 
   const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
 
