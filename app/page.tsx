@@ -15,18 +15,40 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   const subcategory = params.subcategory;
   const page = parseInt(params.page || '1', 10);
   const pageStr = page > 1 ? ` — страница ${page}` : '';
+  const ITEMS_PER_PAGE = 20;
+
+  // We need total pages for prev/next links, so we fetch product count.
+  // Search query is not part of canonical URLs.
+  const { total } = await getProducts(category || 'all', subcategory || 'all', '', page);
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+
+  const buildPageUrl = (pageNumber: number) => {
+    const p = new URLSearchParams();
+    if (category && category !== 'all') p.set('category', category);
+    if (subcategory && subcategory !== 'all') p.set('subcategory', subcategory);
+    p.set('page', pageNumber.toString());
+    return `/?${p.toString()}`;
+  };
 
   const canonicalParams = new URLSearchParams();
   if (category && category !== 'all') canonicalParams.set('category', category);
   if (subcategory && subcategory !== 'all') canonicalParams.set('subcategory', subcategory);
+  if (page > 1) canonicalParams.set('page', page.toString());
+
   const canonicalQuery = canonicalParams.toString();
   const canonical = `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`;
+
+  const alternates = {
+    canonical,
+    ...(page > 1 && { prev: `https://bazariara.ge${buildPageUrl(page - 1)}` }),
+    ...(page < totalPages && { next: `https://bazariara.ge${buildPageUrl(page + 1)}` }),
+  };
 
   if (!category || category === 'all') {
     return {
       title: `BAZARI ARA: Товары для дома, сада, туризма и отдыха в Тбилиси${pageStr}`,
       description: 'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!',
-      alternates: { canonical },
+      alternates,
     };
   }
 
@@ -39,14 +61,14 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
     return {
       title: `${subName} — ${catName} | купить в Тбилиси | BAZARI ARA${pageStr}`,
       description: `${subName} в категории «${catName}». Быстрая доставка по Тбилиси за 2 часа.`,
-      alternates: { canonical },
+      alternates,
     };
   }
 
   return {
     title: `${catName} — купить в Тбилиси с доставкой за 2 часа | BAZARI ARA${pageStr}`,
     description: `Большой выбор товаров «${catName}» в Тбилиси. Заказывайте онлайн — доставим за 2 часа.`,
-    alternates: { canonical },
+    alternates,
   };
 }
 
