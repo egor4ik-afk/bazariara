@@ -50,9 +50,7 @@ async function translateWithYandex(name: string, cat: string, mode: 'description
       ?? (response as any).output?.[0]?.content?.[0]?.text
       ?? '';
 
-    // Проверяем что грузинский текст не обрезан — ищем закрывающую }
     const hasCompleteJson = raw.includes('}');
-    // Проверяем что ka не обрезан посередине слова
     const kaMatch = raw.match(/"ka"\s*:\s*"([^"]*)"/);
     const kaComplete = kaMatch ? !kaMatch[1].match(/[\u10D0-\u10FF]$/) || raw.includes('"}') : true;
 
@@ -97,11 +95,7 @@ function parseJson(text: string): { ru: string; en: string; ka: string } {
   if (!match) throw new Error('No JSON found in response');
   clean = match[0];
 
-  // Убираем управляющие символы
   clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-
-  // Заменяем буквальные \n \r \t на пробел — НЕ через regex на строки,
-  // а напрямую в сыром тексте до парсинга
   clean = clean.replace(/\n/g, ' ').replace(/\r/g, '').replace(/\t/g, ' ');
 
   try {
@@ -148,7 +142,7 @@ export async function POST(req: NextRequest) {
     name_ru, name_en, name_ka,
     category_ru, sub_category_ru,
     provider = 'gemini',
-    mode = 'description',  // 'description' | 'name'
+    mode = 'description',
   } = await req.json();
 
   const name = name_ru || name_en || name_ka;
@@ -162,8 +156,9 @@ export async function POST(req: NextRequest) {
       if (!YANDEX_API_KEY) return NextResponse.json({ error: 'YANDEX_API_KEY not set' }, { status: 500 });
       result = await translateWithYandex(name, cat, mode);
     } else {
+      // ✅ ИСПРАВЛЕНО: gemini теперь вызывает translateWithGemini, не Yandex
       if (!GEMINI_API_KEY) return NextResponse.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 });
-      result = await translateWithYandex(name, cat, mode);
+      result = await translateWithGemini(name, cat, mode);
     }
     return NextResponse.json(result);
   } catch (e: any) {

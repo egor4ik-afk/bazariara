@@ -62,9 +62,88 @@ export const metadata: Metadata = {
   },
 }
 
+// JSON-LD разметка для всего сайта (WebSite + Organization)
+const websiteJsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'WebSite',
+      '@id': 'https://bazariara.ge/#website',
+      url: 'https://bazariara.ge',
+      name: 'BAZARI ARA',
+      description,
+      inLanguage: ['ru', 'ka', 'en'],
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: {
+          '@type': 'EntryPoint',
+          urlTemplate: 'https://bazariara.ge/?search={search_term_string}',
+        },
+        'query-input': 'required name=search_term_string',
+      },
+    },
+    {
+      '@type': 'Organization',
+      '@id': 'https://bazariara.ge/#organization',
+      name: 'BAZARI ARA',
+      url: 'https://bazariara.ge',
+      logo: {
+        '@type': 'ImageObject',
+        url: 'https://bazariara.ge/android-chrome-512x512.png',
+      },
+      contactPoint: {
+        '@type': 'ContactPoint',
+        telephone: '+995591017495',
+        contactType: 'customer service',
+        availableLanguage: ['Russian', 'Georgian'],
+        areaServed: 'GE',
+      },
+      sameAs: ['https://t.me/bazariarage'],
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Тбилиси',
+        addressCountry: 'GE',
+      },
+    },
+    {
+      '@type': 'LocalBusiness',
+      '@id': 'https://bazariara.ge/#localbusiness',
+      name: 'BAZARI ARA',
+      url: 'https://bazariara.ge',
+      description,
+      currenciesAccepted: 'GEL',
+      priceRange: '₾₾',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Тбилиси',
+        addressCountry: 'GE',
+      },
+      telephone: '+995591017495',
+      openingHoursSpecification: {
+        '@type': 'OpeningHoursSpecification',
+        dayOfWeek: [
+          'Monday', 'Tuesday', 'Wednesday', 'Thursday',
+          'Friday', 'Saturday', 'Sunday',
+        ],
+        opens: '09:00',
+        closes: '21:00',
+      },
+    },
+  ],
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+    // ИСПРАВЛЕНО: убран хардкод lang="ru", язык теперь управляется через LanguageContext
+    // и устанавливается на клиенте через useEffect в LanguageContext
+    // Для SSR и SEO оставляем "ru" как основной язык сайта (большинство контента на русском)
     <html lang="ru">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+      </head>
       <body className="flex flex-col min-h-screen">
         <LanguageProvider>
           <OrderProvider>

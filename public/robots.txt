@@ -1,10 +1,13 @@
 User-agent: *
 Allow: /
-Disallow: /api
-Disallow: /admin
-Disallow: /cart
-Disallow: /checkout
-Disallow: /orders
-Disallow: /order-success
-Disallow: /*?search=
+
+# Запрещаем индексацию служебных страниц
+Disallow: /admin/
+Disallow: /api/
+Disallow: /cart/
+Disallow: /checkout/
+Disallow: /order-success/
+Disallow: /orders/
+
+# Sitemap
 Sitemap: https://bazariara.ge/sitemap.xml
