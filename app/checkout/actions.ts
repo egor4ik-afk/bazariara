@@ -75,7 +75,7 @@ async function sendTelegramNotification(
     itemsList,
     ``,
     `Подытог: ₾${subtotal.toFixed(2)}`,
-    shippingCost > 0 ? `Доставка: ₾${shippingCost.toFixed(2)}` : `Доставка: БЕСПЛАТНО`,
+    shippingCost > 0 ? `Доставка: ₾${shippingCost.toFixed(2)}` : `Доставка: Рассчитывается индивидуально`,
     `*💰 ИТОГО: ₾${total.toFixed(2)}*`,
     ``,
     `📅 ${createdAt.toLocaleString('ru-RU', { timeZone: 'Asia/Tbilisi' })}`,

@@ -22,7 +22,7 @@
     "shipping": "Доставка",
     "free": "БЕСПЛАТНО",
     "total": "Итог",
-    "addMoreForFreeShipping": "Добавьте товаров еще на ₾{amount}, чтобы доставка была бесплатной.",
+    "addMoreForFreeShipping": "Добавьте товаров еще на ₾{amount}, чтобы доставка была меньше.",
     "backToProducts": "Вернуться к товарам",
     "minOrderAmount": "Минимальная сумма заказа {amount} ₾",
     "proceedToCheckout": "Перейти к оформлению",
