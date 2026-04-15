@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { handlePlaceOrder } from './actions';
 
 const FREE_SHIPPING_THRESHOLD = 100;
-const SHIPPING_COST = 10;
+const SHIPPING_COST = 20;
 
 const getSocialOptions = (t: (key: string) => string) => [
     { key: 'telegram', label: t('checkout.telegram'), selectedColor: 'bg-sky-500', hoverColor: 'hover:bg-sky-600' },

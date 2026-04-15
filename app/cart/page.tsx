@@ -9,7 +9,7 @@ import { useState, useEffect, useRef } from 'react';
 
 const MIN_ORDER_AMOUNT = 30;
 const FREE_SHIPPING_THRESHOLD = 100;
-const SHIPPING_COST = 10
+const SHIPPING_COST = 20
 
 // Simple Spinner component
 const Spinner = () => (

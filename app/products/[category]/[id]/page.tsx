@@ -187,7 +187,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       },
       shippingDetails: {
         '@type': 'OfferShippingDetails',
-        shippingRate: { '@type': 'MonetaryAmount', value: '10', currency: 'GEL' },
+        shippingRate: { '@type': 'MonetaryAmount', value: '20', currency: 'GEL' },
         shippingDestination: {
           '@type': 'DefinedRegion',
           addressCountry: 'GE',
