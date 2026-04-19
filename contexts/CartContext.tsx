@@ -2,6 +2,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+declare global {
+  interface Window {
+    fbq: (...args: any[]) => void;
+  }
+}
+
 export type ProductInCart = {
   id: string;
   title: string;
@@ -103,6 +109,10 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         ];
       }
     });
+
+    if (typeof window.fbq === 'function') {
+      window.fbq('track', 'AddToCart');
+    }
   };
 
   const removeFromCart = (itemId: string, category: string) => {
