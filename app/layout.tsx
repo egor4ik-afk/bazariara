@@ -1,4 +1,4 @@
-import { Metadata, Viewport } from 'next'
+'''import { Metadata, Viewport } from 'next'
 import './globals.css'
 import { CartProvider } from '@/contexts/CartContext'
 import { OrderProvider } from '@/contexts/OrderContext'
@@ -187,7 +187,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             height="1" 
             width="1" 
             style={{display: 'none'}}
-            src={\`https://www.facebook.com/tr?id=${process.env.NEXT_PUBLIC_FB_PIXEL_ID}&ev=PageView&noscript=1\`}
+            src={`https://www.facebook.com/tr?id=${process.env.NEXT_PUBLIC_FB_PIXEL_ID}&ev=PageView&noscript=1`}
             alt=""
           />
         </noscript>
@@ -197,3 +197,4 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   )
 }
+'''
