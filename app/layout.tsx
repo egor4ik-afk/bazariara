@@ -6,6 +6,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
+import { FacebookPixelEvents } from '@/components/FacebookPixelEvents'
 
 const siteName = 'BAZARI ARA'
 const siteUrl = new URL('https://bazariara.ge')
@@ -134,9 +135,6 @@ const websiteJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // ИСПРАВЛЕНО: убран хардкод lang="ru", язык теперь управляется через LanguageContext
-    // и устанавливается на клиенте через useEffect в LanguageContext
-    // Для SSR и SEO оставляем "ru" как основной язык сайта (большинство контента на русском)
     <html lang="ru">
       <head>
         <script
@@ -168,6 +166,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             gtag('config', 'G-EN4C3S417X');
           `}
         </Script>
+        
+        {/* Facebook Pixel Script */}
+        <Script id="fb-pixel-base" strategy="afterInteractive">
+          {`
+            !function(f,b,e,v,n,t,s)
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            s.parentNode.insertBefore(t,s)}(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            fbq('init', '${process.env.NEXT_PUBLIC_FB_PIXEL_ID}');
+            fbq('track', 'PageView');
+          `}
+        </Script>
+        <noscript>
+          <img 
+            height="1" 
+            width="1" 
+            style={{display: 'none'}}
+            src={\`https://www.facebook.com/tr?id=${process.env.NEXT_PUBLIC_FB_PIXEL_ID}&ev=PageView&noscript=1\`}
+            alt=""
+          />
+        </noscript>
+        <FacebookPixelEvents />
+
       </body>
     </html>
   )
