@@ -1,10 +1,12 @@
 import postgres from 'postgres';
 
-// postgres() поддерживает параметризованные запросы: sql('SELECT ... WHERE id = $1', [id])
+// Для отключения SSL устанавливаем значение false
 const sql = postgres(process.env.DATABASE_URL!, {
-  ssl: 'require',
+  ssl: false, 
   max: 10,
   idle_timeout: 20,
+  // Если сервер БД медленно отвечает на установку соединения, 
+  // можно добавить connect_timeout: 10
 });
 
 export default sql;
