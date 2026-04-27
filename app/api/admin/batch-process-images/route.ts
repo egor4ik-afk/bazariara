@@ -88,14 +88,16 @@ async function processImage(buffer: Buffer, effect: Effect): Promise<Buffer> {
 }
 
 async function uploadBuffer(buffer: Buffer, effect: Effect): Promise<string> {
-  const key  = `bazariara/processed/batch_${effect}_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
-  await s3.send(new PutObjectCommand({
-    Bucket: BUCKET, Key: key, Body: buffer,
-    ContentType: 'image/jpeg', ACL: 'public-read',
-  }));
-  return `${CDN_URL}/processed/batch_${effect}_${key.split('batch_')[1]}`;
-}
-
+    const filename = `batch_${effect}_${Date.now()}_${Math.random().toString(36).slice(2)}.jpg`;
+    const key = `bazariara/processed/${filename}`;
+    
+    await s3.send(new PutObjectCommand({
+      Bucket: BUCKET, Key: key, Body: buffer,
+      ContentType: 'image/jpeg', ACL: 'public-read',
+    }));
+    
+    return `${CDN_URL}/processed/${filename}`;  // ← просто filename, без split
+  }
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 // POST /api/admin/batch-process-images
