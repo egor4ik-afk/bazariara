@@ -1,154 +1,170 @@
-# Admin Panel — bazariara.ge
+# BAZARI ARA — интернет-магазин в Тбилиси
 
-Панель управления товарами и парсером. Добавляется поверх существующего Next.js сайта.
-Существующий код (app/page.tsx, компоненты) не изменяется.
-
----
-
-## Что добавляется
-
-```
-app/
-  admin/
-    layout.tsx              middleware защищает весь /admin/*
-    login/page.tsx          страница входа (токен из .env)
-    page.tsx                дашборд: статистика + кнопки запуска парсера
-    DashboardClient.tsx     клиентская часть дашборда
-    products/
-      page.tsx              таблица товаров (поиск, фильтры, пагинация)
-      [id]/
-        page.tsx            страница редактирования / создания
-        EditClient.tsx      форма с полями ru/en/ka
-
-  api/admin/
-    login/route.ts          POST — выдаёт cookie
-    products/
-      route.ts              GET (список) + POST (создать)
-      [id]/route.ts         PATCH (изменить) + DELETE
-    trigger-update/route.ts POST — запускает ежедневный апдейт
-    trigger-scrape/route.ts POST — запускает полный парсинг
-
-lib/
-  admin-auth.ts             проверка cookie/Bearer токена
-
-middleware.ts               redirect /admin/* → /admin/login если нет токена
-```
+> Быстрая доставка товаров для дома, сада, туризма и детей по Тбилиси за 2 часа. Более 1000 товаров в наличии.
 
 ---
 
-## Установка
+## О магазине
 
-### 1. Скопируй файлы в репозиторий bazariara.ge
+| Параметр | Значение |
+|---|---|
+| **Название** | BAZARI ARA |
+| **Слоган** | Привезём всё, что нужно, за 2 часа! |
+| **Сайт** | https://bazariara.ge |
+| **Местоположение** | Тбилиси, Грузия |
+| **Валюта** | Грузинский лари (GEL, ₾) |
+| **Ценовой сегмент** | Доступный, масс-маркет |
+| **Телефон** | +995 591 017 495 |
+| **Telegram** | https://t.me/bazariarage |
+| **Время работы** | 09:00 – 21:00, ежедневно |
 
-```bash
-# Из этой папки — копируй структуру app/ и lib/ в корень Next.js проекта
-cp -r app/admin       /path/to/bazariara/app/admin
-cp -r app/api/admin   /path/to/bazariara/app/api/admin
-cp    lib/admin-auth.ts /path/to/bazariara/lib/admin-auth.ts
+---
 
-# middleware.ts — если у тебя уже есть middleware, объедини вручную
-cp middleware.ts /path/to/bazariara/middleware.ts
+## Ключевые особенности
+
+- **Доставка:** 2 часа по всему Тбилиси. Стоимость — 10 GEL.
+- **Ассортимент:** Более 1000 товаров — дом, сад, кемпинг, туризм, дети.
+- **Склад:** Все товары физически находятся на складе в Тбилиси.
+- **Возврат:** 14 дней согласно законодательству Грузии.
+- **Языки сайта:** Русский 🇷🇺, Грузинский 🇬🇪, Английский 🇬🇧
+
+---
+
+## Структура сайта
+
+| Страница | URL |
+|---|---|
+| Главная | `https://bazariara.ge` |
+| Категория | `/?category={key}` |
+| Подкатегория | `/?category={key}&subcategory={subkey}` |
+| Страница товара | `/products/{category}/{id}` |
+| Поиск | `/?search={query}` |
+| Корзина | `/cart` |
+| Оформление заказа | `/checkout` |
+| Политика возврата | `/returns` |
+| Политика конфиденциальности | `/privacy-policy` |
+
+---
+
+## Технологии
+
+| Слой | Технология |
+|---|---|
+| **Frontend** | Next.js 15 (App Router), React, Tailwind CSS |
+| **База данных** | Neon (PostgreSQL), `postgres.js` |
+| **Хостинг** | Relaxdev (Docker + Traefik) |
+| **CDN / Хранилище фото** | Yandex Object Storage + `cdn.relaxdev.ru` |
+| **Аналитика** | Google Analytics (G-EN4C3S417X), Яндекс Метрика (107711719), Facebook Pixel |
+| **SSL** | Let's Encrypt via Traefik ACME (HTTP-01) |
+
+---
+
+## AI — генерация описаний
+
+### Провайдеры (приоритет)
+
+1. **OpenCode Go** (primary) — OpenAI-совместимый эндпоинт
+   - URL: `https://opencode.ai/zen/go/v1/chat/completions`
+   - Ключ: `OPENCODE_API_KEY`
+   - Модели (в порядке попытки): `deepseek-v4-pro` → `deepseek-v4-flash` → `glm-5.1` → `kimi-k2.5`
+
+2. **Yandex GPT 5.1** (fallback) — при любой ошибке OpenCode
+   - URL: `https://ai.api.cloud.yandex.net/v1`
+   - Ключ: `YANDEX_API_KEY` + `YANDEX_FOLDER`
+
+### Переводы
+
+Имена товаров на `en` и `ka` — **Google Translate** (бесплатно, без ключа).
+
+### API эндпоинты
+
+| Эндпоинт | Описание |
+|---|---|
+| `POST /api/admin/generate-description` | Генерация описания/перевода для одного товара |
+| `POST /api/admin/batch-translate` | Массовая генерация (до 50 товаров за раз) |
+
+### Параметр `provider`
+
+```json
+{ "provider": "opencode" }   // по умолчанию — OpenCode Go → Yandex fallback
+{ "provider": "yandex" }     // только Yandex GPT
 ```
 
-### 2. Добавь переменные в .env.local
+---
+
+## Загрузка фотографий
+
+- **Хранилище:** Yandex Object Storage, bucket `izipost`, prefix `bazariara/`
+- **CDN:** `https://cdn.relaxdev.ru/bazariara/`
+- **API:** `POST /api/admin/upload?filename=...` — загружает файл, возвращает CDN URL
+- **Удаление:** `DELETE /api/admin/upload?url=...`
+
+---
+
+## Переменные окружения
 
 ```env
-ADMIN_SECRET=придумай-сложный-токен
+# База данных
+DATABASE_URL=postgres://...
 
-# URL твоего сервера со scraper-agent
+# Yandex Cloud
+YANDEX_API_KEY=...
+YANDEX_FOLDER=b1gcr5m4ptniag2qpsqm
+YANDEX_REGION=ru-central1
+YANDEX_ACCESS_KEY_ID=...
+YANDEX_SECRET_ACCESS_KEY=...
+
+# OpenCode Go (primary AI)
+OPENCODE_API_KEY=...
+
+# Админка
+ADMIN_SECRET=...
+
+# Парсер
 SCRAPER_WEBHOOK_URL=http://YOUR_SERVER:8080/webhook
-SCRAPER_WEBHOOK_SECRET=тот-же-секрет-что-в-scraper-agent
+SCRAPER_WEBHOOK_SECRET=...
 ```
-
-### 3. Деплой bazariara.ge (Vercel push)
-
-```bash
-git add app/admin app/api/admin lib/admin-auth.ts middleware.ts
-git commit -m "feat: admin panel"
-git push
-```
-
-После деплоя зайди на https://bazariara.ge/admin
 
 ---
 
-## Использование
+## Админ-панель `/admin`
 
-### Вход
-Открой `/admin` → введи значение `ADMIN_SECRET` из .env
+**Вход:** `/admin/login` — вводи значение `ADMIN_SECRET`
 
-### Дашборд `/admin`
+| Раздел | URL | Описание |
+|---|---|---|
+| Дашборд | `/admin` | Статистика, запуск парсера |
+| Товары | `/admin/products` | Таблица с поиском/фильтрами |
+| Редактирование | `/admin/products/{id}` | Форма ru/en/ka + фото |
+| Создать товар | `/admin/products/new` | Новая карточка |
+
+### Функции дашборда
 - Статистика: всего / в наличии / без фото / без SKU
-- **«Обновить цены и наличие»** — запускает `python main.py --update` на сервере (~30 мин)
-- **«Полный парсинг»** — запускает `python main.py` (~несколько часов)
-- Лента последних обновлённых товаров
-
-### Товары `/admin/products`
-- Поиск по имени, SKU, external_id
-- Фильтры: наличие / без фото / без SKU / категория
-- Клик «Изменить» → форма редактирования
-
-### Редактирование `/admin/products/[id]`
-- Все текстовые поля на трёх языках (ru/en/ka)
-- SKU, цена, наличие
-- Главное фото (URL) с превью
-- Кнопка «Удалить»
-- Ссылка «→ gorgia.ge» на оригинальную страницу
-
-### Создание нового товара
-Кнопка «+ Добавить» в шапке таблицы → `/admin/products/new`
+- **«Обновить цены»** — `python main.py --update` (~30 мин)
+- **«Полный парсинг»** — `python main.py` (~несколько часов)
 
 ---
 
-## Webhook-сервер (scraper-agent)
+## SEO
 
-Чтобы кнопки запуска работали — на сервере со scraper-agent нужно запустить `webhook_server.py`.
+- **Sitemap:** `https://bazariara.ge/sitemap.xml` — генерируется динамически из БД
+- **Robots:** `https://bazariara.ge/robots.txt` — закрыты `/admin`, `/cart`, `/checkout`, `/api/`
+- **Schema.org:** Organization, LocalBusiness, WebSite, Product, BreadcrumbList, ItemList
+- **hreflang:** ru / ka / en / x-default на всех страницах
+- **Canonical:** прописан на всех страницах, `page=1` не добавляется
 
-### Добавить в docker-compose.yml scraper-agent
+---
 
-Уже добавлен как сервис `webhook`. Убедись что порт 8080 доступен с Vercel:
+## Деплой
+
+Сайт работает на **Relaxdev** через **Docker + Traefik**.
 
 ```bash
-# Проверка
-curl -X POST http://YOUR_SERVER:8080/webhook/update \
-     -H "X-Secret: your-secret"
-# → {"ok": true, "message": "Апдейт запущен"}
+# Деплой через git push (если настроен webhook)
+git push origin main:main
 
-# Статус
-curl http://YOUR_SERVER:8080/webhook/status \
-     -H "X-Secret: your-secret"
+# Или вручную на сервере
+docker compose pull && docker compose up -d
 ```
 
-### Если сервер за NAT / firewall
-
-Открой порт 8080 или поставь nginx как reverse proxy:
-
-```nginx
-location /webhook/ {
-    proxy_pass http://localhost:8080/webhook/;
-    proxy_set_header X-Real-IP $remote_addr;
-}
-```
-
----
-
-## Без webhook (запуск вручную)
-
-Если не хочешь открывать порт — просто запускай вручную по SSH:
-
-```bash
-ssh user@your-server
-cd /opt/gorgia-agent
-docker compose run --rm updater    # обновление цен
-docker compose run --rm scraper    # полный парсинг
-```
-
----
-
-## Безопасность
-
-- `ADMIN_SECRET` — единственный токен доступа. Храни его надёжно.
-- middleware.ts блокирует все `/admin/*` роуты без cookie.
-- API роуты `/api/admin/*` проверяют cookie или `Authorization: Bearer TOKEN`.
-- В продакшене обязательно используй HTTPS.
-- Если нужна мультипользовательность — замени на NextAuth или Clerk.
+**Важно:** DNS домена `bazariara.ge` должен указывать только на IP Relaxdev (`72.56.37.162`). Второй A-record удалён.

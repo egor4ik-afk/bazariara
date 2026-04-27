@@ -1,74 +1,72 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
-import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 
-const YANDEX_FOLDER  = process.env.YANDEX_FOLDER || 'b1gcr5m4ptniag2qpsqm';
+// ─── CONFIG ───────────────────────────────────────────────────────────────────
+
+const YANDEX_FOLDER  = process.env.YANDEX_FOLDER  || 'b1gcr5m4ptniag2qpsqm';
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || '';
-const YANDEX_MODEL   = 'yandexgpt-5.1/latest';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || '';
 
-const GEMINI_MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-002'];
+// OpenCode Go — OpenAI-compatible endpoint
+const OPENCODE_BASE_URL = 'https://opencode.ai/zen/go/v1';
 
-async function translateWithGemini(name: string, cat: string, mode: 'description' | 'name') {
-  const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-  const prompt = mode === 'description' ? buildDescriptionPrompt(name, cat) : buildNamePrompt(name);
+// Primary models (tried in order)
+const OPENCODE_MODELS = [
+  'deepseek-v4-pro',
+  'deepseek-v4-flash',
+  'glm-5.1',
+  'kimi-k2.5',
+];
 
-  for (const model of GEMINI_MODELS) {
-    try {
-      const response = await ai.models.generateContent({ model, contents: prompt });
-      return parseJson(response.text || '');
-    } catch (e: any) {
-      if (is429(e) || isNotFound(e)) {
-        console.warn(`${model} failed (${e?.status}), trying next…`);
-        continue;
-      }
-      throw e;
-    }
-  }
-  throw new Error('All Gemini models exhausted');
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+
+function is429(e: any): boolean {
+  return (
+    e?.status === 429 ||
+    String(e?.message || '').includes('429') ||
+    String(e?.message || '').includes('rate') ||
+    String(e?.message || '').includes('quota')
+  );
 }
 
-async function translateWithYandex(name: string, cat: string, mode: 'description' | 'name'): Promise<{ ru: string; en: string; ka: string }> {
-  const client = new OpenAI({
-    apiKey: YANDEX_API_KEY,
-    baseURL: 'https://ai.api.cloud.yandex.net/v1',
-    defaultHeaders: { 'OpenAI-Project': YANDEX_FOLDER },
-  });
-  const prompt = mode === 'description' ? buildDescriptionPrompt(name, cat) : buildNamePrompt(name);
-
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const response = await client.responses.create({
-      model: `gpt://${YANDEX_FOLDER}/${YANDEX_MODEL}`,
-      instructions: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
-      input: prompt,
-      temperature: 0.3,
-      max_output_tokens: 5000,
-    } as any);
-
-    const raw = (response as any).output_text
-      ?? (response as any).output?.[0]?.content?.[0]?.text
-      ?? '';
-
-    const hasCompleteJson = raw.includes('}');
-    const kaMatch = raw.match(/"ka"\s*:\s*"([^"]*)"/);
-    const kaComplete = kaMatch ? !kaMatch[1].match(/[\u10D0-\u10FF]$/) || raw.includes('"}') : true;
-
-    if (hasCompleteJson && kaComplete) {
-      try {
-        return parseJson(raw);
-      } catch {
-        console.warn(`Attempt ${attempt} parse failed, retrying...`);
-      }
-    } else {
-      console.warn(`Attempt ${attempt} response truncated, retrying...`);
-    }
-
-    await new Promise(r => setTimeout(r, 300));
-  }
-
-  throw new Error('Yandex returned truncated response after 3 attempts');
+function isNotFound(e: any): boolean {
+  return (
+    e?.status === 404 ||
+    String(e?.message || '').includes('NOT_FOUND') ||
+    String(e?.message || '').includes('not found')
+  );
 }
+
+function parseJson(text: string): { ru: string; en: string; ka: string } {
+  let clean = text.replace(/```json\s*|\s*```/g, '').trim();
+  const match = clean.match(/\{[\s\S]*\}/);
+  if (!match) throw new Error('No JSON found in response');
+  clean = match[0]
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/\n/g, ' ').replace(/\r/g, '').replace(/\t/g, ' ');
+
+  try {
+    const parsed = JSON.parse(clean);
+    return {
+      ru: String(parsed.ru || '').slice(0, 500),
+      en: String(parsed.en || '').slice(0, 500),
+      ka: String(parsed.ka || '').slice(0, 500),
+    };
+  } catch {
+    const get = (key: string) => {
+      const m = clean.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
+      return m ? m[1] : '';
+    };
+    return {
+      ru: get('ru').slice(0, 500),
+      en: get('en').slice(0, 500),
+      ka: get('ka').slice(0, 500),
+    };
+  }
+}
+
+// ─── PROMPTS ──────────────────────────────────────────────────────────────────
 
 function buildDescriptionPrompt(name: string, cat: string) {
   return `You are a product copywriter for an online store in Georgia (country).
@@ -88,52 +86,101 @@ Return ONLY this JSON (no markdown, no newlines inside values):
 {"ru":"${name}","en":"translation in english","ka":"თარგმანი ქართულად"}`;
 }
 
-function parseJson(text: string): { ru: string; en: string; ka: string } {
-  let clean = text.replace(/```json\s*|\s*```/g, '').trim();
-  
-  const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('No JSON found in response');
-  clean = match[0];
+// ─── PROVIDERS ────────────────────────────────────────────────────────────────
 
-  clean = clean.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-  clean = clean.replace(/\n/g, ' ').replace(/\r/g, '').replace(/\t/g, ' ');
+async function generateWithOpenCode(
+  name: string,
+  cat: string,
+  mode: 'description' | 'name'
+): Promise<{ ru: string; en: string; ka: string }> {
+  if (!OPENCODE_API_KEY) throw new Error('OPENCODE_API_KEY not set');
 
-  try {
-    const parsed = JSON.parse(clean);
-    return {
-      ru: String(parsed.ru || '').slice(0, 500),
-      en: String(parsed.en || '').slice(0, 500),
-      ka: String(parsed.ka || '').slice(0, 500),
-    };
-  } catch {
-    const get = (key: string) => {
-      const m = clean.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\]|\\.)*)"`));
-      return m ? m[1] : '';
-    };
-    return {
-      ru: get('ru').slice(0, 500),
-      en: get('en').slice(0, 500),
-      ka: get('ka').slice(0, 500),
-    };
+  const client = new OpenAI({
+    apiKey: OPENCODE_API_KEY,
+    baseURL: OPENCODE_BASE_URL,
+  });
+
+  const prompt = mode === 'description'
+    ? buildDescriptionPrompt(name, cat)
+    : buildNamePrompt(name);
+
+  for (const model of OPENCODE_MODELS) {
+    try {
+      const response = await client.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
+          },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 800,
+      });
+
+      const text = response.choices?.[0]?.message?.content || '';
+      return parseJson(text);
+    } catch (e: any) {
+      if (is429(e) || isNotFound(e)) {
+        console.warn(`OpenCode model ${model} failed (${e?.status}), trying next…`);
+        continue;
+      }
+      throw e;
+    }
   }
+
+  throw new Error('All OpenCode models exhausted');
 }
 
-function is429(e: any): boolean {
-  return (
-    e?.status === 429 || e?.code === 429 ||
-    String(e?.message || '').includes('429') ||
-    String(e?.message || '').includes('RESOURCE_EXHAUSTED') ||
-    String(e?.message || '').includes('quota')
-  );
+async function generateWithYandex(
+  name: string,
+  cat: string,
+  mode: 'description' | 'name'
+): Promise<{ ru: string; en: string; ka: string }> {
+  if (!YANDEX_API_KEY) throw new Error('YANDEX_API_KEY not set');
+
+  const client = new OpenAI({
+    apiKey: YANDEX_API_KEY,
+    baseURL: 'https://ai.api.cloud.yandex.net/v1',
+    defaultHeaders: { 'OpenAI-Project': YANDEX_FOLDER },
+  });
+
+  const prompt = mode === 'description'
+    ? buildDescriptionPrompt(name, cat)
+    : buildNamePrompt(name);
+
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await (client as any).responses.create({
+      model: `gpt://${YANDEX_FOLDER}/yandexgpt-5.1/latest`,
+      instructions: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
+      input: prompt,
+      temperature: 0.3,
+      max_output_tokens: 800,
+    });
+
+    const raw: string =
+      (response as any).output_text ??
+      (response as any).output?.[0]?.content?.[0]?.text ??
+      '';
+
+    if (raw.includes('}')) {
+      try {
+        return parseJson(raw);
+      } catch {
+        console.warn(`Yandex attempt ${attempt} parse failed, retrying…`);
+      }
+    } else {
+      console.warn(`Yandex attempt ${attempt} truncated, retrying…`);
+    }
+
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  throw new Error('Yandex returned truncated response after 3 attempts');
 }
 
-function isNotFound(e: any): boolean {
-  return (
-    e?.status === 404 || e?.code === 404 ||
-    String(e?.message || '').includes('NOT_FOUND') ||
-    String(e?.message || '').includes('is not found')
-  );
-}
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
@@ -141,28 +188,39 @@ export async function POST(req: NextRequest) {
   const {
     name_ru, name_en, name_ka,
     category_ru, sub_category_ru,
-    provider = 'gemini',
+    provider = 'opencode',   // default → opencode
     mode = 'description',
   } = await req.json();
 
   const name = name_ru || name_en || name_ka;
   if (!name) return NextResponse.json({ error: 'Нет названия товара' }, { status: 400 });
 
-  const cat = sub_category_ru ? `${category_ru} / ${sub_category_ru}` : (category_ru || '');
+  const cat = sub_category_ru
+    ? `${category_ru} / ${sub_category_ru}`
+    : (category_ru || '');
 
   try {
-    let result;
+    let result: { ru: string; en: string; ka: string };
+
     if (provider === 'yandex') {
-      if (!YANDEX_API_KEY) return NextResponse.json({ error: 'YANDEX_API_KEY not set' }, { status: 500 });
-      result = await translateWithYandex(name, cat, mode);
+      // Явно выбран Yandex
+      result = await generateWithYandex(name, cat, mode);
     } else {
-      // ✅ ИСПРАВЛЕНО: gemini теперь вызывает translateWithGemini, не Yandex
-      if (!GEMINI_API_KEY) return NextResponse.json({ error: 'GEMINI_API_KEY not set' }, { status: 500 });
-      result = await translateWithGemini(name, cat, mode);
+      // opencode (default) → при ошибке fallback на Yandex
+      try {
+        result = await generateWithOpenCode(name, cat, mode);
+      } catch (e: any) {
+        console.warn('OpenCode failed, falling back to Yandex:', e?.message);
+        result = await generateWithYandex(name, cat, mode);
+      }
     }
+
     return NextResponse.json(result);
   } catch (e: any) {
     console.error('Generate description error:', e?.message || e);
-    return NextResponse.json({ error: e?.message || String(e), status: e?.status }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message || String(e) },
+      { status: 500 }
+    );
   }
 }
