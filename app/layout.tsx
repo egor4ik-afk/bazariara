@@ -166,7 +166,34 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             gtag('config', 'G-EN4C3S417X');
           `}
         </Script>
-        
+        {/* Yandex Metrika */}
+        <Script id="yandex-metrika" strategy="afterInteractive">
+          {`
+    (function(m,e,t,r,i,k,a){
+      m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+      m[i].l=1*new Date();
+      for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
+      k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+    })(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=107711719','ym');
+    ym(107711719,'init',{
+      ssr: true,
+      webvisor: true,
+      clickmap: true,
+      ecommerce: "dataLayer",
+      referrer: document.referrer,
+      url: location.href,
+      accurateTrackBounce: true,
+      trackLinks: true
+    });
+  `}
+        </Script>
+        <noscript>
+          <img
+            src="https://mc.yandex.ru/watch/107711719"
+            style={{ position: 'absolute', left: '-9999px' }}
+            alt=""
+          />
+        </noscript>
         {/* Facebook Pixel Script */}
         <Script id="fb-pixel-base" strategy="afterInteractive">
           {`
@@ -183,10 +210,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
         <noscript>
-          <img 
-            height="1" 
-            width="1" 
-            style={{display: 'none'}}
+          <img
+            height="1"
+            width="1"
+            style={{ display: 'none' }}
             src={"https://www.facebook.com/tr?id=" + process.env.NEXT_PUBLIC_FB_PIXEL_ID + "&ev=PageView&noscript=1"}
             alt=""
           />
