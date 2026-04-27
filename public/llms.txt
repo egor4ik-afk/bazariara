@@ -24,4 +24,4 @@
 ## Технологии
 - **Frontend:** Next.js (App Router), React, Tailwind CSS
 - **Backend/База данных:** Neon (Postgres)
-- **Хостинг:** Vercel
+- **Хостинг:** Relaxdev
