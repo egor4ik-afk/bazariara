@@ -57,10 +57,14 @@ export default function AdminProductsClient({
   const router = useRouter();
   const [selected, setSelected]       = useState<Set<number>>(new Set());
   const [batchField, setBatchField]   = useState<'description' | 'name_en' | 'name_ka'>('description');
-  const [provider, setProvider]       = useState<'gemini' | 'yandex'>('yandex');
+  const [provider, setProvider]       = useState<'opencode' | 'yandex'>('opencode');
   const [batchSize, setBatchSize]     = useState(10);
   const [batchStatus, setBatchStatus] = useState<string>('');
   const [batchRunning, setBatchRunning] = useState(false);
+  const [imageEffect, setImageEffect] = useState<'product' | 'whitebg' | 'frame' | 'shadow' | 'mirror'>('product');
+  const [imageTarget, setImageTarget] = useState<'main' | 'all'>('main');
+  const [imageStatus, setImageStatus] = useState<string>('');
+  const [imageRunning, setImageRunning] = useState(false);
   const [, startTransition] = useTransition();
 
   // ── Выбор ────────────────────────────────────────────────────────────────
@@ -104,6 +108,32 @@ export default function AdminProductsClient({
       setBatchStatus(`✕ Ошибка: ${String(e)}`);
     } finally {
       setBatchRunning(false);
+    }
+  };
+
+  const runImageBatch = async () => {
+    if (selected.size === 0) { setImageStatus('Выберите товары'); return; }
+    setImageRunning(true);
+    setImageStatus(`Обрабатываю фото ${Math.min(selected.size, batchSize)} товаров…`);
+    try {
+      const res = await fetch('/api/admin/batch-process-images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: Array.from(selected),
+          effect: imageEffect,
+          target: imageTarget,
+          batch_size: batchSize,
+        }),
+      });
+      const data = await res.json();
+      setImageStatus(`✓ Готово: ${data.ok} успешно, ${data.err} ошибок`);
+      setSelected(new Set());
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setImageStatus(`✕ Ошибка: ${String(e)}`);
+    } finally {
+      setImageRunning(false);
     }
   };
 
@@ -222,8 +252,8 @@ export default function AdminProductsClient({
 
           <select value={provider} onChange={e => setProvider(e.target.value as any)}
             style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
-            <option value="gemini">Gemini</option>
-            <option value="yandex">YandexGPT</option>
+            <option value="opencode">OpenCode Go</option>
+            <option value="yandex">YandexGPT (fallback)</option>
           </select>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -245,6 +275,48 @@ export default function AdminProductsClient({
           {batchStatus && (
             <span style={{ fontSize: 12, color: batchStatus.startsWith('✓') ? '#4ade80' : batchStatus.startsWith('✕') ? '#f87171' : '#aaa' }}>
               {batchStatus}
+            </span>
+          )}
+        </div>
+
+        <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: '#888', fontSize: 12, whiteSpace: 'nowrap', fontWeight: 600 }}>🖼 Обработка фото:</span>
+ 
+          <select value={imageEffect} onChange={e => setImageEffect(e.target.value as any)}
+            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            <option value="product">✨ Товарный вид (комбо)</option>
+            <option value="whitebg">⬜ Белый фон</option>
+            <option value="frame">🔲 Рамка с отступом</option>
+            <option value="shadow">🌑 Тень</option>
+            <option value="mirror">↔ Зеркало</option>
+          </select>
+ 
+          <select value={imageTarget} onChange={e => setImageTarget(e.target.value as any)}
+            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            <option value="main">Только главное фото</option>
+            <option value="all">Все фото товара</option>
+          </select>
+ 
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ color: '#555', fontSize: 12 }}>Пачка:</span>
+            <input type="number" value={batchSize} min={1} max={20} onChange={e => setBatchSize(Number(e.target.value))}
+              style={{ width: 50, padding: '5px 8px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }} />
+          </div>
+ 
+          <button onClick={runImageBatch} disabled={imageRunning || selected.size === 0}
+            style={{
+              padding: '7px 16px', borderRadius: 7, border: 'none',
+              cursor: imageRunning || selected.size === 0 ? 'not-allowed' : 'pointer',
+              background: imageRunning ? '#333' : selected.size === 0 ? '#222' : '#3b82f6',
+              color: imageRunning || selected.size === 0 ? '#555' : '#fff',
+              fontSize: 12, fontWeight: 600,
+            }}>
+            {imageRunning ? '⟳ Обрабатываю…' : '🖼 Обработать фото'}
+          </button>
+ 
+          {imageStatus && (
+            <span style={{ fontSize: 12, color: imageStatus.startsWith('✓') ? '#4ade80' : imageStatus.startsWith('✕') ? '#f87171' : '#aaa' }}>
+              {imageStatus}
             </span>
           )}
         </div>
