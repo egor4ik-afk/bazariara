@@ -2,7 +2,7 @@ import postgres from 'postgres';
 
 // Для отключения SSL устанавливаем значение false
 const sql = postgres(process.env.DATABASE_URL!, {
-  ssl: false, 
+  ssl: true, 
   max: 10,
   idle_timeout: 20,
   // Если сервер БД медленно отвечает на установку соединения, 
