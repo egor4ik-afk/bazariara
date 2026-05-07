@@ -1,7 +1,5 @@
-'use client';
-
 import { ShieldCheckIcon, CubeTransparentIcon, InboxIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslations } from '@/lib/server-translations';
 
 const ReturnRuleCard = ({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) => (
   <div className="bg-gray-800 rounded-2xl p-6 flex flex-col items-center text-center shadow-lg transform hover:scale-105 transition-transform duration-300">
@@ -14,7 +12,8 @@ const ReturnRuleCard = ({ icon, title, text }: { icon: React.ReactNode; title: s
 );
 
 export default function ReturnsPage() {
-  const { t } = useLanguage();
+  const { t } = getTranslations();
+
   return (
     <div className="bg-gray-900 text-white min-h-screen">
       <div className="container mx-auto px-4 py-12 md:py-20">

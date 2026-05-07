@@ -1,11 +1,9 @@
-'use client';
-
 import Link from 'next/link';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { getTranslations } from '@/lib/server-translations';
 
 export default function OrderSuccessPage() {
-  const { t } = useLanguage();
+  const { t } = getTranslations();
 
   return (
     <div className="bg-gray-900 min-h-screen text-white flex items-center justify-center p-4">

@@ -1,8 +1,6 @@
 import { Metadata, Viewport } from 'next'
 import './globals.css'
-import { CartProvider } from '@/contexts/CartContext'
-import { OrderProvider } from '@/contexts/OrderContext'
-import { LanguageProvider } from '@/contexts/LanguageContext'
+import { Providers } from './providers'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
@@ -143,15 +141,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="flex flex-col min-h-screen">
-        <LanguageProvider>
-          <OrderProvider>
-            <CartProvider>
-              <Header />
-              <main className="flex-grow">{children}</main>
-              <Footer />
-            </CartProvider>
-          </OrderProvider>
-        </LanguageProvider>
+        <Providers>
+          <Header />
+          <main className="flex-grow">{children}</main>
+          <Footer />
+        </Providers>
 
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
