@@ -25,17 +25,16 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   const canonicalQuery = canonicalParams.toString();
   const canonical = `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`;
 
-  // ✅ hreflang для трёх языков — важно для грузинской и англоязычной аудитории
-  const hreflangBase = canonicalQuery ? `?${canonicalQuery}` : '';
-
+  // ✅ Сайт однояыычный (ru). Hreflang убираем — Google разберётся сам.
+  // Если в будущем добавите грузинскую версию (/ka/...), раскомментируйте и
+  // пропишите реальные URL для каждого языка.
   const alternates = {
     canonical,
-    languages: {
-      'ru': `https://bazariara.ge/${hreflangBase}`,
-      'ka': `https://bazariara.ge/${hreflangBase}`,
-      'en': `https://bazariara.ge/${hreflangBase}`,
-      'x-default': `https://bazariara.ge/${hreflangBase}`,
-    },
+    // languages: {
+    //   'ru': `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`,
+    //   'ka': `https://bazariara.ge/ka/${canonicalQuery ? '?' + canonicalQuery : ''}`,
+    //   'x-default': `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`,
+    // },
   };
 
   if (!category || category === 'all') {
@@ -167,6 +166,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 return cat ? { ru: cat.name, en: cat.name_en, ka: cat.name_ka } : undefined;
               })()
             : undefined}
+          currentPage={currentPage}
         />
 
         <InteractiveFilters

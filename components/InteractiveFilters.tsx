@@ -80,10 +80,28 @@ export default function InteractiveFilters({
         />
       </div>
       <div className="w-full px-2 sm:px-4 mt-4 hidden md:block">
-        <CategoryCarousel categories={categories} selectedCategory={selectedCategory} onSelectCategory={handleCategoryChange} />
+        <CategoryCarousel 
+            categories={categories} 
+            selectedCategory={selectedCategory} 
+            onSelectCategory={handleCategoryChange}
+            buildHref={(key) =>
+                key === selectedCategory
+                ? '/'               // снятие фильтра — идём на главную
+                : `/?category=${key}`
+            }
+        />
         {subCategories.length > 0 && (
           <div className="mt-4">
-            <CategoryCarousel categories={subCategories} selectedCategory={selectedSubCategory} onSelectCategory={handleSubCategoryChange} />
+            <CategoryCarousel 
+                categories={subCategories} 
+                selectedCategory={selectedSubCategory} 
+                onSelectCategory={handleSubCategoryChange}
+                buildHref={(key) =>
+                    key === selectedSubCategory
+                    ? `/?category=${selectedCategory}`
+                    : `/?category=${selectedCategory}&subcategory=${key}`
+                }
+            />
           </div>
         )}
       </div>

@@ -1,7 +1,8 @@
 import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
 import { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound, redirect, permanentRedirect } from 'next/navigation';
+import { headers } from 'next/headers';
 
 export const revalidate = 600;
 
@@ -108,10 +109,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const product = await getProduct(category, id);
 
   if (!product) {
-    return {
-      title: 'Товар не найден — BAZARI ARA',
-      description: 'Запрошенный товар не существует или был удалён.',
-    };
+    notFound();
   }
 
   const title = `${product.title} — купить в Тбилиси с доставкой`;
