@@ -158,7 +158,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         />
       )}
 
-      <main className="container mx-auto px-4 py-1 sm:px-6 lg:px-8">
+      <div className="container mx-auto px-4 py-1 sm:px-6 lg:px-8">
         <HomeHeader
           categoryNames={selectedCategory !== 'all'
             ? (() => {
@@ -226,7 +226,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             )}
           </nav>
         )}
-      </main>
+      </div>
     </div>
   );
 }
