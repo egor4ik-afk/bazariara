@@ -5,7 +5,7 @@ const sql = postgres(process.env.DATABASE_URL!, {
   ssl: true, 
   max: 10,
   idle_timeout: 20,
-  // Если сервер БД медленно отвечает на установку соединения, 
+  // Если сервер БД мвведленно отвечает на установку соединения, 
   // можно добавить connect_timeout: 10
 });
 
