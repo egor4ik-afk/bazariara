@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 
-// Функция, которая гарантированно вернет валидный URL для сборки
+// Функция, которая гарантировссанно вернет валидный URL для сборки
 function getSafeUrl() {
   const url = process.env.DATABASE_URL;
   // Если ссылки нет, или она кривая (не начинается с postgres), отдаем фейк
