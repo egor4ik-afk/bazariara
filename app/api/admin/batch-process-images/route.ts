@@ -10,8 +10,8 @@ const s3 = new S3Client({
   region: process.env.YANDEX_REGION || 'ru-central1',
   endpoint: 'https://storage.yandexcloud.net',
   credentials: {
-    accessKeyId:     process.env.YANDEX_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.YANDEX_SECRET_ACCESS_KEY!,
+    accessKeyId:     process.env.YANDEX_ACCESS_KEY_ID || 'dummy_id',
+    secretAccessKey: process.env.YANDEX_SECRET_ACCESS_KEY || 'dummy_secret',
   },
   forcePathStyle: true,
 });
