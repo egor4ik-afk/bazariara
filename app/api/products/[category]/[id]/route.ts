@@ -36,9 +36,7 @@ export async function GET(
         sub_category, sub_category_en,
         image_url, images
       FROM products
-      WHERE source = 'gorgia'
-        AND id = ${numericId}
-        -- ✅ Ищем по id, category из URL используем как fallback
+      WHERE id = ${numericId}
       LIMIT 1
     `
 
@@ -47,11 +45,8 @@ export async function GET(
     }
 
     const product = rows[0]
-
-    // ✅ Берём category_key из БД, fallback — category из URL
     const categoryKey = (product.category_key as string | null) || category
 
-    // Парсим images если строка (jsonb иногда приходит как строка)
     let images = product.images
     if (typeof images === 'string') {
       try { images = JSON.parse(images) } catch { images = [] }

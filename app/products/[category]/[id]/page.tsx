@@ -1,7 +1,7 @@
 import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
 import { Metadata } from 'next';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 export const revalidate = 600;
 
@@ -9,7 +9,7 @@ type Params = Promise<{ category: string; id: string }>;
 
 type NeonProduct = {
   id: number;
-  external_id: string;
+  external_id: string | null;
   source_url: string | null;
   gorgia_url: string | null;
   name: string;
@@ -20,17 +20,18 @@ type NeonProduct = {
   description_ru: string | null;
   description_en: string | null;
   description_ka: string | null;
-  price: number | null;
+  price: any; // Используем any для безопасной обработки Decimal/строки
   currency: string;
   in_stock: boolean;
   category: string | null;
   category_en: string | null;
   category_ka: string | null;
+  category_key: string | null; 
   sub_category: string | null;
   sub_category_en: string | null;
   sub_category_ka: string | null;
   image_url: string | null;
-  images: string[] | string | null;
+  images: any;
 };
 
 function toClientProduct(p: NeonProduct, category: string, id: string) {
@@ -38,18 +39,19 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
   if (typeof p.images === 'string') {
     try { imgs = JSON.parse(p.images); } catch { imgs = []; }
   } else if (Array.isArray(p.images)) {
-    imgs = p.images;
+    imgs = p.images as string[];
   }
 
   const allImages = [p.image_url, ...imgs].filter(Boolean) as string[];
   const uniqueImages = [...new Set(allImages)];
 
-  const trueCategoryKey = p.external_id ? p.external_id.split('_')[0] : category;
+  // Безопасное определение канонической категории
+  const trueCategoryKey = p.category_key || (p.external_id && p.external_id.includes('_') ? p.external_id.split('_')[0] : category);
 
   return {
     id:              String(p.id),
-    external_id:     p.external_id,
-    categoryKey:     category,
+    external_id:     p.external_id || undefined,
+    categoryKey:     category, 
     trueCategoryKey: trueCategoryKey,
 
     title:           p.name_ru || p.name_en || p.name_ka || p.name,
@@ -68,7 +70,7 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
     sub_category_en: p.sub_category_en || undefined,
     sub_category_ka: p.sub_category_ka || undefined,
 
-    price:           p.price ?? 0,
+    price:           p.price ? Number(p.price) : 0, // Принудительно приводим к числу
     in_stock:        p.in_stock,
     currency:        p.currency,
 
@@ -79,98 +81,84 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
 
 async function getProduct(category: string, id: string) {
   try {
+    const numericId = Number(id);
+    if (isNaN(numericId)) return null;
+
     const rows = await sql`
       SELECT
         id, external_id, source_url, gorgia_url,
         name, name_ru, name_en, name_ka,
         description, description_ru, description_en, description_ka,
         price, currency, in_stock,
-        category, category_en, category_ka,
+        category, category_en, category_ka, category_key,
         sub_category, sub_category_en, sub_category_ka,
         image_url, images
       FROM products
-      WHERE source = 'gorgia'
-        AND id = ${Number(id)}
+      WHERE id = ${numericId}
       LIMIT 1
     `;
 
-    if (!rows[0]) return null;
+    if (!rows || rows.length === 0) {
+      console.warn(`[DB] Товар с ID ${numericId} не найден в базе данных.`);
+      return null;
+    }
 
     return toClientProduct(rows[0] as unknown as NeonProduct, category, id);
   } catch (err) {
-    console.error('Ошибка при получении товара:', err);
+    console.error('Ошибка при получении товара из БД:', err);
     return null;
   }
 }
 
-// ─── Единая точка получения продукта с редиректом ──────────────────────────
-// Вынесена отдельно, чтобы и generateMetadata, и ProductDetailPage
-// использовали одну логику — без дублирования кода.
-//
-// Возвращает продукт ТОЛЬКО если category в URL совпадает с trueCategoryKey.
-// Если не совпадает — бросает redirect() до рендера, поэтому Googlebot
-// никогда не получит 200 на неканоничном URL.
-async function getProductOrRedirect(category: string, id: string) {
-  const product = await getProduct(category, id);
-
-  if (!product) notFound();
-
-  // Если category в URL не совпадает с реальным ключом из БД —
-  // делаем 308 Permanent Redirect до того, как начнётся рендер метадаты.
-  // Это закрывает источник "Duplicate without user-selected canonical" в GSC:
-  // неправильный URL возвращает 308, правильный — 200 с canonical на себя.
-  if (category !== product.trueCategoryKey) {
-    redirect(`/products/${product.trueCategoryKey}/${product.id}`);
-  }
-
-  return product;
-}
-
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { category, id } = await params;
+  const product = await getProduct(category, id);
 
-  // redirect() внутри generateMetadata работает в Next.js App Router —
-  // он прерывает рендер и возвращает 308 до отдачи HTML.
-  const product = await getProductOrRedirect(category, id);
+  if (!product) {
+    return {
+      title: 'Товар не найден — BAZARI ARA',
+      description: 'Запрошенный товар не существует или был удалён.',
+    };
+  }
 
-  const title       = `${product.title} — купить в Тбилиси с доставкой`;
-  const rawDesc     = product.description
+  const title = `${product.title} — купить в Тбилиси с доставкой`;
+  const rawDescription = product.description
     ? `${product.description.slice(0, 110)} — доставка по Тбилиси. Цена: ${product.price} ₾.`
     : `Купите ${product.title} за ${product.price} ₾ с доставкой по Тбилиси за 2 часа.`;
-  const description = rawDesc.slice(0, 160);
-  const image       = product.image_url || '/default-product.png';
-
-  // canonical всегда на trueCategoryKey — совпадает с URL после редиректа
-  const canonicalUrl = `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`;
+  const description = rawDescription.slice(0, 160);
+  const image = product.image_url || '/default-product.png';
+  const url = `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`;
 
   return {
     title,
     description,
-    alternates: { canonical: canonicalUrl },
+    alternates: { canonical: url },
     openGraph: {
-      locale:      'ru_GE',
-      url:         canonicalUrl,
-      siteName:    'BAZARI ARA',
-      type:        'website',
+      locale: 'ru_GE',
+      url,
+      siteName: 'BAZARI ARA',
+      type: 'website',
       title,
       description,
       images: [{ url: image, width: 1200, height: 630, alt: product.title }],
     },
     twitter: {
-      card:        'summary_large_image',
+      card: 'summary_large_image',
       title,
       description,
-      images:      [image],
+      images: [image],
     },
   };
 }
 
 export default async function ProductDetailPage({ params }: { params: Params }) {
   const { category, id } = await params;
+  const product = await getProduct(category, id);
 
-  // redirect уже случился в generateMetadata если нужен —
-  // здесь продукт гарантированно на правильном URL
-  const product = await getProductOrRedirect(category, id);
+  if (!product) notFound();
+
+  // Отключаем принудительный редирект, чтобы страница открывалась в любом случае.
+  // Правильный URL уже передается поисковикам через canonical в метаданных выше.
 
   const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
   const absoluteImageUrls = allImages.map(url =>
@@ -182,43 +170,43 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
 
   const jsonLd = {
     '@context': 'https://schema.org/',
-    '@type':    'Product',
-    name:       product.title,
-    image:      absoluteImageUrls,
+    '@type': 'Product',
+    name: product.title,
+    image: absoluteImageUrls,
     description: product.description || '',
-    sku:        product.id.toString(),
-    category:   product.category,
-    brand:      { '@type': 'Brand', name: 'BAZARI ARA' },
+    sku: product.id,
+    category: product.category,
+    brand: { '@type': 'Brand', name: 'BAZARI ARA' },
     offers: {
-      '@type':           'Offer',
-      priceCurrency:     'GEL',
-      price:             product.price,
-      priceValidUntil:   nextYear.toISOString().split('T')[0],
-      availability:      product.in_stock
+      '@type': 'Offer',
+      priceCurrency: 'GEL',
+      price: product.price,
+      priceValidUntil: nextYear.toISOString().split('T')[0],
+      availability: product.in_stock
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
-      url:               `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`,
+      url: `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`,
       seller: {
         '@type': 'Organization',
-        name:    'BAZARI ARA',
-        logo:    { '@type': 'ImageObject', url: 'https://bazariara.ge/android-chrome-512x512.png' },
+        name: 'BAZARI ARA',
+        logo: { '@type': 'ImageObject', url: 'https://bazariara.ge/android-chrome-512x512.png' },
       },
       shippingDetails: {
-        '@type':       'OfferShippingDetails',
-        shippingRate:  { '@type': 'MonetaryAmount', value: '20', currency: 'GEL' },
+        '@type': 'OfferShippingDetails',
+        shippingRate: { '@type': 'MonetaryAmount', value: '20', currency: 'GEL' },
         shippingDestination: {
-          '@type':         'DefinedRegion',
-          addressCountry:  'GE',
-          addressRegion:   'Тбилиси',
+          '@type': 'DefinedRegion',
+          addressCountry: 'GE',
+          addressRegion: 'Тбилиси',
         },
       },
       hasMerchantReturnPolicy: {
-        '@type':                'MerchantReturnPolicy',
-        applicableCountry:      'GE',
-        returnPolicyCategory:   'https://schema.org/MerchantReturnFiniteReturnWindow',
-        merchantReturnDays:     14,
-        returnMethod:           'https://schema.org/ReturnByMail',
-        returnFees:             'https://schema.org/FreeReturn',
+        '@type': 'MerchantReturnPolicy',
+        applicableCountry: 'GE',
+        returnPolicyCategory: 'https://schema.org/MerchantReturnFiniteReturnWindow',
+        merchantReturnDays: 14,
+        returnMethod: 'https://schema.org/ReturnByMail',
+        returnFees: 'https://schema.org/FreeReturn',
       },
     },
   };
