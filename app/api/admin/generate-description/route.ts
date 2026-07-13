@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
 
   const {
     name_ru, name_en, name_ka,
-    category_ru, sub_category_ru,
+    category, sub_category,
     provider = 'opencode',   // default → opencode
     mode = 'description',
   } = await req.json();
@@ -195,9 +195,9 @@ export async function POST(req: NextRequest) {
   const name = name_ru || name_en || name_ka;
   if (!name) return NextResponse.json({ error: 'Нет названия товара' }, { status: 400 });
 
-  const cat = sub_category_ru
-    ? `${category_ru} / ${sub_category_ru}`
-    : (category_ru || '');
+  const cat = sub_category
+    ? `${category} / ${sub_category}`
+    : (category || '');
 
   try {
     let result: { ru: string; en: string; ka: string };

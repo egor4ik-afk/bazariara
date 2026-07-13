@@ -35,14 +35,11 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   maybe('sku',             'sku');
   maybe('price',           'price',    v => v ? parseFloat(String(v)) : null);
   maybe('in_stock',        'in_stock', v => Boolean(v));
-  maybe('availability_ru', 'availability_ru');
-  maybe('availability_ka', 'availability_ka');
-  maybe('category',        'category_ru');
-  maybe('category_ru',     'category_ru');
+  maybe('availability',    'availability');
+  maybe('category',        'category');
   maybe('category_en',     'category_en');
   maybe('category_ka',     'category_ka');
-  maybe('sub_category',    'sub_category_ru');
-  maybe('sub_category_ru', 'sub_category_ru');
+  maybe('sub_category',    'sub_category');
   maybe('sub_category_en', 'sub_category_en');
   maybe('sub_category_ka', 'sub_category_ka');
   maybe('image_url',       'image_url');
@@ -60,9 +57,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   }
 
   // category_key
-  if (has('external_id') || has('category_ru')) {
+  if (has('external_id') || has('category')) {
     const eid = body.external_id;
-    const cat = body.category_ru;
+    const cat = body.category;
     const key = eid
       ? eid.split('_')[0]
       : cat ? cat.toLowerCase().replace(/\s+/g, '-') : null;

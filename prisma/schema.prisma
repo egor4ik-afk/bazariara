@@ -3,20 +3,18 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model products {
-  id              BigInt    @id @default(autoincrement())
-  external_id     String?   @unique
-  source          String    @default("market")
+  id              BigInt   @id @default(autoincrement())
+  external_id     String?  @unique
+  source          String   @default("market")
   source_url      String?
   gorgia_url      String?
-  
-  // Названия и описания
-  name            String    @default("")
+  name            String   @default("")
   name_ru         String?
   name_en         String?
   name_ka         String?
@@ -24,16 +22,12 @@ model products {
   description_ru  String?
   description_en  String?
   description_ka  String?
-  
-  // Цена и стоки
-  price           Decimal?  @db.Decimal(12, 2)
-  cost_price      Decimal?  @db.Decimal(12, 2)
-  currency        String    @default("RUB")
-  in_stock        Boolean   @default(true)
-  stock           Int       @default(0)
+  price           Decimal? @db.Decimal(12, 2)
+  cost_price      Decimal? @db.Decimal(12, 2)
+  currency        String   @default("RUB")
+  in_stock        Boolean  @default(true)
+  stock           Int      @default(0)
   availability    String?
-  
-  // Категории
   category        String?
   category_en     String?
   category_ka     String?
@@ -41,23 +35,21 @@ model products {
   sub_category    String?
   sub_category_en String?
   sub_category_ka String?
-  
-  // Идентификаторы
   sku             String?
   article         String?
   barcode         String?
-  
-  // Эвотор
-  evotor_type     String    @default("NORMAL")
+  evotor_type     String   @default("NORMAL")
   evotor_uuid     String?
   vat             String?
-  
-  // Картинки
   image_url       String?
-  images          Json      @default("[]")
+  images          Json     @default("[]")
+  created_at      DateTime @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime @default(now()) @db.Timestamptz(6)
 
-  created_at      DateTime  @default(now()) @db.Timestamptz
-  updated_at      DateTime  @default(now()) @db.Timestamptz
+  // ── Добавлено: индексы под горячие запросы витрины и админки ──
+  @@index([source, category_key])
+  @@index([source, sub_category])
+  @@index([in_stock, updated_at])
 }
 
 model categories {
@@ -65,8 +57,107 @@ model categories {
   name           String
   category_key   String       @unique
   parent_id      BigInt?
+  category_image String?
+  created_at     DateTime     @default(now()) @db.Timestamptz(6)
+  name_en        String?
+  name_ka        String?
   parent         categories?  @relation("CategoryParent", fields: [parent_id], references: [id])
   children       categories[] @relation("CategoryParent")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model categories_backup_20260712 {
+  id             BigInt?
+  name           String?
+  category_key   String?
+  parent_id      BigInt?
   category_image String?
-  created_at     DateTime     @default(now()) @db.Timestamptz
+  created_at     DateTime? @db.Timestamptz(6)
+
+  @@ignore
+}
+
+model orders {
+  id         Int       @id @default(autoincrement())
+  customer   Json
+  items      Json
+  subtotal   Decimal?  @db.Decimal(10, 2)
+  shipping   Decimal?  @db.Decimal(10, 2)
+  total      Decimal?  @db.Decimal(10, 2)
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+model product_images {
+  id         BigInt @id @default(autoincrement())
+  product_id BigInt
+  url        String
+  position   Int?   @default(0)
+
+  @@index([product_id], map: "idx_product_images_product_id")
+}
+
+model product_translations {
+  id          BigInt  @id @default(autoincrement())
+  product_id  BigInt
+  lang        String
+  name        String
+  description String?
+
+  @@unique([product_id, lang])
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model products_backup_20260712 {
+  id              BigInt?
+  external_id     String?
+  source          String?
+  source_url      String?
+  gorgia_url      String?
+  name            String?
+  name_ru         String?
+  name_en         String?
+  name_ka         String?
+  description     String?
+  description_ru  String?
+  description_en  String?
+  description_ka  String?
+  price           Decimal?  @db.Decimal(12, 2)
+  cost_price      Decimal?  @db.Decimal(12, 2)
+  currency        String?
+  in_stock        Boolean?
+  stock           Int?
+  availability    String?
+  category        String?
+  category_en     String?
+  category_ka     String?
+  category_key    String?
+  sub_category    String?
+  sub_category_en String?
+  sub_category_ka String?
+  sku             String?
+  article         String?
+  barcode         String?
+  evotor_type     String?
+  evotor_uuid     String?
+  vat             String?
+  image_url       String?
+  images          Json?
+  created_at      DateTime? @db.Timestamptz(6)
+  updated_at      DateTime? @db.Timestamptz(6)
+
+  @@ignore
+}
+
+model subcategories {
+  id           BigInt    @id @default(autoincrement())
+  category_key String
+  key          String    @unique
+  name         String
+  name_en      String?
+  name_ka      String?
+  image_url    String?
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  // ── Добавлено: под фильтр WHERE category_key = ... ──
+  @@index([category_key])
 }

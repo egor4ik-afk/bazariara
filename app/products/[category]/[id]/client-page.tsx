@@ -167,6 +167,25 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   <img src={product.image_url || '/placeholder.png'} alt={getTitle()} className="w-full h-full object-cover" loading="eager" />
                 </div>
               )}
+
+              {/* Добавить в корзину — перенесено под галерею */}
+              <div className="mt-4">
+                {cartItem ? (
+                  <div className="flex items-center gap-4">
+                    <p className="text-lg font-semibold">{t('product.inCart')}</p>
+                    <div className="flex items-center gap-2">
+                      <button onClick={handleDecrease} className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"><MinusIcon className="h-5 w-5" /></button>
+                      <input type="number" value={inputValue} min="1" onChange={e => setInputValue(e.target.value)} onBlur={handleBlur} className="text-xl font-bold w-12 text-center bg-transparent focus:outline-none focus:ring-2 focus:ring-lime-500 rounded-md" />
+                      <button onClick={handleIncrease} className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"><PlusIcon className="h-5 w-5" /></button>
+                    </div>
+                  </div>
+                ) : (
+                  <button onClick={handleAddToCart} className="w-full flex items-center justify-center px-4 py-4 font-bold rounded-lg bg-lime-500 text-gray-900 hover:bg-lime-400 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-lime-500/30">
+                    <ShoppingCartIcon className="h-6 w-6 mr-3" />
+                    {t('product.addToCart')}
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Информация */}
@@ -186,23 +205,6 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   {getDescription()!.split('\n').map((p, i) => <p key={i}>{p}</p>)}
                 </div>
               )}
-              <div className="mt-8">
-                {cartItem ? (
-                  <div className="flex items-center gap-4">
-                    <p className="text-lg font-semibold">{t('product.inCart')}</p>
-                    <div className="flex items-center gap-2">
-                      <button onClick={handleDecrease} className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"><MinusIcon className="h-5 w-5" /></button>
-                      <input type="number" value={inputValue} min="1" onChange={e => setInputValue(e.target.value)} onBlur={handleBlur} className="text-xl font-bold w-12 text-center bg-transparent focus:outline-none focus:ring-2 focus:ring-lime-500 rounded-md" />
-                      <button onClick={handleIncrease} className="p-3 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"><PlusIcon className="h-5 w-5" /></button>
-                    </div>
-                  </div>
-                ) : (
-                  <button onClick={handleAddToCart} className="w-full flex items-center justify-center px-4 py-4 font-bold rounded-lg bg-lime-500 text-gray-900 hover:bg-lime-400 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-lime-500/30">
-                    <ShoppingCartIcon className="h-6 w-6 mr-3" />
-                    {t('product.addToCart')}
-                  </button>
-                )}
-              </div>
             </div>
           </div>
         </div>

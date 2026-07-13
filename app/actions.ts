@@ -10,28 +10,9 @@ type Row = Record<string, unknown>;
 export const getCategories = unstable_cache(
   async () => {
     const catRows = await sql`
-      SELECT
-        p.key,
-        p.name,
-        p.name_en,
-        p.name_ka,
-        COALESCE(c.category_image, p.image_url) AS image_url
-      FROM (
-        SELECT
-          category_key     AS key,
-          MAX(category)    AS name,
-          MAX(category_en) AS name_en,
-          MAX(category_ka) AS name_ka,
-          MIN(image_url)   AS image_url
-        FROM products
-        WHERE source = 'gorgia'
-          AND image_url IS NOT NULL
-          AND category IS NOT NULL
-          AND category_key IS NOT NULL
-        GROUP BY category_key
-      ) p
-      LEFT JOIN categories c ON c.category_key = p.key
-      ORDER BY p.name
+      SELECT category_key AS key, name, name_en, name_ka, category_image AS image_url
+      FROM categories
+      ORDER BY name
     `;
     return (catRows as Row[]).map((r) => ({
       key:      r.key as string,
@@ -49,19 +30,10 @@ export const getSubCategories = unstable_cache(
   async (category: string) => {
     if (category === 'all') return [];
     const subRows = await sql`
-      SELECT
-        LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) AS key,
-        MAX(sub_category)     AS name,
-        MAX(sub_category_en)  AS name_en,
-        MAX(sub_category_ka)  AS name_ka,
-        MIN(image_url)        AS image_url
-      FROM products
-      WHERE source = 'gorgia'
-        AND image_url IS NOT NULL
-        AND category_key = ${category}
-        AND sub_category IS NOT NULL
-      GROUP BY LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-'))
-      ORDER BY MAX(sub_category)
+      SELECT key, name, name_en, name_ka, image_url
+      FROM subcategories
+      WHERE category_key = ${category}
+      ORDER BY name
     `;
     return (subRows as Row[]).map((r) => ({
       key:      r.key as string,

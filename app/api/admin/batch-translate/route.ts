@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
   for (const id of chunk) {
     try {
       const rows = await sql`
-        SELECT id, name_ru, name_en, name_ka, category_ru, sub_category_ru,
+        SELECT id, name_ru, name_en, name_ka, category, sub_category,
                description_ru, description_en, description_ka
         FROM products WHERE id = ${id} AND source = 'gorgia'
       `;
@@ -198,9 +198,9 @@ export async function POST(req: NextRequest) {
 
       const p    = rows[0];
       const name = (p.name_ru || p.name_en || p.name_ka) as string;
-      const cat  = p.sub_category_ru
-        ? `${p.category_ru} / ${p.sub_category_ru}`
-        : (p.category_ru as string || '');
+      const cat  = p.sub_category
+        ? `${p.category} / ${p.sub_category}`
+        : (p.category as string || '');
 
       if (field === 'description') {
         const desc = await generate(name, cat, 'description', provider);

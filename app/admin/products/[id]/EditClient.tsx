@@ -17,13 +17,11 @@ type Product = {
   sku?: string;
   price?: string | number;
   in_stock?: boolean;
-  availability_ru?: string;
+  availability?: string;
   category?: string;
-  category_ru?: string;
   category_en?: string;
   category_ka?: string;
   sub_category?: string;
-  sub_category_ru?: string;
   sub_category_en?: string;
   sub_category_ka?: string;
   image_url?: string;
@@ -147,20 +145,20 @@ export default function ProductEditClient({ product }: { product: Product }) {
     sku:             String(product?.sku || ''),
     price:           String(product?.price || ''),
     in_stock:        Boolean(product?.in_stock ?? true),
-    availability_ru: String(product?.availability_ru || ''),
-    category_ru:     String(product?.category_ru || product?.category || ''),
+    availability: String(product?.availability || ''),
+    category:     String(product?.category || product?.category || ''),
     category_en:     String(product?.category_en || ''),
     category_ka:     String(product?.category_ka || ''),
-    sub_category_ru: String(product?.sub_category_ru || product?.sub_category || ''),
+    sub_category: String(product?.sub_category || product?.sub_category || ''),
     sub_category_en: String(product?.sub_category_en || ''),
     sub_category_ka: String(product?.sub_category_ka || ''),
     source_url:      String(product?.source_url || ''),
   });
 
   useEffect(() => {
-    const cat = categoryOptions.find(c => c.name === form.category_ru);
+    const cat = categoryOptions.find(c => c.name === form.category);
     setSubOptions(cat?.sub_categories || []);
-  }, [form.category_ru, categoryOptions]);
+  }, [form.category, categoryOptions]);
 
   const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -181,7 +179,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name_ru: form.name_ru, name_en: form.name_en, name_ka: form.name_ka,
-          category_ru: form.category_ru, sub_category_ru: form.sub_category_ru,
+          category: form.category, sub_category: form.sub_category,
           provider: 'yandex',
           mode: 'description',
         }),
@@ -362,8 +360,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
           <Section title="Категория">
             <FieldWrapper label="Категория (ru)">
               <select
-                value={form.category_ru}
-                onChange={e => { setField('category_ru', e.target.value); setField('sub_category_ru', ''); }}
+                value={form.category}
+                onChange={e => { setField('category', e.target.value); setField('sub_category', ''); }}
                 style={selectStyle}
               >
                 <option value="">— выберите категорию —</option>
@@ -381,8 +379,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
             <FieldWrapper label="Подкатегория (ru)">
               <select
-                value={form.sub_category_ru}
-                onChange={e => setField('sub_category_ru', e.target.value)}
+                value={form.sub_category}
+                onChange={e => setField('sub_category', e.target.value)}
                 style={selectStyle}
                 disabled={subOptions.length === 0}
               >
@@ -421,7 +419,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
               </div>
             </FieldWrapper>
             <FieldWrapper label="Наличие (текст)">
-              <InputField value={form.availability_ru} onChange={v => setField('availability_ru', v)} placeholder="В наличии / Нет в наличии" />
+              <InputField value={form.availability} onChange={v => setField('availability', v)} placeholder="В наличии / Нет в наличии" />
             </FieldWrapper>
           </Section>
 
