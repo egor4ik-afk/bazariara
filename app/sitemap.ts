@@ -83,6 +83,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localizedEntries('/', new Date(), 'daily', 1),
     ...localizedEntries('/privacy-policy', new Date(), 'yearly', 0.3),
     ...localizedEntries('/returns', new Date(), 'yearly', 0.4),
+    ...localizedEntries('/turisticheskoe-snaryazhenie', new Date(), 'monthly', 0.6),
+    ...localizedEntries('/powerbank-i-zaryadki', new Date(), 'monthly', 0.6),
     ...entries,
   ];
 }

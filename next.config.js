@@ -4,7 +4,11 @@ const nextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    unoptimized: true,
+    // Оптимизация включена: Next.js сам ресайзит и переупаковывает в
+    // AVIF/WebP под устройство запрашивающего, независимо от того, что
+    // CDN уже отдаёт .webp — это даёт дополнительный ресайз под конкретный
+    // viewport (у CDN всегда фиксированный размер, у Next.js — по sizes).
+    formats: ['image/avif', 'image/webp'],
     remotePatterns: [
       { protocol: 'https', hostname: 'flagcdn.com' },
       { protocol: 'https', hostname: '*.vercel-storage.com' },

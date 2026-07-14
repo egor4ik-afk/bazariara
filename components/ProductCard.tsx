@@ -61,7 +61,7 @@ export default function ProductCard({ product, index }: ProductCardProps) {
   return (
     <div className="bg-gray-800/40 rounded-xl shadow-lg overflow-hidden flex flex-col group transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-2xl hover:shadow-lime-500/20">
       <div className="relative flex-grow">
-        <Link prefetch={false} href={`/products/${catKey}/${prodId}`} className="block h-full">
+        <Link prefetch={false} href={`/${language}/products/${catKey}/${prodId}`} className="block h-full">
           <ProductImageSlider images={images} alt={name} priority={index < 4} />
           <div className="p-5">
             <h3 className="text-xl font-bold mb-2 truncate group-hover:text-lime-400 transition-colors duration-300">

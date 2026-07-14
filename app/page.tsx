@@ -1,3 +1,4 @@
+export const revalidate = 600; // синхронно с revalidate в getCategories/getProducts (unstable_cache)
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import InteractiveFilters from '@/components/InteractiveFilters';

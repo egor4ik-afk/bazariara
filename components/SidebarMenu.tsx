@@ -30,7 +30,7 @@ export default function SidebarMenu() {
       .then(data => setCategories(data.categories || []))
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [isOpen]);
+  }, [isOpen, categories.length]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -95,7 +95,7 @@ export default function SidebarMenu() {
             {/* Все товары */}
             <li className="mb-2">
               <div className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-gray-300 hover:bg-lime-500/10 hover:text-lime-300 border border-transparent hover:border-lime-500/30 transition-all duration-200">
-                <Link href="/" onClick={() => setIsOpen(false)} className="flex items-center flex-grow">
+                <Link href={`/${language}`} onClick={() => setIsOpen(false)} className="flex items-center flex-grow">
                   <CategoryIcon />
                   <span>{t('common.all')}</span>
                 </Link>
@@ -115,7 +115,7 @@ export default function SidebarMenu() {
                     }
                   >
                     <Link
-                      href={`/?category=${category.key}`}
+                      href={`/${language}/?category=${category.key}`}
                       onClick={e => { if (category.sub_categories?.length > 0) e.preventDefault(); else setIsOpen(false); }}
                       className="flex items-center flex-grow"
                     >
@@ -135,7 +135,7 @@ export default function SidebarMenu() {
                       {category.sub_categories.map(sub => (
                         <li key={sub.key}>
                           <Link
-                            href={`/?category=${category.key}&subcategory=${sub.key}`}
+                            href={`/${language}/?category=${category.key}&subcategory=${sub.key}`}
                             onClick={() => setIsOpen(false)}
                             className="flex items-center justify-between py-2 px-3 rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200"
                           >

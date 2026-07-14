@@ -1,9 +1,10 @@
+export const revalidate = 600;
+
 import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-export const revalidate = 600;
 
 type Params = Promise<{ category: string; id: string }>;
 

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const Footer = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   return (
     <footer className="bg-gray-800 text-white py-4 mt-auto">
       <div className="container mx-auto px-4 text-center">
@@ -27,11 +27,19 @@ const Footer = () => {
         <div className="text-center mt-4 text-sm text-gray-500">
           <span>{t('footer.copyright')}</span>
           <span className="mx-2">|</span>
-          <Link href="/returns" className="underline hover:text-lime-400 transition-colors duration-300">
+          <Link href={`/${language}/turisticheskoe-snaryazhenie`} className="underline hover:text-lime-400 transition-colors duration-300">
+            {t('footer.tourism')}
+          </Link>
+          <span className="mx-2">|</span>
+          <Link href={`/${language}/powerbank-i-zaryadki`} className="underline hover:text-lime-400 transition-colors duration-300">
+            {t('footer.powerbanks')}
+          </Link>
+          <span className="mx-2">|</span>
+          <Link href={`/${language}/returns`} className="underline hover:text-lime-400 transition-colors duration-300">
             {t('footer.returns')}
           </Link>
           <span className="mx-2">|</span>
-          <Link href="/privacy-policy" className="underline hover:text-lime-400 transition-colors duration-300">
+          <Link href={`/${language}/privacy-policy`} className="underline hover:text-lime-400 transition-colors duration-300">
             {t('footer.privacy')}
           </Link>
         </div>
