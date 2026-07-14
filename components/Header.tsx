@@ -48,7 +48,7 @@ export default function Header() {
         {/* Левая часть */}
         <div className="flex items-center gap-4">
           <SidebarMenu />
-          <Link href="/" className="text-2xl font-bold text-white hover:text-lime-400 transition-colors duration-300">
+          <Link href={`/${language}`} className="text-2xl font-bold text-white hover:text-lime-400 transition-colors duration-300">
             BAZARI ARA
           </Link>
         </div>
@@ -63,13 +63,7 @@ export default function Header() {
                 onClick={() => setDropdownOpen(prev => !prev)}
                 className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors text-white text-sm font-semibold"
               >
-                <img
-                  src={current.flag}
-                  alt={current.label}
-                  width={20}
-                  height={15}
-                  className="rounded-sm object-cover shadow-sm"
-                />
+                <Image src={current.flag} alt={current.label} width={20} height={15} className="rounded-sm object-cover shadow-sm" />
                 <span className="uppercase text-xs tracking-wide">{current.code}</span>
                 <ChevronDownIcon className={`h-3 w-3 text-gray-400 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
               </button>
@@ -86,7 +80,7 @@ export default function Header() {
                           : 'text-gray-300 hover:bg-gray-800'
                         }`}
                     >
-                      <img
+                      <Image
                         src={lang.flag}
                         alt={lang.label}
                         width={24}

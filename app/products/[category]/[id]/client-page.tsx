@@ -10,6 +10,7 @@ import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
+import Image from 'next/image';
 
 export type Product = {
   id: string;
@@ -78,14 +79,15 @@ function RelatedProductCard({ category, id }: { category: string; id: string }) 
   }
 
   return (
-    <Link href={`/products/${product.categoryKey}/${product.id}`}
+    <Link href={`/${language}/products/${product.categoryKey}/${product.id}`}
       className="block bg-gray-800 rounded-lg hover:shadow-lime-500/20 transition-shadow duration-300">
-      <div className="w-full h-32 overflow-hidden rounded-t-lg">
-        <img
+      <div className="relative w-full h-32 overflow-hidden rounded-t-lg">
+        <Image
           src={product.image_url || '/placeholder.png'}
           alt={getTitle()}
-          className="w-full h-full object-cover"
-          loading="lazy"
+          fill
+          sizes="25vw"
+          className="object-cover"
         />
       </div>
       <div className="p-4">
@@ -157,14 +159,28 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               {uniqueImages.length > 1 ? (
                 <Swiper modules={[Pagination]} pagination={{ clickable: true }} className="w-full h-[400px] rounded-lg shadow-lg" loop={true}>
                   {uniqueImages.map((url, i) => (
-                    <SwiperSlide key={i} className="h-full w-full">
-                      <img src={url} alt={`${getTitle()} — фото ${i + 1}`} className="w-full h-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} />
+                    <SwiperSlide key={i} className="relative h-full w-full">
+                      <Image
+                        src={url}
+                        alt={`${getTitle()} — фото ${i + 1}`}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 50vw"
+                        className="object-cover"
+                        priority={i === 0}
+                      />
                     </SwiperSlide>
                   ))}
                 </Swiper>
               ) : (
-                <div className="w-full h-[400px] rounded-lg shadow-lg overflow-hidden">
-                  <img src={product.image_url || '/placeholder.png'} alt={getTitle()} className="w-full h-full object-cover" loading="eager" />
+                <div className="relative w-full h-[400px] rounded-lg shadow-lg overflow-hidden">
+                  <Image
+                    src={product.image_url || '/placeholder.png'}
+                    alt={getTitle()}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 50vw"
+                    className="object-cover"
+                    priority
+                  />
                 </div>
               )}
 

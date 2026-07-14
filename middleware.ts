@@ -21,6 +21,24 @@ function detectLocale(req: NextRequest): Locale {
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // ── Админка: своя логика авторизации, локализация не нужна ──────────────
+  if (pathname.startsWith('/admin')) {
+    if (pathname === '/admin/login') return NextResponse.next();
+
+    const token = req.cookies.get('admin_token')?.value;
+    const secret = process.env.ADMIN_SECRET || '';
+
+    if (!token || token !== secret) {
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = '/admin/login';
+      loginUrl.searchParams.set('from', pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    return NextResponse.next();
+  }
+
+  // ── Публичный сайт: locale-роутинг ───────────────────────────────────────
   const segments = pathname.split('/').filter(Boolean);
   const first = segments[0];
 
@@ -39,9 +57,8 @@ export function middleware(req: NextRequest) {
     return res;
   }
 
-  // Локали в адресе нет — определяем и редиректим на /{locale}{pathname}.
-  // 308 (Permanent Redirect, сохраняет метод) — сигнализирует поисковикам,
-  // что бывший bare-URL теперь постоянно живёт под /{locale}/...
+  // Локали в адресе нет — редиректим на /{locale}{pathname}. 308 = постоянный
+  // редирект, сохраняет метод, корректный сигнал для поисковиков.
   const locale = detectLocale(req);
   const url = req.nextUrl.clone();
   url.pathname = `/${locale}${pathname}`;
@@ -49,7 +66,7 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Не трогаем: _next статику, API, админку, файлы со статическим расширением
-  // (favicon.ico, site.webmanifest, robots.txt, sitemap.xml, картинки и т.п.)
-  matcher: ['/((?!_next/static|_next/image|api|admin|.*\\..*).*)'],
+  // /admin теперь ВКЛЮЧЁН в matcher (своя ветка логики внутри функции).
+  // Исключены только _next статика, API и файлы со статическим расширением.
+  matcher: ['/((?!_next/static|_next/image|api|.*\\..*).*)'],
 };

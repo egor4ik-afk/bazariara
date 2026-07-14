@@ -39,7 +39,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
                name_en, name_ka,
                description_ru, description_en, description_ka,
                price, in_stock,
-               COALESCE(category_ru, category) AS category,
+               category,
                image_url, updated_at
         FROM products
         WHERE source = 'gorgia'
@@ -55,7 +55,7 @@ export default async function AdminProductsPage({ searchParams }: { searchParams
         ORDER BY updated_at DESC
         LIMIT ${PER_PAGE} OFFSET ${offset}`,
 
-    sql`SELECT DISTINCT category_key, COALESCE(MAX(category_ru), MAX(category)) AS cat_name
+    sql`SELECT DISTINCT category_key, MAX(category) AS cat_name
         FROM products
         WHERE source = 'gorgia' AND category_key IS NOT NULL
         GROUP BY category_key
