@@ -2,12 +2,32 @@ import { MetadataRoute } from 'next';
 import sql from '@/lib/db';
 
 const SITE_URL = 'https://bazariara.ge';
+const LOCALES = ['ru', 'en', 'ka'] as const;
+
+/** Строит по одному sitemap-entry на каждую локаль, все со ссылками друг на друга (hreflang). */
+function localizedEntries(
+  path: string, // начинается с '/', БЕЗ префикса локали
+  lastModified: Date,
+  changeFrequency: NonNullable<MetadataRoute.Sitemap[number]['changeFrequency']>,
+  priority: number,
+): MetadataRoute.Sitemap {
+  const languages: Record<string, string> = {};
+  for (const l of LOCALES) languages[l] = `${SITE_URL}/${l}${path}`;
+  languages['x-default'] = `${SITE_URL}/ru${path}`;
+
+  return LOCALES.map((l) => ({
+    url: `${SITE_URL}/${l}${path}`,
+    lastModified,
+    changeFrequency,
+    priority,
+    alternates: { languages },
+  }));
+}
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [];
 
   try {
-    // Один запрос — всё что нужно для сборки sitemap
     const rows = await sql`
       SELECT
         id,
@@ -21,8 +41,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         AND category_key IS NOT NULL
     `;
 
-    const categoryDates   = new Map<string, Date>();   // category_key → max updated_at
-    const subCategoryKeys = new Map<string, Set<string>>(); // category_key → Set<sub_key>
+    const categoryDates   = new Map<string, Date>();
+    const subCategoryKeys = new Map<string, Set<string>>();
 
     for (const row of rows) {
       const catKey  = row.category_key as string;
@@ -31,76 +51,38 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       if (!catKey || catKey === 'top') continue;
 
-      // Обновляем max updated_at для категории
       const existing = categoryDates.get(catKey);
-      if (!existing || updated > existing) {
-        categoryDates.set(catKey, updated);
-      }
+      if (!existing || updated > existing) categoryDates.set(catKey, updated);
 
-      // Собираем подкатегории
       if (subKey) {
         if (!subCategoryKeys.has(catKey)) subCategoryKeys.set(catKey, new Set());
         subCategoryKeys.get(catKey)!.add(subKey);
       }
 
-      // Товары — только в наличии
       if (row.in_stock) {
-        entries.push({
-          url:             `${SITE_URL}/products/${catKey}/${row.id}`,
-          lastModified:    updated,
-          changeFrequency: 'weekly',
-          priority:        0.8,
-        });
+        entries.push(...localizedEntries(`/products/${catKey}/${row.id}`, updated, 'weekly', 0.8));
       }
     }
 
-    // Страницы категорий
     for (const [catKey, lastMod] of categoryDates) {
-      entries.push({
-        url:             `${SITE_URL}/?category=${catKey}`,
-        lastModified:    lastMod,   // ✅ реальная дата, не new Date()
-        changeFrequency: 'weekly',
-        priority:        0.9,
-      });
+      entries.push(...localizedEntries(`/?category=${catKey}`, lastMod, 'weekly', 0.9));
     }
 
-    // ✅ Страницы подкатегорий (раньше отсутствовали)
     for (const [catKey, subs] of subCategoryKeys) {
       const catDate = categoryDates.get(catKey) || new Date();
       for (const subKey of subs) {
         if (!subKey) continue;
-        entries.push({
-          url:             `${SITE_URL}/?category=${catKey}&subcategory=${subKey}`,
-          lastModified:    catDate,
-          changeFrequency: 'weekly',
-          priority:        0.7,
-        });
+        entries.push(...localizedEntries(`/?category=${catKey}&subcategory=${subKey}`, catDate, 'weekly', 0.7));
       }
     }
-
   } catch (error) {
     console.error('Sitemap error:', error);
   }
 
   return [
-    {
-      url:             SITE_URL,
-      lastModified:    new Date(),
-      changeFrequency: 'daily',
-      priority:        1,
-    },
-    {
-      url:             `${SITE_URL}/privacy-policy`,
-      lastModified:    new Date(),
-      changeFrequency: 'yearly',
-      priority:        0.3,
-    },
-    {
-      url:             `${SITE_URL}/returns`,
-      lastModified:    new Date(),
-      changeFrequency: 'yearly',
-      priority:        0.4,
-    },
+    ...localizedEntries('/', new Date(), 'daily', 1),
+    ...localizedEntries('/privacy-policy', new Date(), 'yearly', 0.3),
+    ...localizedEntries('/returns', new Date(), 'yearly', 0.4),
     ...entries,
   ];
 }

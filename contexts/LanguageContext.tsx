@@ -1,9 +1,11 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { translations } from '@/lib/translations';
 
 export type Language = 'ru' | 'en' | 'ka';
+const LOCALES: Language[] = ['ru', 'en', 'ka'];
 
 interface LanguageContextType {
   language: Language;
@@ -13,35 +15,28 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('ru');
-  const [isClient, setIsClient] = useState(false);
+function getLocaleFromPath(pathname: string): Language {
+  const first = pathname.split('/')[1];
+  return (LOCALES as string[]).includes(first) ? (first as Language) : 'ru';
+}
 
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const language = getLocaleFromPath(pathname);
+
+  // html lang + cookie синхронизируем с текущим URL (на случай прямого
+  // захода / кнопки "назад", когда middleware уже не перехватывает запрос).
   useEffect(() => {
-    setIsClient(true);
-    const saved = localStorage.getItem('language') as Language;
-    if (saved && ['ru', 'en', 'ka'].includes(saved)) {
-      setLanguageState(saved);
-    } else {
-      const browserLang = navigator.language.split('-')[0];
-      const defaultLang: Language =
-        browserLang === 'ru' ? 'ru' :
-        browserLang === 'ka' ? 'ka' : 'en';
-      setLanguageState(defaultLang);
-    }
-  }, []);
+    document.documentElement.lang = language;
+    document.cookie = `language=${language}; path=/; max-age=31536000`;
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    if (isClient) {
-      localStorage.setItem('language', lang);
-      document.documentElement.lang = lang;
-    }
+    if (lang === language) return;
+    const rest = pathname.replace(/^\/(ru|en|ka)(?=\/|$)/, '');
+    router.push(`/${lang}${rest}`);
   };
-
-  useEffect(() => {
-    if (isClient) document.documentElement.lang = language;
-  }, [language, isClient]);
 
   const t = (key: string, params?: Record<string, string | number>): string => {
     const current = translations[language] as Record<string, any>;
