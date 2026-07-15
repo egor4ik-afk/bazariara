@@ -4,6 +4,21 @@ import sql from '@/lib/db';
 const SITE_URL = 'https://bazariara.ge';
 const LOCALES = ['ru', 'en', 'ka'] as const;
 
+/**
+ * Next.js не экранирует спецсимволы в URL при генерации sitemap.xml —
+ * известный баг: https://github.com/vercel/next.js/issues/77340
+ * Наши URL с ?category=X&subcategory=Y содержат "&", который ломает XML.
+ * Экранируем вручную все значения, идущие в <loc> и <xhtml:link href>.
+ */
+function escapeXml(url: string): string {
+  return url
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
 /** Строит по одному sitemap-entry на каждую локаль, все со ссылками друг на друга (hreflang). */
 function localizedEntries(
   path: string, // начинается с '/', БЕЗ префикса локали
@@ -12,11 +27,11 @@ function localizedEntries(
   priority: number,
 ): MetadataRoute.Sitemap {
   const languages: Record<string, string> = {};
-  for (const l of LOCALES) languages[l] = `${SITE_URL}/${l}${path}`;
-  languages['x-default'] = `${SITE_URL}/ru${path}`;
+  for (const l of LOCALES) languages[l] = escapeXml(`${SITE_URL}/${l}${path}`);
+  languages['x-default'] = escapeXml(`${SITE_URL}/ru${path}`);
 
   return LOCALES.map((l) => ({
-    url: `${SITE_URL}/${l}${path}`,
+    url: escapeXml(`${SITE_URL}/${l}${path}`),
     lastModified,
     changeFrequency,
     priority,
@@ -72,6 +87,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const catDate = categoryDates.get(catKey) || new Date();
       for (const subKey of subs) {
         if (!subKey) continue;
+        // ВАЖНО: тут раньше и был "сырой" & без экранирования — источник бага.
         entries.push(...localizedEntries(`/?category=${catKey}&subcategory=${subKey}`, catDate, 'weekly', 0.7));
       }
     }
