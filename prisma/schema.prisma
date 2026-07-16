@@ -28,8 +28,6 @@ model products {
   in_stock        Boolean  @default(true)
   stock           Int      @default(0)
   availability    String?
-  availability_ru String?
-  availability_ka String?  
   category        String?
   category_en     String?
   category_ka     String?
