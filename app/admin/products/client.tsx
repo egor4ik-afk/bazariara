@@ -65,6 +65,9 @@ export default function AdminProductsClient({
   const [imageTarget, setImageTarget] = useState<'main' | 'all'>('main');
   const [imageStatus, setImageStatus] = useState<string>('');
   const [imageRunning, setImageRunning] = useState(false);
+  const [bulkStatus, setBulkStatus]   = useState<string>('');
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkCategoryKey, setBulkCategoryKey] = useState<string>('');
   const [, startTransition] = useTransition();
 
   // ── Выбор ────────────────────────────────────────────────────────────────
@@ -134,6 +137,61 @@ export default function AdminProductsClient({
       setImageStatus(`✕ Ошибка: ${String(e)}`);
     } finally {
       setImageRunning(false);
+    }
+  };
+
+  // ── Массовое удаление ───────────────────────────────────────────────────
+  const bulkDelete = async () => {
+    if (selected.size === 0) { setBulkStatus('Выберите товары'); return; }
+    if (!confirm(`Удалить ${selected.size} товаров? Это необратимо.`)) return;
+
+    setBulkRunning(true);
+    setBulkStatus(`Удаляю ${selected.size} товаров…`);
+    try {
+      const res = await fetch('/api/admin/products/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', ids: Array.from(selected) }),
+      });
+      const data = await res.json();
+      setBulkStatus(res.ok ? `✓ Удалено: ${data.deleted}` : `✕ Ошибка: ${data.error}`);
+      setSelected(new Set());
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setBulkStatus(`✕ Ошибка: ${String(e)}`);
+    } finally {
+      setBulkRunning(false);
+    }
+  };
+
+  // ── Массовая смена категории ────────────────────────────────────────────
+  const bulkChangeCategory = async () => {
+    if (selected.size === 0) { setBulkStatus('Выберите товары'); return; }
+    if (!bulkCategoryKey) { setBulkStatus('Выберите категорию'); return; }
+
+    const target = categories.find(c => c.key === bulkCategoryKey);
+    if (!target) { setBulkStatus('Категория не найдена'); return; }
+
+    setBulkRunning(true);
+    setBulkStatus(`Меняю категорию у ${selected.size} товаров…`);
+    try {
+      const res = await fetch('/api/admin/products/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'update',
+          ids: Array.from(selected),
+          fields: { category: target.name, category_key: target.key },
+        }),
+      });
+      const data = await res.json();
+      setBulkStatus(res.ok ? `✓ Обновлено: ${data.updated}` : `✕ Ошибка: ${data.error}`);
+      setSelected(new Set());
+      startTransition(() => router.refresh());
+    } catch (e) {
+      setBulkStatus(`✕ Ошибка: ${String(e)}`);
+    } finally {
+      setBulkRunning(false);
     }
   };
 
@@ -317,6 +375,47 @@ export default function AdminProductsClient({
           {imageStatus && (
             <span style={{ fontSize: 12, color: imageStatus.startsWith('✓') ? '#4ade80' : imageStatus.startsWith('✕') ? '#f87171' : '#aaa' }}>
               {imageStatus}
+            </span>
+          )}
+        </div>
+
+        {/* Массовые операции */}
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid #2a2d3a', marginTop: 10 }}>
+          <span style={{ color: '#555', fontSize: 12 }}>
+            Выбрано: <span style={{ color: selected.size > 0 ? '#c8f135' : '#555', fontWeight: 600 }}>{selected.size}</span>
+          </span>
+
+          <select value={bulkCategoryKey} onChange={e => setBulkCategoryKey(e.target.value)}
+            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            <option value="">Категория для смены…</option>
+            {categories.map(c => <option key={c.key} value={c.key}>{c.name} [{c.key}]</option>)}
+          </select>
+
+          <button onClick={bulkChangeCategory} disabled={bulkRunning || selected.size === 0 || !bulkCategoryKey}
+            style={{
+              padding: '7px 16px', borderRadius: 7, border: 'none',
+              cursor: bulkRunning || selected.size === 0 || !bulkCategoryKey ? 'not-allowed' : 'pointer',
+              background: bulkRunning ? '#333' : (selected.size === 0 || !bulkCategoryKey) ? '#222' : '#3b82f6',
+              color: bulkRunning || selected.size === 0 || !bulkCategoryKey ? '#555' : '#fff',
+              fontSize: 12, fontWeight: 600,
+            }}>
+            {bulkRunning ? '⟳ Применяю…' : '↪ Применить категорию'}
+          </button>
+
+          <button onClick={bulkDelete} disabled={bulkRunning || selected.size === 0}
+            style={{
+              padding: '7px 16px', borderRadius: 7, border: '1px solid #5c1a1a',
+              cursor: bulkRunning || selected.size === 0 ? 'not-allowed' : 'pointer',
+              background: 'transparent',
+              color: bulkRunning || selected.size === 0 ? '#555' : '#f87171',
+              fontSize: 12, fontWeight: 600,
+            }}>
+            🗑 Удалить выбранные
+          </button>
+
+          {bulkStatus && (
+            <span style={{ fontSize: 12, color: bulkStatus.startsWith('✓') ? '#4ade80' : bulkStatus.startsWith('✕') ? '#f87171' : '#aaa' }}>
+              {bulkStatus}
             </span>
           )}
         </div>
