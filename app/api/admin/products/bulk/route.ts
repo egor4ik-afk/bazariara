@@ -35,6 +35,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid JSON in request body' }, { status: 400 });
     }
 
+    // ── Разовая чистка дублей: одному source_url раньше мог соответствовать
+    //    больше одной строки (баг с нестабильным external_id, который зависел
+    //    от category_key). Оставляем самую свежую по updated_at, остальные удаляем.
+    if (body.action === 'dedupe') {
+      const rows = await sql`
+        DELETE FROM products
+        WHERE source = 'gorgia'
+          AND source_url IS NOT NULL
+          AND id NOT IN (
+            SELECT DISTINCT ON (source_url) id
+            FROM products
+            WHERE source = 'gorgia' AND source_url IS NOT NULL
+            ORDER BY source_url, updated_at DESC
+          )
+        RETURNING id, source_url
+      `;
+      return NextResponse.json({ ok: true, deleted: rows.length, deleted_ids: rows.map((r) => r.id) });
+    }
+
     const ids = Array.isArray(body.ids)
       ? body.ids.map(Number).filter((n) => Number.isInteger(n) && n > 0)
       : [];

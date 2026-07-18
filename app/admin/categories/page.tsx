@@ -180,6 +180,67 @@ export default function AdminCategoriesPage() {
   const [customSub, setCustomSub] = useState('');
   const [search, setSearch]       = useState('');
 
+  // ── Создание категории/подкатегории ──────────────────────────────────────
+  const [newCatName, setNewCatName]       = useState('');
+  const [newSubForCat, setNewSubForCat]   = useState('');
+  const [newSubName, setNewSubName]       = useState('');
+  const [createStatus, setCreateStatus]   = useState('');
+  const [createBusy, setCreateBusy]       = useState(false);
+  const [realCategories, setRealCategories] = useState<{ category_key: string; name: string }[]>([]);
+
+  useEffect(() => {
+    fetch('/api/admin/categories')
+      .then(r => r.json())
+      .then(d => setRealCategories(d.categories || []))
+      .catch(console.error);
+  }, [createStatus]);
+
+  async function safeJson(res: Response): Promise<any> {
+    const text = await res.text();
+    if (!text) return { error: `Пустой ответ (HTTP ${res.status})` };
+    try { return JSON.parse(text); } catch { return { error: `Не-JSON (HTTP ${res.status}): ${text.slice(0, 200)}` }; }
+  }
+
+  async function createCategory() {
+    if (!newCatName.trim()) return;
+    setCreateBusy(true);
+    setCreateStatus('Создаю…');
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_category', name_ru: newCatName.trim() }),
+      });
+      const data = await safeJson(res);
+      setCreateStatus(res.ok ? `✓ ${data.existed ? 'Уже была' : 'Создана'}: ${data.category_key}` : `✕ ${data.error}`);
+      if (res.ok) setNewCatName('');
+    } catch (e) {
+      setCreateStatus(`✕ Ошибка сети: ${String(e)}`);
+    } finally {
+      setCreateBusy(false);
+    }
+  }
+
+  async function createSubcategory() {
+    if (!newSubForCat || !newSubName.trim()) return;
+    setCreateBusy(true);
+    setCreateStatus('Создаю…');
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create_subcategory', category_key: newSubForCat, name_ru: newSubName.trim() }),
+      });
+      const data = await safeJson(res);
+      setCreateStatus(res.ok ? `✓ ${data.existed ? 'Уже была' : 'Создана'}: ${data.key}` : `✕ ${data.error}`);
+      if (res.ok) setNewSubName('');
+    } catch (e) {
+      setCreateStatus(`✕ Ошибка сети: ${String(e)}`);
+    } finally {
+      setCreateBusy(false);
+    }
+  }
+
   useEffect(() => {
     fetch('/api/admin/categories-stats')
       .then(r => r.json())
@@ -294,6 +355,51 @@ export default function AdminCategoriesPage() {
             </table>
           </div>
         ))}
+
+        {/* Создать категорию / подкатегорию — реальные канонические таблицы categories/subcategories */}
+        <div style={{ background: '#1a1d27', border: '1px solid #3a4a1e', borderRadius: 12, padding: '24px', marginTop: 24 }}>
+          <h3 style={{ color: '#c8f135', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
+            + Новая категория / подкатегория
+          </h3>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
+            <div>
+              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Название категории (ru)</div>
+              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Обогреватели"
+                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 240, outline: 'none' }} />
+            </div>
+            <button onClick={createCategory} disabled={createBusy || !newCatName.trim()}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#c8f135', color: '#0f1117', fontSize: 13, fontWeight: 600 }}>
+              Создать категорию (EN/KA автоматически)
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>В какую категорию</div>
+              <select value={newSubForCat} onChange={e => setNewSubForCat(e.target.value)}
+                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 240, outline: 'none' }}>
+                <option value="">— выберите —</option>
+                {realCategories.map(c => <option key={c.category_key} value={c.category_key}>{c.name} [{c.category_key}]</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Название подкатегории (ru)</div>
+              <input value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Вентиляторы"
+                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 240, outline: 'none' }} />
+            </div>
+            <button onClick={createSubcategory} disabled={createBusy || !newSubForCat || !newSubName.trim()}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+              Создать подкатегорию (EN/KA автоматически)
+            </button>
+          </div>
+
+          {createStatus && (
+            <div style={{ marginTop: 12, fontSize: 12, color: createStatus.startsWith('✓') ? '#4ade80' : '#f87171' }}>
+              {createStatus}
+            </div>
+          )}
+        </div>
 
         {/* Новая категория вручную */}
         <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginTop: 24 }}>
