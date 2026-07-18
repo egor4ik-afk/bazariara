@@ -83,6 +83,21 @@ export async function POST(req: NextRequest) {
         values.push(Boolean(fields.in_stock));
       }
 
+      // При смене категории синхронно переносим и префикс external_id
+      // (klimaticheskoeoborudovanie_13731 -> новый_ключ_13731), чтобы не расходились
+      // с реальным category_key, как это уже случилось. Числовой суффикс не трогаем.
+      if (has('category_key')) {
+        updates.push(
+          `external_id = CASE
+             WHEN external_id IS NOT NULL AND position('_' in external_id) > 0
+             THEN $${idx} || '_' || split_part(external_id, '_', 2)
+             ELSE external_id
+           END`
+        );
+        values.push(fields.category_key);
+        idx++;
+      }
+
       if (updates.length === 0) {
         return NextResponse.json({ ok: true, message: 'Нечего обновлять (fields пустой)' });
       }
