@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -68,7 +68,32 @@ export default function AdminProductsClient({
   const [bulkStatus, setBulkStatus]   = useState<string>('');
   const [bulkRunning, setBulkRunning] = useState(false);
   const [bulkCategoryKey, setBulkCategoryKey] = useState<string>('');
+  const [bulkSubKey, setBulkSubKey]   = useState<string>('');
+  const [fullCategories, setFullCategories] = useState<
+    { key: string; name: string; sub_categories: { key: string; name: string }[] }[]
+  >([]);
   const [, startTransition] = useTransition();
+
+  // Категории вместе с подкатегориями — тот же источник, что у формы редактирования товара
+  useEffect(() => {
+    fetch('/api/products/categories')
+      .then(r => r.json())
+      .then(data => setFullCategories(data.categories || []))
+      .catch(console.error);
+  }, []);
+
+  const bulkSubOptions = fullCategories.find(c => c.key === bulkCategoryKey)?.sub_categories || [];
+
+  // Безопасный парсинг ответа — не падаем на пустом/не-JSON теле (то самое "Unexpected end of JSON input")
+  async function safeJson(res: Response): Promise<any> {
+    const text = await res.text();
+    if (!text) return { error: `Пустой ответ от сервера (HTTP ${res.status})` };
+    try {
+      return JSON.parse(text);
+    } catch {
+      return { error: `Не-JSON ответ (HTTP ${res.status}): ${text.slice(0, 200)}` };
+    }
+  }
 
   // ── Выбор ────────────────────────────────────────────────────────────────
   const toggleOne = (id: number) => {
@@ -153,12 +178,11 @@ export default function AdminProductsClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete', ids: Array.from(selected) }),
       });
-      const data = await res.json();
-      setBulkStatus(res.ok ? `✓ Удалено: ${data.deleted}` : `✕ Ошибка: ${data.error}`);
-      setSelected(new Set());
-      startTransition(() => router.refresh());
+      const data = await safeJson(res);
+      setBulkStatus(res.ok ? `✓ Удалено: ${data.deleted}` : `✕ Ошибка: ${data.error || data.details || 'неизвестная'}`);
+      if (res.ok) { setSelected(new Set()); startTransition(() => router.refresh()); }
     } catch (e) {
-      setBulkStatus(`✕ Ошибка: ${String(e)}`);
+      setBulkStatus(`✕ Ошибка сети: ${String(e)}`);
     } finally {
       setBulkRunning(false);
     }
@@ -171,6 +195,7 @@ export default function AdminProductsClient({
 
     const target = categories.find(c => c.key === bulkCategoryKey);
     if (!target) { setBulkStatus('Категория не найдена'); return; }
+    const targetSub = bulkSubKey ? bulkSubOptions.find(s => s.key === bulkSubKey) : null;
 
     setBulkRunning(true);
     setBulkStatus(`Меняю категорию у ${selected.size} товаров…`);
@@ -181,15 +206,18 @@ export default function AdminProductsClient({
         body: JSON.stringify({
           action: 'update',
           ids: Array.from(selected),
-          fields: { category: target.name, category_key: target.key },
+          fields: {
+            category: target.name,
+            category_key: target.key,
+            ...(targetSub ? { sub_category: targetSub.name } : {}),
+          },
         }),
       });
-      const data = await res.json();
-      setBulkStatus(res.ok ? `✓ Обновлено: ${data.updated}` : `✕ Ошибка: ${data.error}`);
-      setSelected(new Set());
-      startTransition(() => router.refresh());
+      const data = await safeJson(res);
+      setBulkStatus(res.ok ? `✓ Обновлено: ${data.updated}` : `✕ Ошибка: ${data.error || data.details || 'неизвестная'}`);
+      if (res.ok) { setSelected(new Set()); startTransition(() => router.refresh()); }
     } catch (e) {
-      setBulkStatus(`✕ Ошибка: ${String(e)}`);
+      setBulkStatus(`✕ Ошибка сети: ${String(e)}`);
     } finally {
       setBulkRunning(false);
     }
@@ -385,10 +413,16 @@ export default function AdminProductsClient({
             Выбрано: <span style={{ color: selected.size > 0 ? '#c8f135' : '#555', fontWeight: 600 }}>{selected.size}</span>
           </span>
 
-          <select value={bulkCategoryKey} onChange={e => setBulkCategoryKey(e.target.value)}
+          <select value={bulkCategoryKey} onChange={e => { setBulkCategoryKey(e.target.value); setBulkSubKey(''); }}
             style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
             <option value="">Категория для смены…</option>
-            {categories.map(c => <option key={c.key} value={c.key}>{c.name} [{c.key}]</option>)}
+            {fullCategories.map(c => <option key={c.key} value={c.key}>{c.name} [{c.key}]</option>)}
+          </select>
+
+          <select value={bulkSubKey} onChange={e => setBulkSubKey(e.target.value)} disabled={!bulkCategoryKey}
+            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: bulkCategoryKey ? '#fff' : '#555', fontSize: 12, outline: 'none' }}>
+            <option value="">Подкатегория (опционально)…</option>
+            {bulkSubOptions.map(s => <option key={s.key} value={s.key}>{s.name} [{s.key}]</option>)}
           </select>
 
           <button onClick={bulkChangeCategory} disabled={bulkRunning || selected.size === 0 || !bulkCategoryKey}
