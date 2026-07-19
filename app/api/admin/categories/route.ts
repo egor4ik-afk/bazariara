@@ -155,12 +155,23 @@ export async function POST(req: NextRequest) {
       }
 
       const key = slugifySub(nameRu);
+
+      // Подставляем фото первого попавшегося товара этой подкатегории (если уже есть) —
+      // иначе на сайте будет битая картинка вместо превью.
+      const sample = await sql`
+        SELECT image_url FROM products
+        WHERE source = 'gorgia' AND category_key = ${categoryKey} AND sub_category = ${nameRu}
+          AND image_url IS NOT NULL
+        LIMIT 1
+      `;
+      const imageUrl = sample[0]?.image_url ?? null;
+
       await sql`
-        INSERT INTO subcategories (category_key, key, name, name_en, name_ka)
-        VALUES (${categoryKey}, ${key}, ${nameRu}, ${nameEn}, ${nameKa})
+        INSERT INTO subcategories (category_key, key, name, name_en, name_ka, image_url)
+        VALUES (${categoryKey}, ${key}, ${nameRu}, ${nameEn}, ${nameKa}, ${imageUrl})
         ON CONFLICT (key) DO NOTHING
       `;
-      return NextResponse.json({ ok: true, key, name: nameRu, name_en: nameEn, name_ka: nameKa });
+      return NextResponse.json({ ok: true, key, name: nameRu, name_en: nameEn, name_ka: nameKa, image_url: imageUrl });
     }
 
     // ── Удалить подкатегорию (для чистки дублей вроде ventilyatory/konditsionery) ──
@@ -173,6 +184,31 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Подкатегория с ключом '${key}' не найдена` }, { status: 404 });
       }
       return NextResponse.json({ ok: true, deleted: deleted[0] });
+    }
+
+    // ── Подставить фото уже существующим подкатегориям без картинки ──────
+    if (body.action === 'backfill_subcategory_images') {
+      const rows = await sql`
+        SELECT s.key, s.category_key, s.name
+        FROM subcategories s
+        WHERE s.image_url IS NULL
+      `;
+
+      const updated: string[] = [];
+      for (const row of rows) {
+        const sample = await sql`
+          SELECT image_url FROM products
+          WHERE source = 'gorgia' AND category_key = ${row.category_key} AND sub_category = ${row.name}
+            AND image_url IS NOT NULL
+          LIMIT 1
+        `;
+        if (sample[0]?.image_url) {
+          await sql`UPDATE subcategories SET image_url = ${sample[0].image_url} WHERE key = ${row.key}`;
+          updated.push(row.key);
+        }
+      }
+
+      return NextResponse.json({ ok: true, updated, count: updated.length });
     }
 
     // ── Забэкфиллить недостающие подкатегории из реальных товаров ──────────
@@ -198,9 +234,18 @@ export async function POST(req: NextRequest) {
         const nameRu = row.sub_category as string;
         const t = await autoTranslate(nameRu, origin);
         const key = slugifySub(nameRu);
+
+        const sample = await sql`
+          SELECT image_url FROM products
+          WHERE source = 'gorgia' AND category_key = ${categoryKey} AND sub_category = ${nameRu}
+            AND image_url IS NOT NULL
+          LIMIT 1
+        `;
+        const imageUrl = sample[0]?.image_url ?? null;
+
         await sql`
-          INSERT INTO subcategories (category_key, key, name, name_en, name_ka)
-          VALUES (${categoryKey}, ${key}, ${nameRu}, ${t.en}, ${t.ka})
+          INSERT INTO subcategories (category_key, key, name, name_en, name_ka, image_url)
+          VALUES (${categoryKey}, ${key}, ${nameRu}, ${t.en}, ${t.ka}, ${imageUrl})
           ON CONFLICT (key) DO NOTHING
         `;
         created.push({ key, name: nameRu });
