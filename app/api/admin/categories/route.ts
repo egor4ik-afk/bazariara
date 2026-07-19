@@ -18,6 +18,13 @@ function slugify(text: string): string {
     .replace(/[^a-z0-9]+/g, '');
 }
 
+// У подкатегорий в вашей БД ключ — это НЕ транслитерация, а кириллица в нижнем
+// регистре с дефисами вместо пробелов (см. "коллекторы-и-бойлеры", "центральное-отопление").
+// Если генерить ключ по-другому (латиницей), получится дубль с другим ключом на то же имя.
+function slugifySub(text: string): string {
+  return text.trim().toLowerCase().replace(/\s+/g, '-');
+}
+
 async function autoTranslate(nameRu: string, origin: string): Promise<{ en: string; ka: string }> {
   try {
     const res = await fetch(`${origin}/api/admin/generate-description`, {
@@ -147,13 +154,25 @@ export async function POST(req: NextRequest) {
         nameKa = nameKa || t.ka;
       }
 
-      const key = slugify(nameRu);
+      const key = slugifySub(nameRu);
       await sql`
         INSERT INTO subcategories (category_key, key, name, name_en, name_ka)
         VALUES (${categoryKey}, ${key}, ${nameRu}, ${nameEn}, ${nameKa})
         ON CONFLICT (key) DO NOTHING
       `;
       return NextResponse.json({ ok: true, key, name: nameRu, name_en: nameEn, name_ka: nameKa });
+    }
+
+    // ── Удалить подкатегорию (для чистки дублей вроде ventilyatory/konditsionery) ──
+    if (body.action === 'delete_subcategory') {
+      const key: string = body.key;
+      if (!key) return NextResponse.json({ error: 'key обязателен' }, { status: 400 });
+
+      const deleted = await sql`DELETE FROM subcategories WHERE key = ${key} RETURNING key, name`;
+      if (deleted.length === 0) {
+        return NextResponse.json({ error: `Подкатегория с ключом '${key}' не найдена` }, { status: 404 });
+      }
+      return NextResponse.json({ ok: true, deleted: deleted[0] });
     }
 
     // ── Забэкфиллить недостающие подкатегории из реальных товаров ──────────
@@ -178,7 +197,7 @@ export async function POST(req: NextRequest) {
       for (const row of orphans) {
         const nameRu = row.sub_category as string;
         const t = await autoTranslate(nameRu, origin);
-        const key = slugify(nameRu);
+        const key = slugifySub(nameRu);
         await sql`
           INSERT INTO subcategories (category_key, key, name, name_en, name_ka)
           VALUES (${categoryKey}, ${key}, ${nameRu}, ${t.en}, ${t.ka})
