@@ -18,6 +18,7 @@ type Product = {
   price?: string | number;
   in_stock?: boolean;
   availability?: string;
+  category_key?: string;
   category?: string;
   category_en?: string;
   category_ka?: string;
@@ -28,12 +29,6 @@ type Product = {
   images?: string[];
 } | null;
 
-type CategoryOption = {
-  key: string;
-  name: string;
-  sub_categories: { key: string; name: string }[];
-};
-
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '10px 14px', background: '#131620',
   border: '1px solid #2a2d3a', borderRadius: 8, color: '#e2e4ec',
@@ -41,14 +36,13 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "'DM Mono', monospace",
 };
 const textareaStyle: React.CSSProperties = { ...inputStyle, resize: 'vertical', minHeight: 80 };
-const selectStyle: React.CSSProperties = { ...inputStyle, cursor: 'pointer', appearance: 'none' };
 
-const InputField = memo(({ value, onChange, placeholder, type, step }: {
+const InputField = memo(({ value, onChange, placeholder, type, step, disabled }: {
   value: string; onChange: (v: string) => void;
-  placeholder?: string; type?: string; step?: string;
+  placeholder?: string; type?: string; step?: string; disabled?: boolean
 }) => (
   <input type={type || 'text'} step={step} value={value}
-    onChange={e => onChange(e.target.value)} placeholder={placeholder} style={inputStyle} />
+    onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{...inputStyle, background: disabled? '#2a2d3a' : inputStyle.background}} disabled={disabled} />
 ));
 InputField.displayName = 'InputField';
 
@@ -111,15 +105,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
     setToast({ msg, type });
   }, []);
 
-  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
-  const [subOptions, setSubOptions] = useState<{ key: string; name: string }[]>([]);
-
-  useEffect(() => {
-    fetch('/api/products/categories')
-      .then(r => r.json())
-      .then(data => setCategoryOptions(data.categories || []))
-      .catch(console.error);
-  }, []);
 
   const [images, setImages] = useState<string[]>(
     Array.isArray(product?.images) ? product.images
@@ -134,7 +119,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
   const [uploading, setUploading] = useState<number | null>(null);
 
-  const [form, setFormState] = useState({
+  const [form, setForm] = useState({
     external_id:     String(product?.external_id || ''),
     name_ru:         String(product?.name_ru || ''),
     name_en:         String(product?.name_en || ''),
@@ -146,26 +131,54 @@ export default function ProductEditClient({ product }: { product: Product }) {
     price:           String(product?.price || ''),
     in_stock:        Boolean(product?.in_stock ?? true),
     availability: String(product?.availability || ''),
-    category:     String(product?.category || product?.category || ''),
+    category_key:    String(product?.category_key || ''),
+    category:     String(product?.category || ''),
     category_en:     String(product?.category_en || ''),
     category_ka:     String(product?.category_ka || ''),
-    sub_category: String(product?.sub_category || product?.sub_category || ''),
+    sub_category: String(product?.sub_category || ''),
     sub_category_en: String(product?.sub_category_en || ''),
     sub_category_ka: String(product?.sub_category_ka || ''),
     source_url:      String(product?.source_url || ''),
   });
 
+  const [cats, setCats] = useState<{
+    category_key: string; name: string; name_en: string | null; name_ka: string | null;
+  }[]>([]);
+
   useEffect(() => {
-    const cat = categoryOptions.find(c => c.name === form.category);
-    setSubOptions(cat?.sub_categories || []);
-  }, [form.category, categoryOptions]);
+    fetch('/api/admin/categories')
+      .then(r => r.json())
+      .then(d => setCats(d.categories || []))
+      .catch(() => {});
+  }, []);
+
+  function pickCategory(key: string) {
+    const c = cats.find(x => x.category_key === key);
+    if (!c) {
+        setForm(prev => ({
+            ...prev,
+            category_key: '',
+            category:     '',
+            category_en:  '',
+            category_ka:  '',
+          }));
+        return;
+    }
+    setForm(prev => ({
+      ...prev,
+      category_key: c.category_key,
+      category:     c.name,
+      category_en:  c.name_en || '',
+      category_ka:  c.name_ka || '',
+    }));
+  }
 
   const [saving, setSaving]     = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
   const setField = useCallback((key: string, value: string | boolean) => {
-    setFormState(prev => ({ ...prev, [key]: value }));
+    setForm(prev => ({ ...prev, [key]: value }));
   }, []);
 
   async function generateDescription() {
@@ -248,7 +261,6 @@ export default function ProductEditClient({ product }: { product: Product }) {
     const method = isNew ? 'POST' : 'PATCH';
     const url    = isNew ? '/api/admin/products' : `/api/admin/products/${product?.id}`;
 
-    // images уже содержат правильные CDN urls — без замен
     const res = await fetch(url, {
       method,
       headers: { 'Content-Type': 'application/json' },
@@ -358,37 +370,34 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           <Section title="Категория">
-            <FieldWrapper label="Категория (ru)">
-              <select
-                value={form.category}
-                onChange={e => { setField('category', e.target.value); setField('sub_category', ''); }}
-                style={selectStyle}
-              >
+          <FieldWrapper label="Категория">
+            <select
+                value={form.category_key || ''}
+                onChange={e => pickCategory(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px', background: '#131620',
+                        border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff',
+                        fontSize: 13, outline: 'none' }}
+            >
                 <option value="">— выберите категорию —</option>
-                {categoryOptions.map(c => (
-                  <option key={c.key} value={c.name}>{c.name}</option>
+                {cats.map(c => (
+                <option key={c.category_key} value={c.category_key}>
+                    {c.name} ({c.category_key})
+                </option>
                 ))}
-              </select>
+            </select>
+            </FieldWrapper>
+            <FieldWrapper label="Категория (ru)">
+                <InputField value={form.category} onChange={v => setField('category',v)} disabled/>
             </FieldWrapper>
             <FieldWrapper label="Category (en)">
-              <InputField value={form.category_en} onChange={v => setField('category_en', v)} />
+              <InputField value={form.category_en} onChange={v => setField('category_en', v)} disabled/>
             </FieldWrapper>
             <FieldWrapper label="კატეგორია (ka)">
-              <InputField value={form.category_ka} onChange={v => setField('category_ka', v)} />
+              <InputField value={form.category_ka} onChange={v => setField('category_ka', v)} disabled/>
             </FieldWrapper>
 
             <FieldWrapper label="Подкатегория (ru)">
-              <select
-                value={form.sub_category}
-                onChange={e => setField('sub_category', e.target.value)}
-                style={selectStyle}
-                disabled={subOptions.length === 0}
-              >
-                <option value="">— выберите подкатегорию —</option>
-                {subOptions.map(s => (
-                  <option key={s.key} value={s.name}>{s.name}</option>
-                ))}
-              </select>
+              <InputField value={form.sub_category} onChange={v => setField('sub_category', v)} />
             </FieldWrapper>
             <FieldWrapper label="Subcategory (en)">
               <InputField value={form.sub_category_en} onChange={v => setField('sub_category_en', v)} />
@@ -425,8 +434,14 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
           {/* Фото */}
           <Section title={`Фото (${images.length})`}>
-            <input ref={fileRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
-              onChange={e => { Array.from(e.target.files || []).forEach(f => uploadFile(f)); }} />
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*,.heic,.heif,.HEIC,.HEIF"
+            multiple
+            style={{ display: 'none' }}
+            onChange={e => { Array.from(e.target.files || []).forEach(f => uploadFile(f)); }}
+            />
 
             <button onClick={() => fileRef.current?.click()} disabled={uploading !== null}
               style={{ width: '100%', padding: '10px', marginBottom: 16, background: '#131620', border: '2px dashed #2a2d3a', borderRadius: 8, color: uploading !== null ? '#666' : '#c8f135', fontSize: 13, cursor: uploading !== null ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>

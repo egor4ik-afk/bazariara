@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
+import sharp from 'sharp';
 
 const s3 = new S3Client({
   region: process.env.YANDEX_REGION || 'ru-central1',
@@ -16,38 +17,54 @@ const BUCKET    = 'izipost';
 const S3_PREFIX = 'bazariara';
 const CDN_URL   = 'https://cdn.relaxdev.ru/bazariara';
 
+const RASTER = new Set(['jpg','jpeg','png','webp','gif','heic','heif','avif','tiff','tif','bmp']);
+
 export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
 
   const filename  = req.nextUrl.searchParams.get('filename') || 'upload.jpg';
   const timestamp = Date.now();
-  const safeName  = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-  const key       = `${S3_PREFIX}/admin/${timestamp}_${safeName}`;
-  const body      = Buffer.from(await req.arrayBuffer());
+  const ext       = filename.split('.').pop()?.toLowerCase() || 'jpg';
 
-  const ext = filename.split('.').pop()?.toLowerCase() || 'jpg';
-  const contentTypeMap: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg',
-    png: 'image/png', webp: 'image/webp', gif: 'image/gif',
-  };
-  const contentType = contentTypeMap[ext] || 'image/jpeg';
+  let body = Buffer.from(await req.arrayBuffer());
+  let outExt = ext;
+  let contentType = 'image/jpeg';
 
-  try {
-    await s3.send(new PutObjectCommand({
-      Bucket:      BUCKET,
-      Key:         key,
-      Body:        body,
-      ContentType: contentType,
-      ACL:         'public-read',
-    }));
-  } catch (e: any) {
-    console.error('S3 upload error:', e?.message);
-    return NextResponse.json({ error: e?.message || String(e) }, { status: 500 });
+  if (RASTER.has(ext)) {
+    try {
+      if ((ext === 'heic' || ext === 'heif') && !sharp.format.heif?.input?.buffer) {
+        const heicConvert = require('heic-convert');
+        body = Buffer.from(await heicConvert({ buffer: body, format: 'JPEG', quality: 0.9 }));
+      }
+      // .rotate() без аргументов = применить EXIF-ориентацию айфона и убрать тег
+      body = await sharp(body)
+        .rotate()
+        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 88, mozjpeg: true })
+        .toBuffer();
+      outExt = 'jpg';
+      contentType = 'image/jpeg';
+    } catch (e: any) {
+      // HEIC не декодировался — см. примечание ниже
+      console.error('image convert failed:', e?.message);
+      return NextResponse.json(
+        { error: `Не удалось обработать файл .${ext}: ${e?.message}` },
+        { status: 415 }
+      );
+    }
+  } else {
+    return NextResponse.json({ error: `Неподдерживаемый формат: .${ext}` }, { status: 415 });
   }
 
-  // S3:  https://storage.yandexcloud.net/izipost/bazariara/admin/xxx.jpg
-  // CDN: https://cdn.relaxdev.ru/bazariara/admin/xxx.jpg
-  return NextResponse.json({ url: `${CDN_URL}/admin/${timestamp}_${safeName}` });
+  const safeName = filename.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+  const key      = `${S3_PREFIX}/admin/${timestamp}_${safeName}.${outExt}`;
+
+  await s3.send(new PutObjectCommand({
+    Bucket: BUCKET, Key: key, Body: body,
+    ContentType: contentType, ACL: 'public-read',
+  }));
+
+  return NextResponse.json({ url: `${CDN_URL}/admin/${timestamp}_${safeName}.${outExt}` });
 }
 
 export async function DELETE(req: NextRequest) {

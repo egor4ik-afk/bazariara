@@ -11,7 +11,7 @@ const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || '';
 // OpenCode Go — OpenAI-compatible endpoint
 const OPENCODE_BASE_URL = 'https://opencode.ai/zen/go/v1';
 
-// Primary models (tried in order)
+// Primary models (tried in order)  
 const OPENCODE_MODELS = [
   'deepseek-v4-pro',
   'deepseek-v4-flash',
