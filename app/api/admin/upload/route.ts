@@ -1,7 +1,20 @@
+// FILE: app/api/admin/upload/route.ts
+//
+// Загрузка фото в Yandex Object Storage. Адаптировано под Vercel:
+//   • runtime = 'nodejs' — sharp не работает на edge
+//   • maxDuration — конвертация HEIC на JS занимает 2–5 сек
+//   • HEIC декодируется через heic-convert, потому что sharp на Vercel
+//     собран без libheif и .heic не читает
+//
+// Установить: npm i heic-convert && npm i -D @types/heic-convert
+
 import { NextRequest, NextResponse } from 'next/server';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
 import sharp from 'sharp';
+
+export const runtime = 'nodejs';
+export const maxDuration = 10;
 
 const s3 = new S3Client({
   region: process.env.YANDEX_REGION || 'ru-central1',
@@ -17,54 +30,71 @@ const BUCKET    = 'izipost';
 const S3_PREFIX = 'bazariara';
 const CDN_URL   = 'https://cdn.relaxdev.ru/bazariara';
 
-const RASTER = new Set(['jpg','jpeg','png','webp','gif','heic','heif','avif','tiff','tif','bmp']);
+const ALLOWED  = new Set(['jpg','jpeg','png','webp','gif','heic','heif','avif','tiff','tif','bmp']);
+const MAX_SIZE = 4 * 1024 * 1024;   // лимит тела функции на Vercel — 4.5 МБ
 
 export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
 
-  const filename  = req.nextUrl.searchParams.get('filename') || 'upload.jpg';
-  const timestamp = Date.now();
-  const ext       = filename.split('.').pop()?.toLowerCase() || 'jpg';
+  const filename = req.nextUrl.searchParams.get('filename') || 'upload.jpg';
+  const ext      = filename.split('.').pop()?.toLowerCase() || 'jpg';
 
-  let body = Buffer.from(await req.arrayBuffer());
-  let outExt = ext;
-  let contentType = 'image/jpeg';
-
-  if (RASTER.has(ext)) {
-    try {
-      if ((ext === 'heic' || ext === 'heif') && !sharp.format.heif?.input?.buffer) {
-        const heicConvert = require('heic-convert');
-        body = Buffer.from(await heicConvert({ buffer: body, format: 'JPEG', quality: 0.9 }));
-      }
-      // .rotate() без аргументов = применить EXIF-ориентацию айфона и убрать тег
-      body = await sharp(body)
-        .rotate()
-        .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-        .jpeg({ quality: 88, mozjpeg: true })
-        .toBuffer();
-      outExt = 'jpg';
-      contentType = 'image/jpeg';
-    } catch (e: any) {
-      // HEIC не декодировался — см. примечание ниже
-      console.error('image convert failed:', e?.message);
-      return NextResponse.json(
-        { error: `Не удалось обработать файл .${ext}: ${e?.message}` },
-        { status: 415 }
-      );
-    }
-  } else {
+  if (!ALLOWED.has(ext)) {
     return NextResponse.json({ error: `Неподдерживаемый формат: .${ext}` }, { status: 415 });
   }
 
-  const safeName = filename.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9._-]/g, '_');
-  const key      = `${S3_PREFIX}/admin/${timestamp}_${safeName}.${outExt}`;
+  let input = Buffer.from(await req.arrayBuffer());
 
-  await s3.send(new PutObjectCommand({
-    Bucket: BUCKET, Key: key, Body: body,
-    ContentType: contentType, ACL: 'public-read',
-  }));
+  if (input.byteLength > MAX_SIZE) {
+    return NextResponse.json(
+      { error: `Файл ${(input.byteLength / 1048576).toFixed(1)} МБ — больше лимита Vercel (4.5 МБ). Уменьшите фото перед загрузкой.` },
+      { status: 413 }
+    );
+  }
 
-  return NextResponse.json({ url: `${CDN_URL}/admin/${timestamp}_${safeName}.${outExt}` });
+  try {
+    // HEIC/HEIF с айфона: sharp на Vercel их не декодирует, идём через JS-декодер
+    if (ext === 'heic' || ext === 'heif') {
+      const heicConvert = (await import('heic-convert')).default;
+      input = Buffer.from(
+        await heicConvert({ buffer: input as any, format: 'JPEG', quality: 0.92 })
+      );
+    }
+
+    // .rotate() без аргументов применяет EXIF-ориентацию — иначе фото с айфона
+    // лежат боком. Заодно ужимаем: в бакет уедет 300–600 КБ вместо трёх мегабайт.
+    const output = await sharp(input)
+      .rotate()
+      .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
+      .jpeg({ quality: 88, mozjpeg: true })
+      .toBuffer();
+
+    const timestamp = Date.now();
+    const safeName  = filename
+      .replace(/\.[^.]+$/, '')
+      .replace(/[^a-zA-Z0-9._-]/g, '_')
+      .slice(0, 60);
+    const key = `${S3_PREFIX}/admin/${timestamp}_${safeName}.jpg`;
+
+    await s3.send(new PutObjectCommand({
+      Bucket:      BUCKET,
+      Key:         key,
+      Body:        output,
+      ContentType: 'image/jpeg',
+      ACL:         'public-read',
+    }));
+
+    return NextResponse.json({
+      url:  `${CDN_URL}/admin/${timestamp}_${safeName}.jpg`,
+      size: output.byteLength,
+    });
+  } catch (e: any) {
+    console.error('upload error:', e?.message);
+    return NextResponse.json(
+      { error: `Не удалось обработать .${ext}: ${e?.message || String(e)}` },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(req: NextRequest) {
@@ -73,9 +103,7 @@ export async function DELETE(req: NextRequest) {
   const url = req.nextUrl.searchParams.get('url');
   if (!url) return NextResponse.json({ error: 'url required' }, { status: 400 });
 
-  // https://cdn.relaxdev.ru/bazariara/admin/xxx.jpg → bazariara/admin/xxx.jpg
   const key = url.replace('https://cdn.relaxdev.ru/', '');
-
   if (!key || key === url) {
     return NextResponse.json({ error: 'не удалось определить key' }, { status: 400 });
   }
