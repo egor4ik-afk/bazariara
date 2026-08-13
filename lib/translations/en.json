@@ -13,7 +13,8 @@
     "returns": "Returns Policy",
     "privacy": "Privacy Policy",
     "tourism": "Camping Gear",
-    "powerbanks": "Power Banks & Chargers"
+    "powerbanks": "Power Banks & Chargers",
+    "gifts": "Georgian food souvenirs"
   },
   "cart": {
     "title": "Your Cart",
@@ -64,7 +65,7 @@
     "shipping": "Shipping",
     "free": "Custom quote",
     "total": "Total",
-    "noOrders": "You don''t have any orders yet.",
+    "noOrders": "You don't have any orders yet.",
     "noOrdersHint": "Feel free to browse our products and place your first order!"
   },
   "returns": {

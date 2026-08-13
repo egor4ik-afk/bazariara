@@ -64,7 +64,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       const subKey  = row.sub_key as string;
       const updated = row.updated_at ? new Date(row.updated_at as string) : new Date();
 
-      if (!catKey || catKey === 'top') continue;
+      if (!catKey) continue;
 
       const existing = categoryDates.get(catKey);
       if (!existing || updated > existing) categoryDates.set(catKey, updated);
@@ -101,6 +101,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localizedEntries('/returns', new Date(), 'yearly', 0.4),
     ...localizedEntries('/turisticheskoe-snaryazhenie', new Date(), 'monthly', 0.6),
     ...localizedEntries('/powerbank-i-zaryadki', new Date(), 'monthly', 0.6),
+    ...localizedEntries('/gostintsy-iz-gruzii', new Date(), 'weekly', 0.9),
     ...entries,
   ];
 }

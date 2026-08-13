@@ -35,6 +35,10 @@ const Footer = () => {
             {t('footer.powerbanks')}
           </Link>
           <span className="mx-2">|</span>
+          <Link href={`/${language}/gostintsy-iz-gruzii`} className="underline hover:text-lime-400 transition-colors duration-300">
+            {t('footer.gifts')}
+          </Link>
+          <span className="mx-2">|</span>
           <Link href={`/${language}/returns`} className="underline hover:text-lime-400 transition-colors duration-300">
             {t('footer.returns')}
           </Link>

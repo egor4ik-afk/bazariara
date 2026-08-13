@@ -6,6 +6,7 @@ import ProductCard from '@/components/ProductCard';
 import HomeHeader from '@/components/HomeHeader';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { getCategories, getSubCategories, getProducts } from './actions';
+import { notFound } from 'next/navigation';
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
@@ -40,8 +41,8 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 
   if (!category || category === 'all') {
     return {
-      title: `BAZARI ARA: Товары для дома, сада, туризма и отдыха в Тбилиси${pageStr}`,
-      description: 'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!',
+      title: 'BAZARI ARA: гостинцы из Грузии, туризм и отдых в Тбилиси — доставка за 2 часа',
+      description: 'Мёд, чурчхела, грузинский чай и специи, туристическое снаряжение, повербанки и товары для животных в Тбилиси. Доставка по городу за 2 часа.',
       alternates,
     };
   }
@@ -76,6 +77,11 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   const ITEMS_PER_PAGE      = 20;
 
   const categoriesList    = await getCategories();
+
+  if (selectedCategory !== 'all' && !categoriesList.some(c => c.key === selectedCategory)) {
+    notFound();
+  }
+
   const subCategoriesList = await getSubCategories(selectedCategory);
   const { products, total } = await getProducts(selectedCategory, selectedSubCategory, searchQuery, currentPage);
 
