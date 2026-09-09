@@ -36,13 +36,10 @@ export default async function ChventanPage() {
     const uniqueImages = [...new Set(allImages)];
 
     return {
+      ...p, // ✅ ВАЖНО: передаем ВСЕ оригинальные поля из БД (name, name_ru, name_en и т.д.)
       id: String(p.id),
-      external_id: p.external_id,
-      categoryKey: p.category_key || 'gostintsy-iz-gruzii',
-      trueCategoryKey: p.category_key || 'gostintsy-iz-gruzii',
-      title: p.name_ru || p.name_en || p.name_ka || p.name,
+      category_key: p.category_key || 'gostintsy-iz-gruzii',
       price: p.price ? Number(p.price) : 0,
-      in_stock: p.in_stock,
       image_url: uniqueImages[0] || undefined,
     };
   });
