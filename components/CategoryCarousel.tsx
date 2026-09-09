@@ -27,15 +27,13 @@ export default function CategoryCarousel({
   const { language } = useLanguage();
   const [isVisible, setIsVisible] = useState(true);
 
-  // Слушаем изменение настроек карусели
+  // 1. Слушаем изменение настроек карусели
   useEffect(() => {
-    // 1. При загрузке проверяем localStorage
     const saved = localStorage.getItem('showCarousel');
     if (saved !== null) {
       setIsVisible(saved === 'true');
     }
 
-    // 2. Слушаем события от SidebarMenu (переключение в реальном времени)
     const handleVisibilityChange = (e: Event) => {
       setIsVisible((e as CustomEvent).detail);
     };
@@ -44,18 +42,16 @@ export default function CategoryCarousel({
     return () => window.removeEventListener('carouselVisibilityChanged', handleVisibilityChange);
   }, []);
 
-  // Если карусель отключена в настройках — не рендерим её
-  if (!isVisible) return null;
-
+  // 2. Скролл к активной категории (ХУК ДОЛЖЕН БЫТЬ ДО RETURN)
   useEffect(() => {
-    if (!selectedCategory) return;
+    if (!selectedCategory || !isVisible) return;
     const el = desktopRef.current;
     if (!el) return;
     const item = el.querySelector<HTMLElement>(`[data-cat="${selectedCategory}"]`);
     if (!item) return;
     const left = item.offsetLeft - el.clientWidth / 2 + item.clientWidth / 2;
     el.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
-  }, [selectedCategory, categories]);
+  }, [selectedCategory, categories, isVisible]);
 
   const getName = (cat: Category) => {
     switch (language) {
@@ -95,6 +91,9 @@ export default function CategoryCarousel({
         {children}
       </button>
     );
+
+  // 3. ОТКЛЮЧАЕМ РЕНДЕР ТОЛЬКО ЗДЕСЬ (ПОСЛЕ ВСЕХ ХУКОВ)
+  if (!isVisible) return null;
 
   return (
     <div className="w-full">

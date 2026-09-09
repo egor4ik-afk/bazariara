@@ -79,7 +79,9 @@ export default function InteractiveFilters({
           className="w-full px-4 py-2 rounded-full bg-surface text-ink-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-brand-500"
         />
       </div>
-      <div className="w-full px-2 sm:px-4 mt-4 hidden md:block">
+      
+      {/* ВАЖНО: Убран класс "hidden md:block", теперь карусель всегда в DOM */}
+      <div className="w-full px-2 sm:px-4 mt-4">
         <CategoryCarousel 
             categories={categories} 
             selectedCategory={selectedCategory} 
