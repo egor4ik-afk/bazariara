@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
-import ThemeToggle from '@/components/ThemeToggle';
 import { useOrders } from '@/contexts/OrderContext';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
 import { ShoppingCartIcon, ArchiveBoxIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
@@ -57,9 +56,6 @@ export default function Header() {
         {/* Правая часть */}
         {isClient && (
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-
-            {/* Переключатель темы */}
-            <ThemeToggle />
 
             {/* Дропдаун языка */}
             <div ref={dropdownRef} className="relative">
