@@ -1,169 +1,118 @@
 'use client';
-
-import { useState, useEffect, useRef } from 'react';
+import { Dialog, Transition } from '@headlessui/react';
+import { Fragment } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/solid';
+import { useLanguage, Language } from '@/contexts/LanguageContext';
 import Link from 'next/link';
-import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
-import { useLanguage } from '@/contexts/LanguageContext';
 
-const CategoryIcon = () => (
-  <svg className="w-5 h-5 mr-3 text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
-  </svg>
-);
+interface SidebarMenuProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-type SubCategoryInfo = { name: string; name_en: string | null; name_ka?: string | null; key: string; count: number; };
-type CategoryInfo    = { name: string; name_en: string | null; name_ka?: string | null; key: string; total: number; sub_categories: SubCategoryInfo[]; };
-
-export default function SidebarMenu() {
-  const { t, language } = useLanguage();
-  const [isOpen, setIsOpen]             = useState(false);
-  const [categories, setCategories]     = useState<CategoryInfo[]>([]);
-  const [openCategory, setOpenCategory] = useState<string | null>(null);
-  const [loading, setLoading]           = useState(false);
-  const sidebarRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!isOpen || categories.length > 0) return;
-    setLoading(true);
-    fetch('/api/products/categories')
-      .then(r => r.json())
-      .then(data => setCategories(data.categories || []))
-      .catch(console.error)
-      .finally(() => setLoading(false));
-  }, [isOpen, categories.length]);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (sidebarRef.current && !sidebarRef.current.contains(e.target as Node)) setIsOpen(false);
-    };
-    if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.body.style.overflow = 'auto';
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.body.style.overflow = 'auto';
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
-
-  // Универсальный выбор имени по языку
-  const getName = (item: { name: string; name_en: string | null; name_ka?: string | null }) => {
-    if (language === 'en') return item.name_en || item.name;
-    if (language === 'ka') return item.name_ka || item.name;
-    return item.name;
-  };
-
-  const totalProducts = categories.reduce((sum, c) => sum + c.total, 0);
+const LanguageSwitcher = () => {
+  const { language, setLanguage } = useLanguage();
+  const languages: Language[] = ['ru', 'en', 'ka'];
 
   return (
-    <div>
-      {/* Анимированный бургер */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative w-10 h-10 flex flex-col justify-between items-center p-2 group z-50"
-      >
-        {['top', 'mid', 'bottom'].map((pos, i) => (
-          <span key={pos} className={`block w-7 h-[3px] bg-lime-400 rounded-sm transition-all duration-300 ease-in-out
-            group-hover:shadow-[0_0_10px_#a3e635]
-            ${isOpen ? i === 0 ? 'rotate-45 translate-y-[8px]' : i === 1 ? 'opacity-0' : '-rotate-45 -translate-y-[8px]' : ''}`}/>
-        ))}
-      </button>
-
-      {/* Боковое меню */}
-      <div
-        ref={sidebarRef}
-        className={`fixed top-0 left-0 h-full bg-gray-900 bg-opacity-95 backdrop-blur-sm w-72 shadow-2xl p-6 z-40 transform transition-transform duration-300 ease-in-out overflow-y-auto
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <div className="flex justify-end items-center mb-4 border-b border-gray-700 pb-2 mt-2">
-          <button onClick={() => setIsOpen(false)} className="p-2 rounded-full text-gray-400 hover:text-white hover:bg-gray-700 transition-colors">
-            <XMarkIcon className="h-7 w-7" />
-          </button>
-        </div>
-
-        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-green-500 mb-8">
-          {t('common.categories')}
-        </h2>
-
-        {loading ? (
-          <p className="text-gray-500 text-sm">{t('home.loading')}</p>
-        ) : (
-          <nav><ul>
-            {/* Все товары */}
-            <li className="mb-2">
-              <div className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-gray-300 hover:bg-lime-500/10 hover:text-lime-300 border border-transparent hover:border-lime-500/30 transition-all duration-200">
-                <Link href={`/${language}`} onClick={() => setIsOpen(false)} className="flex items-center flex-grow">
-                  <CategoryIcon />
-                  <span>{t('common.all')}</span>
-                </Link>
-                <span className="text-sm font-mono bg-lime-500/20 text-lime-300 rounded-full px-2 py-0.5">{totalProducts}</span>
-              </div>
-            </li>
-            
-            {/* Фермеры */}
-            <li className="mb-2">
-              <div className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-gray-300 hover:bg-lime-500/10 hover:text-lime-300 border border-transparent hover:border-lime-500/30 transition-all duration-200">
-                <Link href="/farmers" onClick={() => setIsOpen(false)} className="flex items-center flex-grow">
-                  <CategoryIcon />
-                  <span>{t('sidebar.farmers')}</span>
-                </Link>
-              </div>
-            </li>
-
-            {/* Категории */}
-            {categories.map(category => (
-              <li key={category.key} className="mb-2">
-                <div className="flex flex-col">
-                  <div
-                    className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-gray-300 hover:bg-lime-500/10 hover:text-lime-300 border border-transparent hover:border-lime-500/30 transition-all duration-200 cursor-pointer"
-                    onClick={() => category.sub_categories?.length > 0
-                      ? setOpenCategory(openCategory === category.key ? null : category.key)
-                      : setIsOpen(false)
-                    }
-                  >
-                    <Link
-                      href={`/${language}/?category=${category.key}`}
-                      onClick={e => { if (category.sub_categories?.length > 0) e.preventDefault(); else setIsOpen(false); }}
-                      className="flex items-center flex-grow"
-                    >
-                      <CategoryIcon />
-                      <span>{getName(category)}</span>
-                    </Link>
-                    <div className="flex items-center">
-                      <span className="text-sm font-mono bg-lime-500/20 text-lime-300 rounded-full px-2 py-0.5">{category.total}</span>
-                      {category.sub_categories?.length > 0 && (
-                        <ChevronDownIcon className={`w-5 h-5 ml-2 transition-transform duration-300 ${openCategory === category.key ? 'rotate-180' : ''}`} />
-                      )}
-                    </div>
-                  </div>
-
-                  {openCategory === category.key && category.sub_categories?.length > 0 && (
-                    <ul className="pl-8 mt-2 space-y-2">
-                      {category.sub_categories.map(sub => (
-                        <li key={sub.key}>
-                          <Link
-                            href={`/${language}/?category=${category.key}&subcategory=${sub.key}`}
-                            onClick={() => setIsOpen(false)}
-                            className="flex items-center justify-between py-2 px-3 rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200"
-                          >
-                            <span>{getName(sub)}</span>
-                            <span className="text-xs font-mono bg-gray-600 text-gray-300 rounded-full px-1.5 py-0.5">{sub.count}</span>
-                          </Link>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul></nav>
-        )}
-      </div>
-
-      {isOpen && <div className="fixed inset-0 bg-black opacity-60 z-30" onClick={() => setIsOpen(false)} />}
+    <div className="flex items-center justify-center bg-cream-200/80 rounded-full p-1.5">
+      {languages.map(lang => (
+        <button
+          key={lang}
+          onClick={() => setLanguage(lang)}
+          className={`w-1/3 py-2 text-sm font-bold rounded-full transition-colors duration-300 ${
+            language === lang
+              ? 'bg-brand-600 text-white shadow-lg'
+              : 'text-ink-700 hover:bg-white/50'
+          }`}>
+          {lang.toUpperCase()}
+        </button>
+      ))}
     </div>
+  );
+};
+
+export default function SidebarMenu({ isOpen, onClose }: SidebarMenuProps) {
+  const { t } = useLanguage();
+
+  const navLinks = [
+    { href: '/', label: t('nav.home') },
+    { href: '/gostintsy-iz-gruzii', label: t('nav.gifts') },
+    { href: '/powerbank-i-zaryadki', label: t('nav.powerbanks') },
+    { href: '/farmers', label: t('nav.farmers') },
+    { href: '/cart', label: t('nav.cart') },
+    { href: '/orders', label: t('nav.orders') },
+  ];
+
+  return (
+    <Transition.Root show={isOpen} as={Fragment}>
+      <Dialog as="div" className="relative z-50" onClose={onClose}>
+        {/* Overlay */}
+        <Transition.Child
+          as={Fragment}
+          enter="ease-in-out duration-500"
+          enterFrom="opacity-0"
+          enterTo="opacity-100"
+          leave="ease-in-out duration-500"
+          leaveFrom="opacity-100"
+          leaveTo="opacity-0"
+        >
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity" />
+        </Transition.Child>
+
+        {/* Sidebar Panel */}
+        <div className="fixed inset-y-0 right-0 flex max-w-full pl-10">
+          <Transition.Child
+            as={Fragment}
+            enter="transform transition ease-in-out duration-500 sm:duration-700"
+            enterFrom="translate-x-full"
+            enterTo="translate-x-0"
+            leave="transform transition ease-in-out duration-500 sm:duration-700"
+            leaveFrom="translate-x-0"
+            leaveTo="translate-x-full"
+          >
+            <Dialog.Panel className="relative w-screen max-w-sm">
+              <div className="flex h-full flex-col overflow-y-scroll bg-cream-100 shadow-2xl">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-6 border-b border-cream-200">
+                  <Dialog.Title className="text-xl font-bold text-brand-700">BAZARI ARA</Dialog.Title>
+                  <button type="button" className="p-2 -mr-2 rounded-md hover:bg-cream-200" onClick={onClose}>
+                    <XMarkIcon className="h-7 w-7 text-ink-800" />
+                  </button>
+                </div>
+
+                {/* Navigation Links */}
+                <div className="flex-grow p-6">
+                  <nav className="flex flex-col gap-4">
+                    {navLinks.map(link => (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={onClose}
+                        className="text-lg font-semibold text-ink-800 hover:text-brand-600 hover:bg-cream-200 p-3 rounded-lg transition-all duration-200"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                  </nav>
+                </div>
+
+                {/* Language Switcher */}
+                <div className="p-6 border-t border-cream-200">
+                    <LanguageSwitcher />
+                </div>
+
+                {/* Footer links */}
+                <div className="px-6 py-4 text-center text-sm">
+                  <Link href="/privacy-policy" onClick={onClose} className="text-ink-600 hover:text-brand-700">{t('nav.privacy')}</Link>
+                  <span className='mx-2'>|</span>
+                  <Link href="/terms-of-service" onClick={onClose} className="text-ink-600 hover:text-brand-700">{t('nav.terms')}</Link>
+                </div>
+              </div>
+            </Dialog.Panel>
+          </Transition.Child>
+        </div>
+      </Dialog>
+    </Transition.Root>
   );
 }

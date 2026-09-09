@@ -1,91 +1,116 @@
-'use client';
-
+import Image from 'next/image';
 import Link from 'next/link';
-import QuantityInput from '@/components/QuantityInput';
-import ProductImageSlider from '@/components/ProductImageSlider';
+import { useCart } from '@/contexts/CartContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Product as NeonProduct, getAllImages } from '@/lib/types';
-import { Product as CartProduct } from '@/contexts/CartContext';
+import { Product as ProductType, CartProduct } from '@/lib/types';
+import { ShoppingCartIcon, PlusIcon, MinusIcon } from '@heroicons/react/24/solid';
 
 interface ProductCardProps {
-  product: NeonProduct;
+  product: ProductType;
   index: number;
 }
 
 export default function ProductCard({ product, index }: ProductCardProps) {
+  const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart();
   const { language, t } = useLanguage();
 
-  // ✅ Учитываем все языки с fallback
-  const name =
-    language === 'ru' ? (product.name_ru || product.name_en || product.name_ka || product.name) :
-    language === 'en' ? (product.name_en || product.name_ru || product.name_ka || product.name) :
-    language === 'ka' ? (product.name_ka || product.name_ru || product.name_en || product.name) :
-    product.name;
+  const getTitle = () => {
+    if (!product) return '';
+    switch (language) {
+      case 'en':
+        return product.name_en || product.name;
+      case 'ru':
+        return product.name_ru || product.name;
+      case 'ka':
+        return product.name_ka || product.name;
+      default:
+        return product.name;
+    }
+  };
 
-  const category =
-    language === 'en' ? (product.category_en || product.category || '') :
-    language === 'ka' ? (product.category_ka || product.category || '') :
-    (product.category || '');
-
-  const images = getAllImages(product);
-
-  // category_key из БД или fallback на external_id
-  const catKey = (product as any).category_key
-    || (product.external_id ? product.external_id.split('_')[0] : 'unknown');
-
-  const prodId = String(product.id);
+  const title = getTitle();
+  const cartItem = cartItems.find(item => item.id === String(product.id));
 
   const cartProduct: CartProduct = {
-    id:              String(product.id),
-    title:           name,
-    title_en:        product.name_en || undefined,
-    title_ka:        product.name_ka || undefined,
-    price:           product.price ?? 0,
-    image_url:       product.image_url || undefined,
-    category:        product.category || '',
-    category_en:     product.category_en || undefined,
-    category_ka:     product.category_ka || undefined,
-    categoryKey:     catKey,
-    description:     product.description_ru || product.description || undefined,
-    description_en:  product.description_en || undefined,
-    description_ka:  product.description_ka || undefined,
-    sub_category:    product.sub_category || undefined,
-    sub_category_en: product.sub_category_en || undefined,
-    sub_category_ka: product.sub_category_ka || undefined,
-    subCategoryKey:  product.sub_category
-      ? product.sub_category.toLowerCase().replace(/\s+/g, '-')
-      : undefined,
-    in_stock:        product.in_stock,
+    id: String(product.id),
+    title: product.name,
+    title_en: product.name_en || '',
+    price: product.price as number,
+    category: product.categoryKey,
+    image_url: product.image_url || '/placeholder.png',
+    categoryKey: product.categoryKey,
+  };
+
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (product.price !== null) {
+      addToCart(cartProduct);
+    }
+  };
+
+  const handleIncrease = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (cartItem) {
+      updateQuantity(cartItem.id, cartItem.quantity + 1, cartItem.category);
+    }
+  };
+
+  const handleDecrease = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (cartItem) {
+      if (cartItem.quantity > 1) {
+        updateQuantity(cartItem.id, cartItem.quantity - 1, cartItem.category);
+      } else {
+        removeFromCart(cartItem.id, cartItem.category);
+      }
+    }
   };
 
   return (
-    <div className="bg-gray-800/40 rounded-xl shadow-lg overflow-hidden flex flex-col group transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-2xl hover:shadow-lime-500/20">
-      <div className="relative flex-grow">
-        <Link prefetch={false} href={`/${language}/products/${catKey}/${prodId}`} className="block h-full">
-          <ProductImageSlider images={images} alt={name} priority={index < 4} />
-          <div className="p-5">
-            <h3 className="text-xl font-bold mb-2 truncate group-hover:text-lime-400 transition-colors duration-300">
-              {name}
-            </h3>
-            <p className="text-gray-400 text-sm mb-3">{category}</p>
-            <div className="flex items-center flex-wrap gap-2">
-              <div className="flex items-baseline gap-2 mr-auto">
-                <p className="text-2xl font-semibold text-lime-500 whitespace-nowrap">
-                  {product.price} ₾
-                </p>
-              </div>
-              {product.in_stock && (
-                <span className="text-sm font-semibold text-green-400 shrink-0">
-                  {t('product.inStock')}
-                </span>
-              )}
-            </div>
-          </div>
-        </Link>
+    <Link href={`/products/${product.categoryKey}/${product.id}`} className="group block bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1">
+      <div className="relative w-full h-40 sm:h-48 overflow-hidden">
+        <Image
+          src={product.image_url || '/placeholder.png'}
+          alt={title}
+          layout="fill"
+          objectFit="cover"
+          className="group-hover:scale-110 transition-transform duration-500 ease-in-out"
+          priority={index < 4} 
+        />
       </div>
-      <div className="p-5 pt-0 mt-auto">
-        <QuantityInput product={cartProduct} />
+
+      <div className="p-4 flex flex-col justify-between flex-grow">
+        <div>
+            <h3 className="text-md font-bold text-ink-900 truncate group-hover:text-brand-700 transition-colors">{title}</h3>
+        </div>
+
+        <div className="mt-4 flex justify-between items-center">
+            <p className="text-lg font-extrabold text-brand-700">{product.price} ₾</p>
+            
+            {product.price !== null && product.in_stock ? (
+            cartItem ? (
+                <div className="flex items-center gap-2">
+                    <button onClick={handleDecrease} className="p-2 rounded-full bg-cream-100 hover:bg-cream-200 transition-colors">
+                        <MinusIcon className="h-4 w-4 text-ink-800" />
+                    </button>
+                    <span className="text-md font-bold text-ink-900">{cartItem.quantity}</span>
+                    <button onClick={handleIncrease} className="p-2 rounded-full bg-cream-100 hover:bg-cream-200 transition-colors">
+                        <PlusIcon className="h-4 w-4 text-ink-800" />
+                    </button>
+                </div>
+            ) : (
+                <button onClick={handleAddToCart} className="p-2 rounded-full bg-brand-600 text-white hover:bg-brand-500 transition-all transform group-hover:scale-110 shadow-md group-hover:shadow-lg">
+                    <ShoppingCartIcon className="h-5 w-5" />
+                </button>
+            )
+            ) : (
+                <span className="text-sm font-semibold text-ink-500">{t('product.outOfStock')}</span>
+            )}
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }

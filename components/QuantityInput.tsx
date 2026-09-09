@@ -1,126 +1,34 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useCart, Product } from '@/contexts/CartContext';
-import { MinusIcon, PlusIcon, ShoppingCartIcon } from '@heroicons/react/24/solid';
-import { useLanguage } from '@/contexts/LanguageContext'; // Import useLanguage
+import { MinusIcon, PlusIcon } from '@heroicons/react/24/solid';
 
 interface QuantityInputProps {
-    product: Product;
+  quantity: number;
+  onIncrease: () => void;
+  onDecrease: () => void;
+  onBlur?: () => void;
+  onChange: (value: string) => void;
 }
 
-export default function QuantityInput({ product }: QuantityInputProps) {
-    const { cartItems, addToCart, updateQuantity, removeFromCart } = useCart();
-    const { t } = useLanguage(); // Get t function
-    const cartItem = cartItems.find(item => item.id === product.id && item.category === product.category);
-
-    const [inputValue, setInputValue] = useState<string | number>('');
-    const [isInputActive, setIsInputActive] = useState(false);
-
-    useEffect(() => {
-        if (cartItem) {
-            setInputValue(cartItem.quantity);
-        } else {
-            setInputValue('');
-        }
-    }, [cartItem]);
-
-    useEffect(() => {
-        if (isInputActive) {
-            document.body.classList.add('cart-updating');
-        } else {
-            document.body.classList.remove('cart-updating');
-        }
-
-        return () => {
-            document.body.classList.remove('cart-updating');
-        };
-    }, [isInputActive]);
-
-    const handleIncreaseQuantity = () => {
-        if (cartItem) {
-            const newQuantity = cartItem.quantity + 1;
-            setInputValue(newQuantity);
-            updateQuantity(cartItem.id, newQuantity, cartItem.category);
-        }
-    };
-
-    const handleDecreaseQuantity = () => {
-        if (cartItem) {
-            if (cartItem.quantity > 1) {
-                const newQuantity = cartItem.quantity - 1;
-                setInputValue(newQuantity);
-                updateQuantity(cartItem.id, newQuantity, cartItem.category);
-            } else {
-                removeFromCart(cartItem.id, cartItem.category);
-            }
-        }
-    };
-
-    const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setInputValue(e.target.value);
-    };
-
-    const handleFocus = () => {
-        setIsInputActive(true);
-    };
-
-    const handleBlur = () => {
-        setIsInputActive(false);
-        if (cartItem) {
-            const newQuantity = parseInt(inputValue.toString(), 10);
-            if (!isNaN(newQuantity) && newQuantity > 0) {
-                updateQuantity(cartItem.id, newQuantity, cartItem.category);
-            } else if (newQuantity <= 0) {
-                removeFromCart(cartItem.id, cartItem.category);
-            } else {
-                setInputValue(cartItem.quantity);
-            }
-        }
-    };
-
-    if (!cartItem) {
-        return (
-            <button
-                onClick={() => addToCart(product)}
-                className="w-full flex items-center justify-center px-4 py-3 font-bold rounded-lg bg-lime-500 text-gray-900 hover:bg-lime-400 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-lime-500/30 hover:shadow-xl hover:shadow-lime-400/40"
-            >
-                <ShoppingCartIcon className="h-5 w-5 mr-2 hidden sm:inline-block" />
-                <span>{t('quantityInput.addToCart')}</span>
-            </button>
-        );
-    }
-
-    return (
-        <>
-            {isInputActive && (
-                <div className="fixed inset-0 z-40" />
-            )}
-            <div className={`quantity-input-container flex items-center justify-center gap-2 ${isInputActive ? 'relative z-50' : ''}`}>
-                <button
-                    onClick={handleDecreaseQuantity}
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="p-3 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-colors"
-                >
-                    <MinusIcon className="h-5 w-5" />
-                </button>
-                <input
-                    type="number"
-                    value={inputValue}
-                    onChange={handleQuantityChange}
-                    onFocus={handleFocus}
-                    onBlur={handleBlur}
-                    className="text-xl font-bold w-12 text-center bg-transparent text-white focus:outline-none focus:ring-2 focus:ring-lime-500 rounded-md"
-                    min="1"
-                />
-                <button
-                    onClick={handleIncreaseQuantity}
-                    onMouseDown={(e) => e.preventDefault()}
-                    className="p-3 rounded-full bg-gray-700 text-white hover:bg-gray-600 transition-colors"
-                >
-                    <PlusIcon className="h-5 w-5" />
-                </button>
-            </div>
-        </>
-    );
+export default function QuantityInput({ quantity, onIncrease, onDecrease, onBlur, onChange }: QuantityInputProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <button 
+        onClick={onDecrease} 
+        className="p-3 rounded-full bg-cream-100 hover:bg-cream-200 transition-colors duration-200">
+        <MinusIcon className="h-5 w-5 text-ink-700" />
+      </button>
+      <input
+        type="number"
+        min="1"
+        value={quantity}
+        onChange={(e) => onChange(e.target.value)}
+        onBlur={onBlur}
+        className="w-14 text-center text-xl font-semibold bg-transparent border-none focus:ring-2 focus:ring-brand-500 rounded-md py-1"
+      />
+      <button 
+        onClick={onIncrease} 
+        className="p-3 rounded-full bg-cream-100 hover:bg-cream-200 transition-colors duration-200">
+        <PlusIcon className="h-5 w-5 text-ink-700" />
+      </button>
+    </div>
+  );
 }

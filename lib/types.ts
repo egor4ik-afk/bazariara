@@ -2,6 +2,7 @@ export type Lang = 'ru' | 'en' | 'ka';
 
 // Тип категории — точно соответствует InteractiveFilters + CategoryCarousel
 export type Category = {
+  id: number;
   key: string;
   name: string;
   name_en: string | null;

@@ -1,110 +1,133 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import CategoryCarousel from '@/components/CategoryCarousel';
+import { useState, useEffect } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Category, SubCategory } from '@/lib/types';
+import { FunnelIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/solid';
 
-type Category = { name: string; key: string; imageUrl: string };
+interface SearchParams {
+  search?: string;
+  category?: string;
+  subcategory?: string;
+  sort?: string;
+  [key: string]: string | string[] | undefined;
+}
 
-export default function InteractiveFilters({ 
-  categories, 
-  subCategories, 
-  selectedCategory, 
-  selectedSubCategory 
-}: { 
-  categories: Category[], 
-  subCategories: Category[], 
-  selectedCategory: string, 
-  selectedSubCategory: string 
-}) {
+interface InteractiveFiltersProps {
+  categories: Category[];
+  searchParams: SearchParams;
+  totalProducts: number;
+  buildPageUrl: (pageNumber: number) => string;
+}
+
+export default function InteractiveFilters({ categories, searchParams, totalProducts, buildPageUrl }: InteractiveFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const { t } = useLanguage();
-  
-  const [inputValue, setInputValue] = useState(searchParams.get('search') || '');
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
+  const currentSearchParams = useSearchParams();
+  const { t, language } = useLanguage();
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setInputValue(newValue);
+  const [searchQuery, setSearchQuery] = useState(searchParams.search || '');
+  const [selectedCategory, setSelectedCategory] = useState<Category | null>(
+    categories.find(c => c.key === searchParams.category) || null
+  );
+  const [isFiltersVisible, setIsFiltersVisible] = useState(false);
 
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
+  // Handle search input change
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      updateUrl({ search: searchQuery });
+    }, 500); // Debounce search input
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
-    debounceTimer.current = setTimeout(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set('page', '1');
-      if (newValue.length >= 2) {
-        params.set('search', newValue);
+  // Function to update URL search parameters
+  const updateUrl = (newParams: Partial<SearchParams>) => {
+    const params = new URLSearchParams(currentSearchParams.toString());
+    Object.entries(newParams).forEach(([key, value]) => {
+      if (value) {
+        params.set(key, value);
       } else {
-        params.delete('search');
+        params.delete(key);
       }
-      router.push(`${pathname}?${params.toString()}`, { scroll: false });
-    }, 500); 
+    });
+    router.push(`${pathname}?${params.toString()}`);
   };
 
-  const handleCategoryChange = (categoryKey: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (selectedCategory === categoryKey) {
-        params.delete('category');
-        params.delete('subcategory');
-    } else {
-        params.set('category', categoryKey);
-        params.delete('subcategory');
-    }
-    params.set('page', '1');
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }
+  // Handle sorting change
+  const handleSortChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    updateUrl({ sort: e.target.value });
+  };
 
-  const handleSubCategoryChange = (subCategoryKey: string) => {
-    const params = new URLSearchParams(searchParams.toString());
-    if (selectedSubCategory === subCategoryKey) {
-        params.delete('subcategory');
-    } else {
-        params.set('subcategory', subCategoryKey);
-    }
-    params.set('page', '1');
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
-  }
+  // Handle subcategory change
+  const handleSubcategoryChange = (subcategoryKey: string) => {
+    updateUrl({ subcategory: searchParams.subcategory === subcategoryKey ? undefined : subcategoryKey });
+  };
 
   return (
-    <>
-      <div className="mb-2 max-w-md mx-auto">
-        <input
-          type="text"
-          placeholder={t('home.searchPlaceholder')}
-          value={inputValue}
-          onChange={handleSearchChange}
-          className="w-full px-4 py-2 rounded-full bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-lime-500"
-        />
+    <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow p-4 sticky top-24 z-30">
+      <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+        {/* Search Input */}
+        <div className="w-full sm:w-auto flex-grow">
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('filters.searchPlaceholder')}
+            className="w-full px-4 py-2 rounded-lg bg-cream-100 border border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+          />
+        </div>
+
+        {/* Filter Toggle Button (mobile) */}
+        <div className="sm:hidden flex justify-between w-full">
+            <button
+                onClick={() => setIsFiltersVisible(!isFiltersVisible)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-cream-100 hover:bg-cream-200 text-ink-800 transition-colors"
+            >
+                <FunnelIcon className="h-5 w-5" />
+                <span>{t('filters.title')}</span>
+                {isFiltersVisible ? <ChevronUpIcon className="h-5 w-5" /> : <ChevronDownIcon className="h-5 w-5" />}
+            </button>
+            <span className="px-4 py-2 text-sm font-medium text-ink-600">
+              {t('filters.found', { count: totalProducts })}
+            </span>
+        </div>
+
+        {/* Filters and Sorting */}
+        <div className={`w-full sm:w-auto sm:flex items-center gap-4 ${isFiltersVisible ? 'flex' : 'hidden'} flex-col sm:flex-row mt-4 sm:mt-0`}>
+          {/* Sorting Dropdown */}
+          <select
+            value={searchParams.sort || 'default'}
+            onChange={handleSortChange}
+            className="w-full sm:w-auto px-4 py-2 rounded-lg bg-cream-100 border border-transparent focus:outline-none focus:ring-2 focus:ring-brand-500 transition"
+          >
+            <option value="default">{t('filters.sort.default')}</option>
+            <option value="price_asc">{t('filters.sort.price_asc')}</option>
+            <option value="price_desc">{t('filters.sort.price_desc')}</option>
+          </select>
+
+          {/* Subcategory Filters */}
+          {selectedCategory && selectedCategory.subCategories.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 sm:mt-0">
+              {selectedCategory.subCategories.map((sub) => (
+                <button
+                  key={sub.id}
+                  onClick={() => handleSubcategoryChange(sub.key)}
+                  className={`px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
+                    searchParams.subcategory === sub.key
+                      ? 'bg-brand-600 text-white shadow-md'
+                      : 'bg-cream-100 hover:bg-cream-200 text-ink-800'
+                  }`}>
+                  {language === 'en' ? sub.name_en : language === 'ru' ? sub.name_ru : sub.name_ka}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+         <span className="hidden sm:block px-4 py-2 text-sm font-medium text-ink-600 whitespace-nowrap">
+              {t('filters.found', { count: totalProducts })}
+        </span>
       </div>
-      <div className="w-full px-2 sm:px-4 mt-4 hidden md:block">
-        <CategoryCarousel 
-            categories={categories} 
-            selectedCategory={selectedCategory} 
-            onSelectCategory={handleCategoryChange}
-            buildHref={(key) =>
-                key === selectedCategory
-                ? '/'               // снятие фильтра — идём на главную
-                : `/?category=${key}`
-            }
-        />
-        {subCategories.length > 0 && (
-          <div className="mt-4">
-            <CategoryCarousel 
-                categories={subCategories} 
-                selectedCategory={selectedSubCategory} 
-                onSelectCategory={handleSubCategoryChange}
-                buildHref={(key) =>
-                    key === selectedSubCategory
-                    ? `/?category=${selectedCategory}`
-                    : `/?category=${selectedCategory}&subcategory=${key}`
-                }
-            />
-          </div>
-        )}
-      </div>
-    </>
+    </div>
   );
 }
