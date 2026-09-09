@@ -14,7 +14,9 @@
     "privacy": "Privacy Policy",
     "tourism": "Camping Gear",
     "powerbanks": "Power Banks & Chargers",
-    "gifts": "Georgian food souvenirs"
+    "gifts": "Georgian food souvenirs",
+    "farmers": "Farmers",
+    "terms": "Terms of Service"
   },
   "cart": {
     "title": "Your Cart",
@@ -111,7 +113,11 @@
     "photo": "photo {number}",
     "notFound": "Product not found.",
     "notFoundTitle": "Product not found — BAZARI ARA",
-    "notFoundDescription": "The requested product does not exist or has been removed."
+    "notFoundDescription": "The requested product does not exist or has been removed.",
+    "outOfStock": "Out of stock",
+    "comingSoon": "Coming soon",
+    "priceOnRequest": "Price on request",
+    "learnMore": "Learn more"
   },
   "quantityInput": {
     "addToCart": "Add to Cart"
@@ -122,5 +128,32 @@
     "contact": "Our manager will contact you shortly to confirm the payment and delivery details.",
     "viewOrders": "View my orders",
     "backHome": "Back to home"
+  },
+  "sidebar": {
+    "farmers": "Our farmers"
+  },
+  "nav": {
+    "terms": "Terms of Service"
+  },
+  "terms": {
+    "title": "Terms of Service",
+    "intro": "These terms govern the use of the BAZARI ARA website and orders placed through it. By placing an order you confirm that you accept them.",
+    "section1Title": "Orders and confirmation",
+    "section1Text": "An order is accepted once we confirm it by phone or messenger. Until then, availability and the final total are not guaranteed. We may decline an order if an item has sold out.",
+    "section2Title": "Prices and payment",
+    "section2Text": "All prices are in Georgian lari (₾) and include applicable taxes. Delivery within Tbilisi costs 10 ₾ and is added to the order total. Payment is made on delivery.",
+    "section3Title": "Delivery",
+    "section3Text": "Delivery within Tbilisi takes 2 hours from order confirmation, daily from 09:00 to 21:00. Times may be longer in bad weather or heavy traffic.",
+    "section4Title": "Farm products",
+    "section4Text": "Farm products are made in small batches, so taste, colour and weight may vary slightly between batches. This is a property of natural food, not a defect.",
+    "section5Title": "Returns",
+    "section5Text": "Return conditions are described in the separate Returns section. Food products of proper quality cannot be returned, except where Georgian law provides otherwise.",
+    "section6Title": "Contact",
+    "section6Text": "For questions about orders or the website, contact us using the details in the site footer."
+  },
+  "theme": {
+    "light": "Light theme",
+    "dark": "Dark theme",
+    "system": "System theme"
   }
 }

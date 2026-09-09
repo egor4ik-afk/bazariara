@@ -1,49 +1,32 @@
-import { useTranslations } from 'next-intl';
+'use client';
 
-interface CategoryNames {
-  [key: string]: { [lang: string]: string };
-}
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface HomeHeaderProps {
   categoryKey?: string;
-  categoryNames: CategoryNames;
-  currentPage: number;
+  // Данные из БД
+  categoryNames?: { ru: string; en?: string | null; ka?: string | null };
+  currentPage?: number;  // ← новый проп
 }
 
-// Утилита для получения заголовка и описания на основе категории
-const getCategoryContent = (t: any, categoryKey: string | undefined, categoryNames: CategoryNames) => {
-  if (categoryKey && categoryNames[categoryKey]) {
-    const names = categoryNames[categoryKey];
-    return {
-      title: names.ru, // Замените на нужный язык
-      description: t('categories.description', { category: names.ru.toLowerCase() }),
-    };
-  } else {
-    return {
-      title: t('home.title'),
-      description: t('home.description'),
-    };
-  }
-};
-
 export default function HomeHeader({ categoryKey, categoryNames, currentPage }: HomeHeaderProps) {
-  const t = useTranslations();
+  const { t, language } = useLanguage();
 
-  const { title, description } = getCategoryContent(t, categoryKey, categoryNames);
-
-  // Не отображать заголовок и описание на страницах, кроме первой
-  if (currentPage > 1) {
-    return null;
+  let title = t('home.title');
+  if (categoryNames) {
+    if (language === 'en') title = categoryNames.en || categoryNames.ru;
+    else if (language === 'ka') title = categoryNames.ka || categoryNames.ru;
+    else title = categoryNames.ru;
   }
+
+  // Добавляем номер страницы в H1 для страниц пагинации
+  const pageLabel = currentPage && currentPage > 1 ? ` — страница ${currentPage}` : '';
 
   return (
-    <div className="text-center py-10 md:py-16">
-      <h1 className="text-4xl md:text-5xl font-extrabold text-brand-700 mb-4">
-        {title}
-      </h1>
-      <p className="text-lg md:text-xl text-ink-700 max-w-3xl mx-auto">
-        {description}
-      </p>
+    <div className="text-center py-4">
+      <h1 className="text-4xl font-bold text-ink-900 mb-4">{title}{pageLabel}</h1>
+      <p className="text-2xl font-bold text-brand-700">{t('home.delivery')}</p>
+      <h2 className="text-3xl font-bold text-ink-900 mt-8">{t('home.allProducts')}</h2>
     </div>
   );
 }

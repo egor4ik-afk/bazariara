@@ -1,3 +1,5 @@
+'use client';
+
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function TermsOfServicePage() {
@@ -5,7 +7,7 @@ export default function TermsOfServicePage() {
   return (
     <div className="bg-cream-100 min-h-screen text-ink-900">
       <main className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-lg shadow-xl p-6 md:p-8 lg:p-10 max-w-4xl mx-auto">
+        <div className="bg-surface rounded-lg shadow-xl p-6 md:p-8 lg:p-10 max-w-4xl mx-auto">
           <h1 className="text-3xl sm:text-4xl font-bold text-brand-700 mb-6">{t('terms.title')}</h1>
           
           <div className="space-y-4 text-ink-700">

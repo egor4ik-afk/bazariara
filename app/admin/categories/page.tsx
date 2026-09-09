@@ -323,7 +323,7 @@ export default function AdminCategoriesPage() {
                 color="#60a5fa" small
               />
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
               <tbody>
                 {subs.map((s, i) => {
                   const cnt = s.sub_category ? getCount(s.category, s.sub_category) : getCategoryTotal(s.category);
@@ -352,7 +352,7 @@ export default function AdminCategoriesPage() {
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           </div>
         ))}
 

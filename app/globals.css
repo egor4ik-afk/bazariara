@@ -2,34 +2,115 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Две темы на CSS-переменных.
+
+  Значения хранятся RGB-триплетами без функции rgb() — это нужно, чтобы
+  Tailwind мог подставлять прозрачность: bg-brand-600/20 разворачивается
+  в rgb(var(--brand-600) / 0.2). С обычным hex такое не работает.
+
+  Компоненты менять не пришлось: они используют те же классы (bg-surface,
+  text-ink-900, bg-cream-100), а тему переключают значения переменных.
+  Шкала ink в тёмной теме инвертирована: ink-900 остаётся «цветом текста»,
+  просто становится светлым.
+*/
+
 :root {
-  --background: #F8F9F4;   /* cream-100 — тёплый бумажный фон */
-  --foreground: #1C2317;   /* ink-900 */
-  --brand:      #487B2C;   /* brand-600 */
-  --brand-soft: #E4F0D9;   /* brand-100 */
-  --border:     #E2E6DD;   /* ink-200 */
+  color-scheme: light;
+
+  --brand-50:  243 248 238;
+  --brand-100: 228 240 217;
+  --brand-200: 201 225 181;
+  --brand-300: 166 206 138;
+  --brand-400: 127 182  92;
+  --brand-500:  94 156  60;
+  --brand-600:  72 123  44;
+  --brand-700:  57  97  36;
+  --brand-800:  46  77  31;
+  --brand-900:  38  64  28;
+
+  --cream-50:  253 253 251;
+  --cream-100: 248 249 244;
+  --cream-200: 241 244 234;
+  --cream-300: 231 235 221;
+
+  --ink-100: 239 242 236;
+  --ink-200: 226 230 221;
+  --ink-300: 199 205 193;
+  --ink-400: 163 172 156;
+  --ink-500: 124 136 116;
+  --ink-600:  94 107  85;
+  --ink-700:  68  80  60;
+  --ink-800:  44  53  39;
+  --ink-900:  28  35  23;
+
+  --surface:    255 255 255;
+  --surface-2:  248 249 244;
+  /* Текст на брендовой заливке. В светлой теме кнопка тёмно-зелёная —
+     нужен белый; в тёмной кнопка светло-зелёная — нужен тёмный. */
+  --on-brand:   255 255 255;
+  --clay:       194 112  61;
+  --shadow-rgb:  28  35  23;
 }
 
-/* Тема светлая всегда: prefers-color-scheme больше не переключает палитру.
-   Раньше здесь был dark-блок, из-за которого у части пользователей фон
-   уезжал в чёрный независимо от классов Tailwind. */
-html { color-scheme: light; }
+.dark {
+  color-scheme: dark;
+
+  /* Зелёный в темноте нужно поднять по светлоте, иначе он уходит в грязь
+     и не проходит по контрасту на тёмном фоне. */
+  --brand-50:   30  44  24;
+  --brand-100:  38  58  30;
+  --brand-200:  52  82  40;
+  --brand-300:  78 120  57;
+  --brand-400: 114 165  82;
+  --brand-500: 143 195 106;
+  --brand-600: 163 211 126;
+  --brand-700: 186 225 154;
+  --brand-800: 208 236 186;
+  --brand-900: 228 245 214;
+
+  /* Фон не чёрный, а глубокий сине-зелёный уголь — он мягче для глаз
+     и не даёт «дыры» рядом с зелёным акцентом. */
+  --cream-50:   15  19  16;
+  --cream-100:  18  23  19;
+  --cream-200:  27  33  28;
+  --cream-300:  36  44  37;
+
+  --ink-100:  36  44  37;
+  --ink-200:  50  60  51;
+  --ink-300:  74  87  75;
+  --ink-400: 112 127 112;
+  --ink-500: 145 159 144;
+  --ink-600: 176 188 174;
+  --ink-700: 205 214 202;
+  --ink-800: 228 234 226;
+  --ink-900: 240 245 238;
+
+  --surface:    26  32  27;
+  --surface-2:  34  41  35;
+  --on-brand:   18  23  19;
+  --clay:       214 141  95;
+  --shadow-rgb:  0   0   0;
+}
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: rgb(var(--cream-100));
+  color: rgb(var(--ink-900));
   position: relative;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* main/section больше НЕ форсируем прозрачными: секциям нужен свой фон,
-   иначе карточки на светлом сливаются. */
+/* Плавное переключение, но без анимации при первой загрузке
+   и без «переползания» трансформаций. */
+.theme-transition,
+.theme-transition * {
+  transition: background-color .18s ease, border-color .18s ease, color .18s ease;
+}
 
-::selection { background: var(--brand-soft); color: var(--foreground); }
+::selection { background: rgb(var(--brand-100)); color: rgb(var(--ink-900)); }
 
-/* Горизонтальные ленты: скрываем скроллбар, оставляем инерцию */
 .scroll-x {
   overflow-x: auto;
   scroll-behavior: smooth;
@@ -40,7 +121,6 @@ body {
 }
 .scroll-x::-webkit-scrollbar { display: none; }
 
-/* Обрезка описаний в карточке */
 .clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -64,7 +144,7 @@ body {
 }
 
 .undo-progress-bar {
-  background-color: rgba(194, 112, 61, 0.45);
+  background-color: rgb(var(--clay) / 0.45);
   animation: shrink-width 5s linear forwards;
 }
 

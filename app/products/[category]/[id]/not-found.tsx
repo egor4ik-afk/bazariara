@@ -9,7 +9,7 @@ export default function ProductNotFound() {
         </p>
         <a
           href="/"
-          className="px-6 py-3 bg-brand-600 text-white font-bold rounded-full hover:bg-brand-500 transition"
+          className="px-6 py-3 bg-brand-600 text-on-brand font-bold rounded-full hover:bg-brand-500 transition"
         >
           Вернуться в каталог
         </a>

@@ -3,6 +3,7 @@ import './globals.css'
 import { CartProvider } from '@/contexts/CartContext'
 import { OrderProvider } from '@/contexts/OrderContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
+import { ThemeProvider, themeInitScript } from '@/contexts/ThemeContext'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
@@ -14,7 +15,10 @@ const description =
   'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!'
 
 export const viewport: Viewport = {
-  themeColor: '#1a202c',
+  // Значение по умолчанию для светлой темы; ThemeProvider подменяет его
+  // на лету при переключении, иначе на мобильных над шапкой остаётся
+  // полоса чужого цвета.
+  themeColor: '#F8F9F4',
 }
 
 export const metadata: Metadata = {
@@ -135,14 +139,18 @@ const websiteJsonLd = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru">
+    <html lang="ru" suppressHydrationWarning>
       <head>
+        {/* Ставит класс темы до первой отрисовки. Без этого страница
+            моргает светлым, пока грузится React. */}
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
       </head>
       <body className="flex flex-col min-h-screen">
+        <ThemeProvider>
         <LanguageProvider>
           <OrderProvider>
             <CartProvider>
@@ -152,6 +160,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </CartProvider>
           </OrderProvider>
         </LanguageProvider>
+        </ThemeProvider>
 
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"

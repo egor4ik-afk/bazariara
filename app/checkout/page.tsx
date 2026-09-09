@@ -1,19 +1,19 @@
 'use client';
+
 import { useState, useEffect } from 'react';
 import { useCart } from '@/contexts/CartContext';
-import { useOrder } from '@/contexts/OrderContext';
-import { useRouter } from 'next/navigation';
+import { useOrders } from '@/contexts/OrderContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { createOrder } from './actions';
-import { toast } from 'react-toastify';
+import { useRouter } from 'next/navigation';
+import { handlePlaceOrder } from './actions';
 
-const FREE_SHIPPING_THRESHOLD = 150;
+const FREE_SHIPPING_THRESHOLD = 100;
 const SHIPPING_COST = 20;
 
 const getSocialOptions = (t: (key: string) => string) => [
-    { key: 'telegram', label: 'Telegram', selectedColor: 'bg-blue-500', hoverColor: 'hover:bg-blue-500' },
-    { key: 'whatsapp', label: 'WhatsApp', selectedColor: 'bg-green-500', hoverColor: 'hover:bg-green-500' },
-    { key: 'instagram', label: 'Instagram', selectedColor: 'bg-pink-500', hoverColor: 'hover:bg-pink-500' },
+    { key: 'telegram', label: t('checkout.telegram'), selectedColor: 'bg-sky-500', hoverColor: 'hover:bg-sky-600' },
+    { key: 'whatsapp', label: t('checkout.whatsapp'), selectedColor: 'bg-green-500', hoverColor: 'hover:bg-green-600' },
+    { key: 'facebook', label: t('checkout.facebook'), selectedColor: 'bg-blue-600', hoverColor: 'hover:bg-blue-700' },
 ];
 
 // Simple Spinner component
@@ -22,107 +22,129 @@ const Spinner = () => (
 );
 
 export default function CheckoutPage() {
-    const { cartItems, clearCart } = useCart();
-    const { addOrder } = useOrder();
-    const router = useRouter();
-    const { t, language } = useLanguage();
-    const [socialMedia, setSocialMedia] = useState({ telegram: '', whatsapp: '', instagram: '' });
-    const [selectedSocial, setSelectedSocial] = useState<string[]>([]);
+  const { cartItems, clearCart } = useCart();
+  const { addOrder } = useOrders();
+  const { t, language } = useLanguage();
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [socialMedia, setSocialMedia] = useState({
+    telegram: '',
+    whatsapp: '',
+    facebook: '',
+  });
+  const [selectedSocial, setSelectedSocial] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-    const [name, setName] = useState('');
-    const [phone, setPhone] = useState('');
-    const [isSubmitting, setIsSubmitting] = useState(false);
+  // Create a stable copy of cartItems for this render
+  const [checkoutItems, setCheckoutItems] = useState(cartItems);
 
-    // Используем состояние для хранения checkoutItems
-    const [checkoutItems, setCheckoutItems] = useState(cartItems);
+  useEffect(() => {
+    // When the component mounts, or when cartItems changes,
+    // update our stable local copy. This freezes the cart state for this checkout attempt.
+    setCheckoutItems(cartItems);
+  }, [cartItems]);
 
-    const cartCount = checkoutItems.reduce((acc, item) => acc + item.quantity, 0);
-    const subtotal = checkoutItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
-    const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : subtotal > 0 ? SHIPPING_COST : 0;
-    const total = subtotal + shippingCost;
+  const subtotal = checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const shippingCost = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : SHIPPING_COST;
+  const total = subtotal + shippingCost;
+  const cartCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
+  const socialOptions = getSocialOptions(t);
 
-    useEffect(() => {
-        // Если корзина пуста при загрузке, перенаправляем
-        if (cartItems.length === 0) {
-            router.push('/');
-        } else {
-            // Устанавливаем checkoutItems из cartItems при загрузке
-            setCheckoutItems(cartItems);
-        }
-    }, [cartItems, router]);
-    
-
-    const handleSocialSelect = (platform: string) => {
-      const isSelected = selectedSocial.includes(platform);
-      if (isSelected) {
-          setSelectedSocial(selectedSocial.filter(p => p !== platform));
-          setSocialMedia(prev => ({...prev, [platform]: ''}));
-      } else {
-          setSelectedSocial([...selectedSocial, platform]);
-      }
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    const digits = input.replace(/[^0-9]/g, '');
+    setPhone(digits);
   };
 
   const handleSocialMediaInputChange = (platform: string, value: string) => {
-      setSocialMedia(prev => ({...prev, [platform]: value}));
+    setSocialMedia(prev => ({ ...prev, [platform]: value }));
   };
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, ''); // Удаляем все нечисловые символы
-    setPhone(value);
+  const handleSocialCheckboxChange = (platform: string) => {
+    setSelectedSocial(prev => 
+      prev.includes(platform) 
+        ? prev.filter(p => p !== platform) 
+        : [...prev, platform]
+    );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    
+    setIsSubmitting(true);
+    setError(null);
+
+    const socialContactProvided = selectedSocial.some(p => socialMedia[p as keyof typeof socialMedia]);
+
+    if (!name || (!phone && !socialContactProvided)) {
+      setError(t('checkout.errorContactRequired'));
+      setIsSubmitting(false);
+      return;
+    }
 
     if (checkoutItems.length === 0) {
-      toast.error(t('checkout.noItemsError'));
-      return;
-  }
+        setError(t('checkout.errorEmptyCart'));
+        setIsSubmitting(false);
+        return;
+    }
 
-    setIsSubmitting(true);
-    const orderData = {
-        name,
-        phone,
-        socialMedia,
-        items: checkoutItems.map(item => ({
+    const fullPhoneNumber = phone ? `+995${phone}` : '';
+    const socialContacts = selectedSocial.reduce((acc, p) => {
+        if (socialMedia[p as keyof typeof socialMedia]) {
+            acc[p] = socialMedia[p as keyof typeof socialMedia];
+        }
+        return acc;
+    }, {} as Record<string, string>);
+
+    const orderDetails = {
+      customer: { name, phone: fullPhoneNumber, social: socialContacts },
+      items: checkoutItems.map(item => ({
+        product: {
           id: item.id,
           title: item.title,
-          title_en: item.title_en,
+          title_en: item.title_en, // Pass english title
           price: item.price,
-          quantity: item.quantity,
           category: item.category,
-          image_url: item.image_url
-        })),
+          categoryKey: item.categoryKey,
+          image_url: item.image_url,
+        },
+        quantity: item.quantity,
+      })), 
+      total,
+      shippingCost,
     };
-    
+
     try {
-      await createOrder(orderData, language);
-      addOrder(checkoutItems);
-      clearCart();
-      router.push('/order-success');
-    } catch (error) {
-      console.error(error);
-      toast.error(t('checkout.submitError'));
+      const result = await handlePlaceOrder(orderDetails);
+      if (result.success) {
+        addOrder(checkoutItems.map(item => ({...item, shippingCost: shippingCost})));
+        clearCart();
+        router.push('/order-success');
+      } else {
+        throw new Error(result.message || t('checkout.errorOrderFailed'));
+      }
+    } catch (err: any) {
+      setError(err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const socialOptions = getSocialOptions(t);
 
   return (
     <div className="bg-cream-100 min-h-screen text-ink-900 p-4 md:p-12">
       <main className="max-w-4xl mx-auto">
         <h1 className="text-4xl font-bold mb-8 text-center text-brand-700">{t('checkout.title')}</h1>
         
-        <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+        <div className="bg-surface rounded-lg shadow-lg p-8 mb-8">
           <h2 className="text-2xl font-semibold mb-4">{t('checkout.yourOrder', { count: cartCount })}</h2>
           {checkoutItems.length > 0 ? (
             <ul className="divide-y divide-ink-200">
               {checkoutItems.map((item, idx) => {
                 const title = language === 'en' && item.title_en ? item.title_en : item.title;
                 return (
-                  <li key={`${item.id}-${idx}`} className="py-4 flex justify-between items-center">
+                    <li key={`${item.categoryKey}-${item.id}-${idx}`} className="py-4 flex items-center justify-between">
                     <div className="flex items-center">
                         <img src={item.image_url} alt={title} className="w-16 h-16 object-cover rounded-md mr-4" />
                         <div>
@@ -131,7 +153,7 @@ export default function CheckoutPage() {
                         </div>
                     </div>
                     <span className="font-semibold">₾{(item.price * item.quantity).toFixed(2)}</span>
-                  </li>
+                    </li>
                 );
               })}
             </ul>
@@ -151,14 +173,14 @@ export default function CheckoutPage() {
                   <span>₾{shippingCost.toFixed(2)}</span>
                 )}
               </div>
-              <div className="flex justify-between text-xl font-bold">
+              <div className="flex justify-between font-bold text-2xl">
                 <span>{t('checkout.total')}</span>
                 <span>₾{total.toFixed(2)}</span>
               </div>
             </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-8">
+        <div className="bg-surface rounded-lg shadow-lg p-8">
             <h2 className="text-2xl font-semibold mb-2">{t('checkout.contactDetails')}</h2>
             <p className="text-sm text-ink-600 mb-6">{t('checkout.contactHint')}</p>
             <form onSubmit={handleSubmit}>
@@ -199,7 +221,7 @@ export default function CheckoutPage() {
                         {socialOptions.map(({ key, label, selectedColor, hoverColor }) => {
                             const isSelected = selectedSocial.includes(key);
                             return (
-                                <div
+                            <label
                                 key={key}
                                 className={`flex items-center justify-center px-4 py-2 rounded-full cursor-pointer border-2 transition-all duration-200 
                                 ${isSelected
@@ -209,13 +231,12 @@ export default function CheckoutPage() {
                             >
                                 <input
                                     type="checkbox"
-                                    id={`checkbox-${key}`}
                                     checked={isSelected}
-                                    onChange={() => handleSocialSelect(key)}
-                                    className="sr-only"
+                                    onChange={() => handleSocialCheckboxChange(key)}
+                                    className="absolute opacity-0 pointer-events-none"
                                 />
-                                <label htmlFor={`checkbox-${key}`} className="cursor-pointer">{label}</label>
-                                </div>
+                                <span className="text-sm select-none">{label}</span>
+                            </label>
                             );
                         })}
                     </div>
@@ -232,16 +253,18 @@ export default function CheckoutPage() {
                                 placeholder={
                                     p === 'telegram' ? t('checkout.telegramPlaceholder') :
                                     p === 'whatsapp' ? t('checkout.whatsappPlaceholder') :
-                                    p === 'instagram' ? t('checkout.instagramPlaceholder') : ''
+                                    t('checkout.profileLinkPlaceholder')
                                 }
                             />
                         </div>
                     ))}
                 </div>
+                
+                {error && <p className="text-clay text-center mb-6 p-3 bg-clay/10 border border-clay/30 rounded-lg">{error}</p>}
 
                 <button 
                     type="submit" 
-                    className="w-full bg-brand-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-brand-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-brand-600/30 disabled:opacity-50 disabled:cursor-wait flex items-center justify-center"
+                    className="w-full bg-brand-600 text-on-brand font-bold py-3 px-6 rounded-lg hover:bg-brand-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-brand-600/30 disabled:opacity-50 disabled:cursor-wait flex items-center justify-center"
                     disabled={isSubmitting || checkoutItems.length === 0}
                 >
                     {isSubmitting ? <Spinner /> : t('checkout.submitOrder')}

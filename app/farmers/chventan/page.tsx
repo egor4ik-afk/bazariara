@@ -1,71 +1,55 @@
-import { PrismaClient, products } from '@prisma/client';
+import sql from '@/lib/db';
 import ProductCard from '@/components/ProductCard';
-import { Metadata } from 'next';
 import Link from 'next/link';
 
-const prisma = new PrismaClient();
-
-export const metadata: Metadata = {
-  title: 'Ферма CH’VENTAN (ჩვ’უენთან): натуральные продукты из Кахетии | BAZARI ARA',
-  description: 'Узнайте больше о ферме CH’VENTAN в кахетинском селе Мсхалгори. Мы производим натуральные продукты и вино по традиционным грузинским рецептам, с минимальным вмешательством и фокусом на сезонность.',
-  openGraph: {
-    title: 'Ферма CH’VENTAN (ჩვ’უენთან) | BAZARI ARA',
-    description: 'Натуральные продукты и вино из Кахетии от фермы CH’VENTAN.',
-    images: [
-      {
-        url: 'https://bazari-ara.com/og-image-chventan.png', //TODO: сделать картинку
-        width: 1200,
-        height: 630,
-        alt: 'Ферма CH’VENTAN'
-      }
-    ]
-  }
+export const metadata = {
+  title: 'CH’VENTAN / ჩვ’უენთან | Фермеры Bazariara',
+  description: 'История бренда CH’VENTAN и их натуральные грузинские продукты.',
 };
 
-async function getChventanProducts(): Promise<products[]> {
-  const chventanProducts = await prisma.products.findMany({
-    where: {
-      source: 'chventan',
-      in_stock: true,
-      price: {
-        not: null, 
-      },
-      name: {
-        not: ''
-      }
-    },
-    orderBy: {
-      name: 'asc'
-    },
-  });
-  return chventanProducts;
-}
+export const revalidate = 60;
 
 export default async function ChventanPage() {
-  const products = await getChventanProducts();
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Organization',
-    name: 'CH’VENTAN',
-    description: 'CH’VENTAN — это вкус места, куда хочется приехать. Производство натуральных продуктов и вина в Кахетии.',
-    url: 'https://bazari-ara.com/farmers/chventan',
-    logo: 'https://bazari-ara.com/favicon-96x96.png',
-    contactPoint: {
-      '@type': 'ContactPoint',
-      telephone: '+995-591-017-495',
-      contactType: 'customer service'
-    },
-    address: {
-      '@type': 'PostalAddress',
-      streetAddress: 'Мсхалгори',
-      addressRegion: 'Кахетия',
-      addressCountry: 'GE'
+  // Выборка по farmer_slug, а не по списку external_id в коде.
+  // Раньше добавление товара требовало правки этого файла и деплоя;
+  // теперь достаточно выбрать ферму в админке.
+  let rawProducts: any[] = [];
+  try {
+    rawProducts = await sql`
+      SELECT * FROM products
+      WHERE farmer_slug = 'chventan'
+      ORDER BY in_stock DESC, price NULLS LAST, id
+    `;
+  } catch (e) {
+    console.error('Ошибка загрузки товаров фермера:', e);
+  }
+
+  // Приводим товары к формату, который понимает ProductCard
+  const products = rawProducts.map((p: any) => {
+    let imgs = [];
+    if (typeof p.images === 'string') {
+      try { imgs = JSON.parse(p.images); } catch { imgs = []; }
+    } else if (Array.isArray(p.images)) {
+      imgs = p.images;
     }
-  };
+    const allImages = [p.image_url, ...imgs].filter(Boolean);
+    const uniqueImages = [...new Set(allImages)];
+
+    return {
+      id: String(p.id),
+      external_id: p.external_id,
+      categoryKey: p.category_key || 'gostintsy-iz-gruzii',
+      trueCategoryKey: p.category_key || 'gostintsy-iz-gruzii',
+      title: p.name_ru || p.name_en || p.name_ka || p.name,
+      price: p.price ? Number(p.price) : 0,
+      in_stock: p.in_stock,
+      image_url: uniqueImages[0] || undefined,
+    };
+  });
 
   return (
     <div className="bg-cream-100 min-h-screen pb-12">
-      <div className="container mx-auto px-4 py-8 md:py-12 max-w-4xl bg-white rounded-3xl shadow-sm mt-8">
+      <div className="container mx-auto px-4 py-8 md:py-12 max-w-4xl bg-surface rounded-3xl shadow-sm mt-8">
         <Link href="/farmers" className="text-brand-700 hover:underline mb-8 block">← К списку фермеров</Link>
 
         <h1 className="text-4xl md:text-5xl font-bold mb-8 text-ink-900 leading-tight">

@@ -1,16 +1,14 @@
 import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
-import ProductCard from '@/components/ProductCard';
+import ProductCard from '@/components/ProductCard'; // <-- ДОБАВЛЕН ИМПОРТ
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Product } from '@/lib/types';
 
 type Params = Promise<{ category: string; id: string }>;
 
 type NeonProduct = {
   id: number;
   external_id: string | null;
-  source: string;
   source_url: string | null;
   gorgia_url: string | null;
   name: string;
@@ -24,7 +22,6 @@ type NeonProduct = {
   price: any;
   currency: string;
   in_stock: boolean;
-  availability: string | null;
   category: string | null;
   category_en: string | null;
   category_ka: string | null;
@@ -34,11 +31,9 @@ type NeonProduct = {
   sub_category_ka: string | null;
   image_url: string | null;
   images: any;
-  created_at: string;
-  updated_at: string;
 };
 
-function toClientProduct(p: NeonProduct, category: string, id: string): Product {
+function toClientProduct(p: NeonProduct, category: string, id: string) {
   let imgs: string[] = [];
   if (typeof p.images === 'string') {
     try { imgs = JSON.parse(p.images); } catch { imgs = []; }
@@ -49,41 +44,36 @@ function toClientProduct(p: NeonProduct, category: string, id: string): Product 
   const allImages = [p.image_url, ...imgs].filter(Boolean) as string[];
   const uniqueImages = [...new Set(allImages)];
 
+  const trueCategoryKey = p.category_key || (p.external_id && p.external_id.includes('_') ? p.external_id.split('_')[0] : category);
+
   return {
-    id:              p.id,
-    external_id:     p.external_id || '',
-    source:          p.source,
-    source_url:      p.source_url,
-    gorgia_url:      p.gorgia_url,
+    id:              String(p.id),
+    external_id:     p.external_id || undefined,
+    categoryKey:     category, 
+    trueCategoryKey: trueCategoryKey,
 
-    name:           p.name_ru || p.name_en || p.name_ka || p.name,
-    name_ru:        p.name_ru,
-    name_en:        p.name_en,
-    name_ka:        p.name_ka,
+    title:           p.name_ru || p.name_en || p.name_ka || p.name,
+    title_en:        p.name_en || undefined,
+    title_ka:        p.name_ka || undefined,
 
-    description:     p.description_ru || p.description,
-    description_ru:  p.description_ru,
-    description_en:  p.description_en,
-    description_ka:  p.description_ka,
+    description:     p.description_ru || p.description || undefined,
+    description_en:  p.description_en || undefined,
+    description_ka:  p.description_ka || undefined,
 
-    category:        p.category,
-    category_en:     p.category_en,
-    category_ka:     p.category_ka,
+    category:        p.category || '',
+    category_en:     p.category_en || undefined,
+    category_ka:     p.category_ka || undefined,
 
-    sub_category:    p.sub_category,
-    sub_category_en: p.sub_category_en,
-    sub_category_ka: p.sub_category_ka,
+    sub_category:    p.sub_category || undefined,
+    sub_category_en: p.sub_category_en || undefined,
+    sub_category_ka: p.sub_category_ka || undefined,
 
     price:           p.price ? Number(p.price) : 0,
     in_stock:        p.in_stock,
     currency:        p.currency,
-    availability:    p.availability,
 
-    image_url:       uniqueImages[0] || null,
-    images:          uniqueImages.slice(1),
-
-    created_at: p.created_at,
-    updated_at: p.updated_at,
+    image_url:       uniqueImages[0] || undefined,
+    image_urls:      uniqueImages.slice(1),
   };
 }
 
@@ -94,13 +84,13 @@ async function getProduct(category: string, id: string) {
 
     const rows = await sql`
       SELECT
-        id, external_id, source, source_url, gorgia_url,
+        id, external_id, source_url, gorgia_url,
         name, name_ru, name_en, name_ka,
         description, description_ru, description_en, description_ka,
-        price, currency, in_stock, availability,
+        price, currency, in_stock,
         category, category_en, category_ka, category_key,
         sub_category, sub_category_en, sub_category_ka,
-        image_url, images, created_at, updated_at
+        image_url, images
       FROM products
       WHERE id = ${numericId}
       LIMIT 1
@@ -118,17 +108,17 @@ async function getProduct(category: string, id: string) {
 }
 
 // НОВАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ПОХОЖИХ ТОВАРОВ НА ЧИСТОМ SQL
-async function getRelatedProducts(categoryKey: string, excludeId: number): Promise<Product[]> {
+async function getRelatedProducts(categoryKey: string, excludeId: number) {
   try {
     const rows = await sql`
       SELECT
-        id, external_id, source, source_url, gorgia_url,
+        id, external_id, source_url, gorgia_url,
         name, name_ru, name_en, name_ka,
         description, description_ru, description_en, description_ka,
-        price, currency, in_stock, availability,
+        price, currency, in_stock,
         category, category_en, category_ka, category_key,
         sub_category, sub_category_en, sub_category_ka,
-        image_url, images, created_at, updated_at
+        image_url, images
       FROM products
       WHERE category_key = ${categoryKey} AND id != ${excludeId}
       LIMIT 4
@@ -153,13 +143,13 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     };
   }
 
-  const title = `${product.name} — купить в Тбилиси с доставкой`;
+  const title = `${product.title} — купить в Тбилиси с доставкой`;
   const rawDescription = product.description
     ? `${product.description.slice(0, 110)} — доставка по Тбилиси. Цена: ${product.price} ₾.`
-    : `Купите ${product.name} за ${product.price} ₾ с доставкой по Тбилиси за 2 часа.`;
+    : `Купите ${product.title} за ${product.price} ₾ с доставкой по Тбилиси за 2 часа.`;
   const description = rawDescription.slice(0, 160);
   const image = product.image_url || '/default-product.png';
-  const url = `https://bazariara.ge/products/${category}/${product.id}`;
+  const url = `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`;
 
   return {
     title,
@@ -172,7 +162,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       type: 'website',
       title,
       description,
-      images: [{ url: image, width: 1200, height: 630, alt: product.name }],
+      images: [{ url: image, width: 1200, height: 630, alt: product.title }],
     },
     twitter: {
       card: 'summary_large_image',
@@ -190,9 +180,9 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   if (!product) notFound();
 
   // ВЫЗЫВАЕМ ПОХОЖИЕ ТОВАРЫ
-  const relatedProducts = await getRelatedProducts(category, Number(product.id));
+  const relatedProducts = await getRelatedProducts(product.trueCategoryKey || category, Number(product.id));
 
-  const allImages = [product.image_url, ...(product.images || [])].filter(Boolean) as string[];
+  const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
   const absoluteImageUrls = allImages.map(url =>
     url.startsWith('/') ? `https://bazariara.ge${url}` : url
   );
@@ -203,7 +193,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const jsonLd = {
     '@context': 'https://schema.org/',
     '@type': 'Product',
-    name: product.name,
+    name: product.title,
     image: absoluteImageUrls,
     description: product.description || '',
     sku: product.id,
@@ -217,7 +207,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       availability: product.in_stock
         ? 'https://schema.org/InStock'
         : 'https://schema.org/OutOfStock',
-      url: `https://bazariara.ge/products/${category}/${product.id}`,
+      url: `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`,
       seller: {
         '@type': 'Organization',
         name: 'BAZARI ARA',
@@ -256,7 +246,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
       {/* БЛОК РЕКОМЕНДАЦИЙ СНИЗУ */}
       {relatedProducts.length > 0 && (
         <div className="container mx-auto px-4 mt-8 md:mt-16 mb-16 max-w-7xl">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 border-b pb-4">Вам также может понравиться</h2>
+          <h2 className="text-2xl font-bold mb-6 text-ink-900 border-b pb-4">Вам также может понравиться</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             {relatedProducts.map(p => (
               <ProductCard key={p.id} product={p as any} index={0} />

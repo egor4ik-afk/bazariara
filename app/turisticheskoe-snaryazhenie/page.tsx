@@ -117,52 +117,52 @@ export default async function TourismGearPage() {
   );
 
   return (
-    <div className="bg-gray-900 min-h-screen text-white">
+    <div className="bg-cream-100 min-h-screen text-ink-900">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <main className="container mx-auto px-4 py-8 sm:px-6 lg:px-8">
-        <h1 className="text-3xl md:text-4xl font-extrabold mb-4 text-gray-100">{c.h1}</h1>
-        <p className="text-gray-300 leading-relaxed mb-10 max-w-3xl">{c.intro}</p>
+        <h1 className="text-3xl md:text-4xl font-extrabold mb-4 text-ink-900">{c.h1}</h1>
+        <p className="text-ink-700 leading-relaxed mb-10 max-w-3xl">{c.intro}</p>
 
         {tents.products.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-100 mb-4">{c.tents}</h2>
+            <h2 className="text-2xl font-bold text-ink-900 mb-4">{c.tents}</h2>
             {grid(tents.products)}
           </section>
         )}
 
         {chairs.products.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-100 mb-4">{c.chairs}</h2>
+            <h2 className="text-2xl font-bold text-ink-900 mb-4">{c.chairs}</h2>
             {grid(chairs.products)}
           </section>
         )}
 
         {burners.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-100 mb-4">{c.burners}</h2>
+            <h2 className="text-2xl font-bold text-ink-900 mb-4">{c.burners}</h2>
             {grid(burners)}
           </section>
         )}
 
         {firewood.products.length > 0 && (
           <section className="mb-10">
-            <h2 className="text-2xl font-bold text-gray-100 mb-4">{c.firewood}</h2>
+            <h2 className="text-2xl font-bold text-ink-900 mb-4">{c.firewood}</h2>
             {grid(firewood.products)}
           </section>
         )}
 
         <section className="mb-10">
           <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-            <h2 className="text-2xl font-bold text-gray-100">{c.all}</h2>
+            <h2 className="text-2xl font-bold text-ink-900">{c.all}</h2>
             <Link
               href={`/${locale}/?category=hiking`}
-              className="text-lime-400 hover:text-lime-300 text-sm underline whitespace-nowrap"
+              className="text-brand-700 hover:text-brand-600 text-sm underline whitespace-nowrap"
             >
               {c.all} →
             </Link>
           </div>
           {all.products.length === 0 ? (
-            <p className="text-gray-400">{c.empty}</p>
+            <p className="text-ink-600">{c.empty}</p>
           ) : (
             grid(all.products)
           )}

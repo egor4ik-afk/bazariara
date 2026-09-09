@@ -79,10 +79,12 @@ export const getProducts = unstable_cache(
           id, external_id, category_key, source_url, gorgia_url,
           COALESCE(name_ru, name) AS name,
           name_ru, name_en, name_ka,
-          description_ru AS description,
+          COALESCE(description_ru, description_en, description_ka) AS description,
+          description_ru, description_en, description_ka,
           price, currency, in_stock, availability,
           category, category_en, category_ka,
           sub_category, sub_category_en, sub_category_ka,
+          farmer_slug, farmer_name,
           image_url, images
         FROM products
         WHERE source = 'gorgia'

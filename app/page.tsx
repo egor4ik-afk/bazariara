@@ -1,141 +1,153 @@
-import { PrismaClient } from '@prisma/client';
-import ProductCard from '@/components/ProductCard';
-import CategoryCarousel from '@/components/CategoryCarousel';
+export const revalidate = 600; // синхронно с revalidate в getCategories/getProducts (unstable_cache)
+import type { Metadata } from 'next';
+import Link from 'next/link';
 import InteractiveFilters from '@/components/InteractiveFilters';
+import ProductCard from '@/components/ProductCard';
 import HomeHeader from '@/components/HomeHeader';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
-import { Link } from '@/navigation';
-import { getRequestConfig, unstable_setRequestLocale } from 'next-intl/server';
-import { getCategories } from './actions';
-import { Suspense } from 'react';
+import { getCategories, getSubCategories, getProducts } from './actions';
+import { notFound } from 'next/navigation';
 
+type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
-const prisma = new PrismaClient();
-const PRODUCTS_PER_PAGE = 20;
+export async function generateMetadata({ searchParams }: { searchParams: SearchParams }): Promise<Metadata> {
+  const params = await searchParams;
+  const category = params.category;
+  const subcategory = params.subcategory;
+  const page = parseInt(params.page || '1', 10);
 
-interface SearchParams {
-  search?: string;
-  category?: string;
-  subcategory?: string;
-  sort?: string;
-  page?: string;
-  [key: string]: string | string[] | undefined;
-}
+  // ✅ ИСПРАВЛЕНО: страница 1 не добавляет page в canonical (избегаем дублей)
+  const pageStr = page > 1 ? ` — страница ${page}` : '';
 
-// Генерация статических параметров для маршрутов
-export async function generateStaticParams() {
-  const locales = ['en', 'ru', 'ka'];
-  // Здесь можно добавить другие параметры, если они статичны
-  // Например, популярные категории
-  return locales.map(locale => ({ locale }));
-}
+  const canonicalParams = new URLSearchParams();
+  if (category && category !== 'all') canonicalParams.set('category', category);
+  if (subcategory && subcategory !== 'all') canonicalParams.set('subcategory', subcategory);
+  // НЕ добавляем page=1 в canonical
+  if (page > 1) canonicalParams.set('page', String(page));
+  const canonicalQuery = canonicalParams.toString();
+  const canonical = `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`;
 
-// Основная функция для получения продуктов
-async function getProducts(searchParams: SearchParams) {
-  const { search, category, subcategory, sort, page } = searchParams;
-  const currentPage = page ? parseInt(page, 10) : 1;
-
-  let where: any = {
-    in_stock: true, // Only show products that are in stock
-    price: {
-      not: null,      // Exclude products where price is null
-    },
-    name: {
-      not: ''       // Exclude products with an empty name
-    }
+  // ✅ Сайт однояыычный (ru). Hreflang убираем — Google разберётся сам.
+  // Если в будущем добавите грузинскую версию (/ka/...), раскомментируйте и
+  // пропишите реальные URL для каждого языка.
+  const alternates = {
+    canonical,
+    // languages: {
+    //   'ru': `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`,
+    //   'ka': `https://bazariara.ge/ka/${canonicalQuery ? '?' + canonicalQuery : ''}`,
+    //   'x-default': `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`,
+    // },
   };
 
-  if (search) {
-    where.OR = [
-      { name: { contains: search, mode: 'insensitive' } },
-      { name_en: { contains: search, mode: 'insensitive' } },
-      { name_ru: { contains: search, mode: 'insensitive' } },
-      { name_ka: { contains: search, mode: 'insensitive' } },
-    ];
+  if (!category || category === 'all') {
+    return {
+      title: 'BAZARI ARA: гостинцы из Грузии, туризм и отдых в Тбилиси — доставка за 2 часа',
+      description: 'Мёд, чурчхела, грузинский чай и специи, туристическое снаряжение, повербанки и товары для животных в Тбилиси. Доставка по городу за 2 часа.',
+      alternates,
+    };
   }
 
-  if (category) {
-    where.category_key = category;
+  const categories = await getCategories();
+  const cat = categories.find(c => c.key === category);
+  const catName = cat ? cat.name : category;
+
+  if (subcategory && subcategory !== 'all') {
+    const subName = subcategory.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    return {
+      title: `${subName} — ${catName} | купить в Тбилиси | BAZARI ARA${pageStr}`,
+      description: `${subName} в категории «${catName}». Быстрая доставка по Тбилиси за 2 часа.`,
+      alternates,
+    };
   }
-
-  if (subcategory) {
-    where.sub_category_key = subcategory;
-  }
-
-  let orderBy: any = {};
-  if (sort === 'price_asc') {
-    orderBy = { price: 'asc' };
-  } else if (sort === 'price_desc') {
-    orderBy = { price: 'desc' };
-  } else {
-    orderBy = { created_at: 'desc' };
-  }
-
-  const products = await prisma.product.findMany({
-    where,
-    orderBy,
-    skip: (currentPage - 1) * PRODUCTS_PER_PAGE,
-    take: PRODUCTS_PER_PAGE,
-  });
-
-  const totalProducts = await prisma.product.count({ where });
-  const totalPages = Math.ceil(totalProducts / PRODUCTS_PER_PAGE);
 
   return {
-    products: products as any[],
-    totalPages,
-    totalProducts,
-    currentPage,
+    title: `${catName} — купить в Тбилиси с доставкой за 2 часа | BAZARI ARA${pageStr}`,
+    description: `Большой выбор товаров «${catName}» в Тбилиси. Заказывайте онлайн — доставим за 2 часа.`,
+    alternates,
   };
 }
 
-
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
-  const { products, totalPages, totalProducts, currentPage } = await getProducts(searchParams);
-  const { search, category, subcategory, sort } = searchParams;
+  const params = await searchParams;
 
-  const categoriesData = await getCategories();
+  const selectedCategory    = params.category || 'all';
+  const selectedSubCategory = params.subcategory || 'all';
+  const searchQuery         = params.search || '';
+  const currentPage         = parseInt(params.page || '1', 10);
+  const ITEMS_PER_PAGE      = 20;
 
-  // Логика для построения URL с сохранением фильтров
+  const categoriesList    = await getCategories();
+
+  if (selectedCategory !== 'all' && !categoriesList.some(c => c.key === selectedCategory)) {
+    notFound();
+  }
+
+  const subCategoriesList = await getSubCategories(selectedCategory);
+  const { products, total } = await getProducts(selectedCategory, selectedSubCategory, searchQuery, currentPage);
+
+  const totalPages = Math.ceil(total / ITEMS_PER_PAGE);
+
   const buildPageUrl = (pageNumber: number) => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (category) params.set('category', category);
-    if (subcategory) params.set('subcategory', subcategory);
-    if (sort) params.set('sort', sort);
-    if (pageNumber > 1) params.set('page', String(pageNumber));
-    const queryString = params.toString();
-    return `/?${queryString}`;
+    const p = new URLSearchParams();
+    if (selectedCategory !== 'all') p.set('category', selectedCategory);
+    if (selectedSubCategory !== 'all') p.set('subcategory', selectedSubCategory);
+    if (searchQuery) p.set('search', searchQuery);
+    if (pageNumber > 1) p.set('page', pageNumber.toString());
+    const qs = p.toString();
+    return `/${qs ? '?' + qs : ''}`;
   };
 
-  // JSON-LD для главной страницы (список товаров)
-  const itemListJsonLd = products.length > 0 ? {
+  // ✅ JSON-LD ItemList — помогает Google показывать товары прямо в поиске
+  const isHomePage = selectedCategory === 'all' && selectedSubCategory === 'all' && !searchQuery;
+  const itemListJsonLd = isHomePage && products.length > 0 ? {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
-    name: 'Каталог товаров BAZARI ARA',
-    description: 'Свежие фермерские продукты и товары для дома с доставкой по Грузии.',
-    itemListElement: products.map((product, index) => ({
-      '@type': 'ListItem',
-      position: (currentPage - 1) * PRODUCTS_PER_PAGE + index + 1,
-      item: {
-        '@type': 'Product',
-        name: product.name,
-        url: `https://bazari-ara.com/products/${product.category_key || 'gifts'}/${product.id}`,
-        image: product.image_url,
-        offers: {
-          '@type': 'Offer',
-          price: product.price,
-          priceCurrency: 'GEL',
-          availability: product.in_stock ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+    name: 'Товары BAZARI ARA',
+    description: 'Товары для дома, сада, туризма и отдыха в Тбилиси',
+    numberOfItems: total,
+    itemListElement: products.slice(0, 10).map((product, index) => {
+      const catKey = (product as any).category_key
+        || (product.external_id ? product.external_id.split('_')[0] : 'unknown');
+      return {
+        '@type': 'ListItem',
+        position: (currentPage - 1) * ITEMS_PER_PAGE + index + 1,
+        item: {
+          '@type': 'Product',
+          name: product.name_ru || product.name_en || product.name_ka || product.name,
+          url: `https://bazariara.ge/products/${catKey}/${product.id}`,
+          image: product.image_url || undefined,
+          offers: {
+            '@type': 'Offer',
+            price: product.price,
+            priceCurrency: 'GEL',
+            availability: product.in_stock
+              ? 'https://schema.org/InStock'
+              : 'https://schema.org/OutOfStock',
+          },
         },
-      },
-    })),
+      };
+    }),
   } : null;
 
-  const categoryNames = categoriesData.reduce((acc, cat) => {
-    acc[cat.key] = { ru: cat.name_ru, en: cat.name_en, ka: cat.name_ka };
-    return acc;
-  }, {} as { [key: string]: { ru: string, en: string, ka: string } });
+  // ✅ BreadcrumbList для категорийных страниц
+  const breadcrumbJsonLd = selectedCategory !== 'all' ? (() => {
+    const cat = categoriesList.find(c => c.key === selectedCategory);
+    const catName = cat?.name || selectedCategory;
+    const items: object[] = [
+      { '@type': 'ListItem', position: 1, name: 'Главная', item: 'https://bazariara.ge/' },
+      { '@type': 'ListItem', position: 2, name: catName, item: `https://bazariara.ge/?category=${selectedCategory}` },
+    ];
+    if (selectedSubCategory !== 'all') {
+      const subName = selectedSubCategory.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      items.push({
+        '@type': 'ListItem',
+        position: 3,
+        name: subName,
+        item: `https://bazariara.ge/?category=${selectedCategory}&subcategory=${selectedSubCategory}`,
+      });
+    }
+    return { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items };
+  })() : null;
 
   return (
     <div className="bg-cream-100 min-h-screen text-ink-900">
@@ -146,25 +158,34 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
         />
       )}
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+      )}
 
-      <main className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <Suspense fallback={<div>Loading header...</div>}>
-          <HomeHeader 
-            categoryKey={searchParams.category}
-            categoryNames={categoryNames}
-            currentPage={currentPage}
-          />
-        </Suspense>
-        
-        <InteractiveFilters
-          categories={categoriesData}
-          searchParams={searchParams}
-          totalProducts={totalProducts}
-          buildPageUrl={buildPageUrl} 
+      <div className="container mx-auto px-4 py-1 sm:px-6 lg:px-8">
+        <HomeHeader
+          categoryNames={selectedCategory !== 'all'
+            ? (() => {
+                const cat = categoriesList.find(c => c.key === selectedCategory);
+                return cat ? { ru: cat.name, en: cat.name_en, ka: cat.name_ka } : undefined;
+              })()
+            : undefined}
+          currentPage={currentPage}
         />
 
-        <div className="mt-8">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <InteractiveFilters
+          categories={categoriesList}
+          subCategories={subCategoriesList}
+          selectedCategory={selectedCategory}
+          selectedSubCategory={selectedSubCategory}
+        />
+
+        {/* ✅ aria-label добавлен для семантики */}
+        <section aria-label="Список товаров">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {products.map((product, index) => (
               <ProductCard key={product.id} product={product} index={index} />
             ))}
@@ -177,15 +198,15 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
               <p className="text-sm mt-2">Попробуйте изменить параметры поиска</p>
             </div>
           )}
+        </section>
 
-          {/* Пагинация */}
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-12">
-              {currentPage > 1 ? (
+        {totalPages > 1 && (
+          <nav aria-label="Пагинация" className="mt-16 flex justify-center items-center gap-4">
+            {currentPage > 1 ? (
               <Link
                 href={buildPageUrl(currentPage - 1)}
                 aria-label="Предыдущая страница"
-                className="p-3 rounded-full bg-brand-600 text-white font-bold hover:bg-brand-500 transition-all shadow-lg hover:scale-105"
+                className="p-3 rounded-full bg-brand-600 text-on-brand font-bold hover:bg-brand-500 transition-all shadow-lg hover:scale-105"
               >
                 <ChevronLeftIcon className="h-6 w-6" />
               </Link>
@@ -194,14 +215,14 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 <ChevronLeftIcon className="h-6 w-6" />
               </div>
             )}
-            <span className="text-lg font-semibold text-ink-900 bg-white/80 rounded-full px-5 py-2">
+            <span className="text-lg font-semibold text-ink-900 bg-surface/80 rounded-full px-5 py-2">
               {currentPage} / {totalPages}
             </span>
             {currentPage < totalPages ? (
               <Link
                 href={buildPageUrl(currentPage + 1)}
                 aria-label="Следующая страница"
-                className="p-3 rounded-full bg-brand-600 text-white font-bold hover:bg-brand-500 transition-all shadow-lg hover:scale-105"
+                className="p-3 rounded-full bg-brand-600 text-on-brand font-bold hover:bg-brand-500 transition-all shadow-lg hover:scale-105"
               >
                 <ChevronRightIcon className="h-6 w-6" />
               </Link>
@@ -210,10 +231,9 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
                 <ChevronRightIcon className="h-6 w-6" />
               </div>
             )}
-          </div>
-          )}
-        </div>
-      </main>
+          </nav>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,10 +1,11 @@
-import { useOrder } from '@/contexts/OrderContext';
+'use client';
+
+import { useOrders } from '@/contexts/OrderContext';
 import OrdersList from '@/components/Orderslist';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-
 export default function OrdersPage() {
-    const { orders } = useOrder();
+    const { orders } = useOrders();
     const { t } = useLanguage();
 
     return (
@@ -14,7 +15,7 @@ export default function OrdersPage() {
                 {orders.length > 0 ? (
                     <OrdersList orders={orders} />
                 ) : (
-                    <div className="text-center bg-white p-8 rounded-lg shadow-lg">
+                    <div className="text-center bg-surface p-8 rounded-lg shadow-lg">
                         <p className="text-xl text-ink-600">{t('orders.noOrders')}</p>
                         <p className="text-ink-500 mt-2">{t('orders.noOrdersHint')}</p>
                     </div>

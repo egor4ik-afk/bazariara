@@ -2,7 +2,6 @@ export type Lang = 'ru' | 'en' | 'ka';
 
 // Тип категории — точно соответствует InteractiveFilters + CategoryCarousel
 export type Category = {
-  id: number;
   key: string;
   name: string;
   name_en: string | null;
@@ -45,6 +44,8 @@ export interface Product {
   
   sub_category: string | null;
   sub_category_en: string | null;
+  farmer_slug?: string | null;
+  farmer_name?: string | null;
   sub_category_ka: string | null;
 
   // Главное фото

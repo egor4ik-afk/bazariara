@@ -1,88 +1,133 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { ShoppingCartIcon, UserCircleIcon, Bars3Icon, XMarkIcon } from '@heroicons/react/24/solid';
+import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
+import ThemeToggle from '@/components/ThemeToggle';
+import { useOrders } from '@/contexts/OrderContext';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
-import SidebarMenu from '@/components/SidebarMenu';
+import { ShoppingCartIcon, ArchiveBoxIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import SidebarMenu from './SidebarMenu';
 
-
-const LanguageSwitcher = () => {
-  const { language, setLanguage } = useLanguage();
-  const languages: Language[] = ['ru', 'en', 'ka'];
-
-  return (
-    <div className="flex items-center bg-cream-100 rounded-full p-1 shadow-inner">
-      {languages.map(lang => (
-        <button
-          key={lang}
-          onClick={() => setLanguage(lang)}
-          className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors duration-300 ${
-            language === lang 
-              ? 'bg-brand-600 text-white shadow-md' 
-              : 'text-ink-600 hover:bg-cream-200'
-          }`}>
-          {lang.toUpperCase()}
-        </button>
-      ))}
-    </div>
-  );
-};
+const LANGUAGES: { code: Language; label: string; flag: string }[] = [
+  { code: 'ru', label: 'Русский',  flag: 'https://flagcdn.com/w40/ru.png' },
+  { code: 'en', label: 'English',  flag: 'https://flagcdn.com/w40/gb.png' },
+  { code: 'ka', label: 'ქართული', flag: 'https://flagcdn.com/w40/ge.png' },
+];
 
 export default function Header() {
   const { cartItems } = useCart();
-  const { t } = useLanguage();
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const { orders }    = useOrders();
+  const { language, setLanguage, t } = useLanguage();
+
+  const [isClient,     setIsClient]     = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setIsClient(true); }, []);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const itemCount  = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+  const totalPrice = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const orderCount = orders.length;
+  const current    = LANGUAGES.find(l => l.code === language) ?? LANGUAGES[0];
 
   return (
-    <header className="bg-white/80 backdrop-blur-md sticky top-0 z-40 shadow-sm">
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20">
-          {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="text-2xl font-bold text-brand-700 hover:text-brand-600 transition-colors">
-                BAZARI ARA
-            </Link>
-          </div>
+    <header className="bg-surface px-3 py-3 sm:p-4 shadow-md sticky top-0 z-20">
+      <div className="container mx-auto flex justify-between items-center gap-2">
 
-          {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link href="/gostintsy-iz-gruzii" className="text-base font-medium text-ink-700 hover:text-brand-700 transition-colors">{t('nav.gifts')}</Link>
-            <Link href="/powerbank-i-zaryadki" className="text-base font-medium text-ink-700 hover:text-brand-700 transition-colors">{t('nav.powerbanks')}</Link>
-            <Link href="/farmers" className="text-base font-medium text-ink-700 hover:text-brand-700 transition-colors">{t('nav.farmers')}</Link>
-          </nav>
+        {/* Левая часть */}
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+          <SidebarMenu />
+          <Link href={`/${language}`} className="text-lg sm:text-2xl font-bold text-ink-900 hover:text-brand-700 transition-colors duration-300 whitespace-nowrap">
+            BAZARI ARA
+          </Link>
+        </div>
 
-          {/* Right side icons and burger menu */}
-          <div className="flex items-center justify-end space-x-4">
-            <div className="hidden md:block">
-              <LanguageSwitcher />
+        {/* Правая часть */}
+        {isClient && (
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+
+            {/* Переключатель темы */}
+            <ThemeToggle />
+
+            {/* Дропдаун языка */}
+            <div ref={dropdownRef} className="relative">
+              <button
+                onClick={() => setDropdownOpen(prev => !prev)}
+                className="flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-ink-100 hover:bg-ink-200 transition-colors text-ink-900 text-sm font-semibold"
+              >
+                <Image src={current.flag} alt={current.label} width={20} height={15} className="rounded-sm object-cover shadow-sm" />
+                <span className="uppercase text-xs tracking-wide">{current.code}</span>
+                <ChevronDownIcon className={`h-3 w-3 text-ink-600 transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 mt-2 w-44 bg-cream-100 border border-ink-200 rounded-xl shadow-2xl overflow-hidden z-50">
+                  {LANGUAGES.map(lang => (
+                    <button
+                      key={lang.code}
+                      onClick={() => { setLanguage(lang.code); setDropdownOpen(false); }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors
+                        ${language === lang.code
+                          ? 'bg-ink-100/80 text-brand-700 font-semibold'
+                          : 'text-ink-700 hover:bg-surface'
+                        }`}
+                    >
+                      <Image
+                        src={lang.flag}
+                        alt={lang.label}
+                        width={24}
+                        height={18}
+                        className="rounded-sm object-cover shadow-sm flex-shrink-0"
+                      />
+                      <span>{lang.label}</span>
+                      {language === lang.code && (
+                        <span className="ml-auto w-1.5 h-1.5 rounded-full bg-brand-500 flex-shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            <Link href="/cart" className="relative p-2 rounded-full hover:bg-cream-100 transition-colors">
-              <ShoppingCartIcon className="h-7 w-7 text-ink-700" />
-              {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">
-                  {totalItems}
+            {/* Заказы */}
+            <Link href={`/${language}/orders`} className="relative flex items-center text-ink-900 hover:text-brand-700 transition-colors duration-300">
+              <ArchiveBoxIcon className="h-7 w-7 sm:h-8 sm:w-8" />
+              {orderCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-brand-600 text-on-brand rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center text-[10px] sm:text-xs font-bold">
+                  {orderCount}
                 </span>
               )}
             </Link>
 
-            <Link href="/orders" className="p-2 rounded-full hover:bg-cream-100 transition-colors">
-              <UserCircleIcon className="h-7 w-7 text-ink-700" />
+            {/* Корзина */}
+            <Link href={`/${language}/cart`} className="relative flex items-center text-ink-900 hover:text-brand-700 transition-colors duration-300">
+              {totalPrice > 0 && (
+                <span className="hidden sm:inline mr-3 text-lg font-bold text-brand-700">
+                  ₾{totalPrice.toFixed(2)}
+                </span>
+              )}
+              <ShoppingCartIcon className="h-7 w-7 sm:h-8 sm:w-8" />
+              {itemCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-brand-600 text-on-brand rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center text-[10px] sm:text-xs font-bold">
+                  {itemCount}
+                </span>
+              )}
             </Link>
-            
-            <div className="md:hidden">
-              <button onClick={() => setIsMenuOpen(true)} className="p-2 rounded-md">
-                <Bars3Icon className="h-7 w-7 text-ink-700" />
-              </button>
-            </div>
           </div>
-        </div>
+        )}
       </div>
-      
-      {/* Sidebar Menu (Mobile) */}
-      <SidebarMenu isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
     </header>
   );
 }

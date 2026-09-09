@@ -461,7 +461,7 @@ export default function AdminProductsClient({
 
         {/* Таблица */}
         <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, overflow: 'hidden' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #2a2d3a' }}>
                 <th style={{ ...cellStyle, width: 36 }}>
@@ -576,7 +576,7 @@ export default function AdminProductsClient({
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </div>
 
         {/* Пагинация */}

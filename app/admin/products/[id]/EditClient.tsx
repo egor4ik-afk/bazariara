@@ -25,6 +25,8 @@ type Product = {
   sub_category?: string;
   sub_category_en?: string;
   sub_category_ka?: string;
+  farmer_slug?: string;
+  farmer_name?: string;
   image_url?: string;
   images?: string[];
 } | null;
@@ -53,6 +55,15 @@ const TextareaField = memo(({ value, onChange, placeholder }: {
     placeholder={placeholder} style={textareaStyle} />
 ));
 TextareaField.displayName = 'TextareaField';
+
+/**
+ * Список ферм. Пока их единицы, поэтому держим здесь, а не в отдельной таблице:
+ * добавить хозяйство = одна строка. Поле slug/name всё равно остаётся
+ * редактируемым вручную, так что справочник ничего не запрещает.
+ */
+const FARMERS = [
+  { slug: 'chventan', name: 'CH\u2019VENTAN' },
+];
 
 const FieldWrapper = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div style={{ marginBottom: 20 }}>
@@ -138,6 +149,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
     sub_category: String(product?.sub_category || ''),
     sub_category_en: String(product?.sub_category_en || ''),
     sub_category_ka: String(product?.sub_category_ka || ''),
+    farmer_slug:     String(product?.farmer_slug || ''),
+    farmer_name:     String(product?.farmer_name || ''),
     source_url:      String(product?.source_url || ''),
   });
 
@@ -366,6 +379,40 @@ export default function ProductEditClient({ product }: { product: Product }) {
             </FieldWrapper>
             <FieldWrapper label="ქართული">
               <TextareaField value={form.description_ka} onChange={v => setField('description_ka', v)} placeholder="აღწერა..." />
+            </FieldWrapper>
+          </Section>
+
+          <Section title="Производитель">
+            <p style={{ fontSize: 12, color: '#8b90a0', margin: '0 0 12px' }}>
+              Ферма или бренд. Имя показывается плашкой на карточке товара,
+              slug ведёт на страницу /farmers/&lt;slug&gt;. Оставьте пустым для обычного товара.
+            </p>
+            <FieldWrapper label="Компания / ферма">
+              <select
+                value={form.farmer_slug || ''}
+                onChange={e => {
+                  const f = FARMERS.find(x => x.slug === e.target.value);
+                  setForm(prev => ({
+                    ...prev,
+                    farmer_slug: f ? f.slug : '',
+                    farmer_name: f ? f.name : '',
+                  }));
+                }}
+                style={{ width: '100%', padding: '9px 12px', background: '#131620',
+                         border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff',
+                         fontSize: 13, outline: 'none' }}
+              >
+                <option value="">— без производителя —</option>
+                {FARMERS.map(f => (
+                  <option key={f.slug} value={f.slug}>{f.name}</option>
+                ))}
+              </select>
+            </FieldWrapper>
+            <FieldWrapper label="Название (как на карточке)">
+              <InputField value={form.farmer_name} onChange={v => setField('farmer_name', v)} placeholder="CH'VENTAN" />
+            </FieldWrapper>
+            <FieldWrapper label="Slug (URL страницы фермера)">
+              <InputField value={form.farmer_slug} onChange={v => setField('farmer_slug', v)} placeholder="chventan" />
             </FieldWrapper>
           </Section>
 

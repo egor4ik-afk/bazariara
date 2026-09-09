@@ -1,56 +1,107 @@
-import { PrismaClient } from '@prisma/client';
 import { MetadataRoute } from 'next';
+import sql from '@/lib/db';
 
-const prisma = new PrismaClient();
-const BASE_URL = 'https://bazari-ara.com';
-const LOCALES = ['en', 'ru', 'ka'];
+const SITE_URL = 'https://bazariara.ge';
+const LOCALES = ['ru', 'en', 'ka'] as const;
 
-async function getProducts() {
-  return await prisma.products.findMany({
-    where: {
-      in_stock: true,
-      price: { not: null },
-      name: { not: '' },
-    },
-    select: {
-      id: true,
-      category_key: true,
-      updated_at: true,
-    },
-  });
+/**
+ * Next.js не экранирует спецсимволы в URL при генерации sitemap.xml —
+ * известный баг: https://github.com/vercel/next.js/issues/77340
+ * Наши URL с ?category=X&subcategory=Y содержат "&", который ломает XML.
+ * Экранируем вручную все значения, идущие в <loc> и <xhtml:link href>.
+ */
+function escapeXml(url: string): string {
+  return url
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
+}
+
+/** Строит по одному sitemap-entry на каждую локаль, все со ссылками друг на друга (hreflang). */
+function localizedEntries(
+  path: string, // начинается с '/', БЕЗ префикса локали
+  lastModified: Date,
+  changeFrequency: NonNullable<MetadataRoute.Sitemap[number]['changeFrequency']>,
+  priority: number,
+): MetadataRoute.Sitemap {
+  const languages: Record<string, string> = {};
+  for (const l of LOCALES) languages[l] = escapeXml(`${SITE_URL}/${l}${path}`);
+  languages['x-default'] = escapeXml(`${SITE_URL}/ru${path}`);
+
+  return LOCALES.map((l) => ({
+    url: escapeXml(`${SITE_URL}/${l}${path}`),
+    lastModified,
+    changeFrequency,
+    priority,
+    alternates: { languages },
+  }));
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const products = await getProducts();
+  const entries: MetadataRoute.Sitemap = [];
 
-  const productEntries: MetadataRoute.Sitemap = products.flatMap((product: { id: bigint; category_key: string | null; updated_at: Date; }) =>
-    LOCALES.map(locale => ({
-      url: `${BASE_URL}/${locale}/products/${product.category_key}/${product.id}`,
-      lastModified: product.updated_at.toISOString(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    }))
-  );
+  try {
+    const rows = await sql`
+      SELECT
+        id,
+        category_key,
+        LOWER(REPLACE(COALESCE(sub_category, ''), ' ', '-')) AS sub_key,
+        in_stock,
+        updated_at
+      FROM products
+      WHERE source    = 'gorgia'
+        AND image_url IS NOT NULL
+        AND category_key IS NOT NULL
+    `;
 
-  const staticPages = [
-    { path: '', priority: 1.0 },
-    { path: '/cart', priority: 0.5 },
-    { path: '/checkout', priority: 0.4 },
-    { path: '/gostintsy-iz-gruzii', priority: 0.9 },
-    { path: '/powerbank-i-zaryadki', priority: 0.9 },
-    { path: '/privacy-policy', priority: 0.3 },
-    { path: '/farmers', priority: 0.7 },
-    { path: '/farmers/chventan', priority: 0.6 },
+    const categoryDates   = new Map<string, Date>();
+    const subCategoryKeys = new Map<string, Set<string>>();
+
+    for (const row of rows) {
+      const catKey  = row.category_key as string;
+      const subKey  = row.sub_key as string;
+      const updated = row.updated_at ? new Date(row.updated_at as string) : new Date();
+
+      if (!catKey) continue;
+
+      const existing = categoryDates.get(catKey);
+      if (!existing || updated > existing) categoryDates.set(catKey, updated);
+
+      if (subKey) {
+        if (!subCategoryKeys.has(catKey)) subCategoryKeys.set(catKey, new Set());
+        subCategoryKeys.get(catKey)!.add(subKey);
+      }
+
+      if (row.in_stock) {
+        entries.push(...localizedEntries(`/products/${catKey}/${row.id}`, updated, 'weekly', 0.8));
+      }
+    }
+
+    for (const [catKey, lastMod] of categoryDates) {
+      entries.push(...localizedEntries(`/?category=${catKey}`, lastMod, 'weekly', 0.9));
+    }
+
+    for (const [catKey, subs] of subCategoryKeys) {
+      const catDate = categoryDates.get(catKey) || new Date();
+      for (const subKey of subs) {
+        if (!subKey) continue;
+        // ВАЖНО: тут раньше и был "сырой" & без экранирования — источник бага.
+        entries.push(...localizedEntries(`/?category=${catKey}&subcategory=${subKey}`, catDate, 'weekly', 0.7));
+      }
+    }
+  } catch (error) {
+    console.error('Sitemap error:', error);
+  }
+
+  return [
+    ...localizedEntries('/', new Date(), 'daily', 1),
+    ...localizedEntries('/privacy-policy', new Date(), 'yearly', 0.3),
+    ...localizedEntries('/returns', new Date(), 'yearly', 0.4),
+    ...localizedEntries('/turisticheskoe-snaryazhenie', new Date(), 'monthly', 0.6),
+    ...localizedEntries('/powerbank-i-zaryadki', new Date(), 'monthly', 0.6),
+    ...localizedEntries('/gostintsy-iz-gruzii', new Date(), 'weekly', 0.9),
+    ...entries,
   ];
-
-  const staticEntries: MetadataRoute.Sitemap = staticPages.flatMap(page =>
-    LOCALES.map(locale => ({
-      url: `${BASE_URL}/${locale}${page.path}`,
-      lastModified: new Date().toISOString(),
-      changeFrequency: page.path === '' ? 'daily' : 'weekly',
-      priority: page.priority,
-    }))
-  );
-
-  return [...staticEntries, ...productEntries];
 }
