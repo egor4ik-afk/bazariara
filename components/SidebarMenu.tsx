@@ -102,6 +102,16 @@ export default function SidebarMenu() {
                 <span className="text-sm font-mono bg-lime-500/20 text-lime-300 rounded-full px-2 py-0.5">{totalProducts}</span>
               </div>
             </li>
+            
+            {/* Фермеры */}
+            <li className="mb-2">
+              <div className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-gray-300 hover:bg-lime-500/10 hover:text-lime-300 border border-transparent hover:border-lime-500/30 transition-all duration-200">
+                <Link href="/farmers" onClick={() => setIsOpen(false)} className="flex items-center flex-grow">
+                  <CategoryIcon />
+                  <span>{t('sidebar.farmers')}</span>
+                </Link>
+              </div>
+            </li>
 
             {/* Категории */}
             {categories.map(category => (

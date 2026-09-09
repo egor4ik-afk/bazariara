@@ -18,7 +18,7 @@ const LANGUAGES: { code: Language; label: string; flag: string }[] = [
 export default function Header() {
   const { cartItems } = useCart();
   const { orders }    = useOrders();
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   const [isClient,     setIsClient]     = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -50,6 +50,9 @@ export default function Header() {
           <SidebarMenu />
           <Link href={`/${language}`} className="text-2xl font-bold text-white hover:text-lime-400 transition-colors duration-300">
             BAZARI ARA
+          </Link>
+          <Link href="/farmers" className="text-l font-bold text-white hover:text-lime-400 transition-colors duration-300">
+            {t('header.farmers')}
           </Link>
         </div>
 

@@ -27,6 +27,10 @@ const Footer = () => {
         <div className="text-center mt-4 text-sm text-gray-500">
           <span>{t('footer.copyright')}</span>
           <span className="mx-2">|</span>
+          <Link href={`/${language}/farmers`} className="underline hover:text-lime-400 transition-colors duration-300">
+            {t('footer.farmers')}
+          </Link>
+          <span className="mx-2">|</span>
           <Link href={`/${language}/turisticheskoe-snaryazhenie`} className="underline hover:text-lime-400 transition-colors duration-300">
             {t('footer.tourism')}
           </Link>
