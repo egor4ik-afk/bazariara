@@ -1,173 +1,162 @@
-/**
- * Восстановление товаров и категорий из JSON-дампа старой БД.
- *
- * Запуск (любой из вариантов):
- *   npx tsx import-products.ts ./products\ \(4\)\ \(1\).json
- *   node import-products.js ./products.json          // если переименовать в .js
- *
- * Путь к файлу можно передать аргументом; по умолчанию берётся из DATA_FILE ниже.
- */
+import 'dotenv/config'; // Принудительно читаем .env в первую очередь
+import postgres from 'postgres';
 
-require('dotenv').config();
-const { PrismaClient, Prisma } = require('@prisma/client');
-const fs = require('fs');
+// Берем URL напрямую из .env
+const dbUrl = process.env.DATABASE_URL || process.env.DIRECT_URL;
 
-const prisma = new PrismaClient();
-
-// Путь к дампу: первый аргумент командной строки или значение по умолчанию.
-const DATA_FILE = process.argv[2] || 'products (4) (1).json';
-
-// Сохранять оригинальные id из дампа (важно для стабильных URL и SEO).
-// Если по какой-то причине нужно перенумеровать с нуля — поставь false.
-const PRESERVE_IDS = true;
-
-const BATCH = 200;
-
-/** Постгресовый timestamptz ("2026-03-14 21:59:20.34535+00") -> JS Date. */
-function pgToDate(s: string | null | undefined): Date | undefined {
-  if (!s) return undefined;
-  let t = String(s).trim().replace(' ', 'T');
-  t = t.replace(/(\.\d{3})\d+/, '$1');                       // микро- -> миллисекунды
-  t = t.replace(/([+-]\d{2})(?!:?\d)/, (_m: string, off: string) =>
-    off === '+00' ? 'Z' : off + ':00',                       // "+00" -> "Z", "+04" -> "+04:00"
-  );
-  const d = new Date(t);
-  return isNaN(d.getTime()) ? new Date(s) : d;
+if (!dbUrl) {
+  console.error('❌ Ошибка: DATABASE_URL или DIRECT_URL не найдены в .env');
+  process.exit(1);
 }
 
-function chunk<T>(arr: T[], size: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
-  return out;
-}
+// Создаем подключение специально для скрипта
+const sql = postgres(dbUrl);
 
 async function main() {
-  if (!fs.existsSync(DATA_FILE)) {
-    throw new Error(`Файл не найден: ${DATA_FILE}. Передай путь аргументом.`);
+  console.log('⏳ Подключаемся к базе и начинаем добавление товаров...');
+
+  const products = [
+    {
+      external_id: 'chventan_tkemali_500',
+      name: 'Ткемали CH’VENTAN 500мл',
+      name_ru: 'Ткемали CH’VENTAN 500мл',
+      name_en: 'Tkemali CH’VENTAN 500ml',
+      name_ka: 'ტყემალი CH’VENTAN 500ml',
+      description: 'Натуральный грузинский соус ткемали.',
+      description_ru: 'Натуральный грузинский соус ткемали. Создается на основе настоящей грузинской сливы с традиционными травами и специями.',
+      description_en: 'Natural Georgian tkemali sauce.',
+      description_ka: 'ნატურალური ქართული ტყემლის სოუსი.',
+      price: 15,
+      currency: 'GEL',
+      in_stock: true,
+      category_key: 'gostintsy-iz-gruzii',
+      category: 'Гостинцы из Грузии'
+    },
+    {
+      external_id: 'chventan_tkemali_310',
+      name: 'Ткемали CH’VENTAN 310мл',
+      name_ru: 'Ткемали CH’VENTAN 310мл',
+      name_en: 'Tkemali CH’VENTAN 310ml',
+      name_ka: 'ტყემალი CH’VENTAN 310ml',
+      description: 'Натуральный грузинский соус ткемали.',
+      description_ru: 'Натуральный грузинский соус ткемали.',
+      description_en: 'Natural Georgian tkemali sauce.',
+      description_ka: 'ნატურალური ქართული ტყემლის სოუსი.',
+      price: 10,
+      currency: 'GEL',
+      in_stock: true,
+      category_key: 'gostintsy-iz-gruzii',
+      category: 'Гостинцы из Грузии'
+    },
+    {
+      external_id: 'chventan_wine_ambre',
+      name: 'Вино янтарное квеври AMBRE',
+      name_ru: 'Вино янтарное квеври AMBRE (CH’VENTAN)',
+      name_en: 'Amber Qvevri Wine AMBRE (CH’VENTAN)',
+      name_ka: 'ქარვისფერი ქვევრის ღვინო AMBRE (CH’VENTAN)',
+      description: 'Вино янтарное квеври.',
+      description_ru: 'Небольшое производство грузинского вина из собственного винограда. Готовится наше янтарное квеври-вино AMBRE — из сортов Киси и Мцване.',
+      description_en: 'Amber qvevri wine from Kisi and Mtsvane.',
+      description_ka: 'ქარვისფერი ქვევრის ღვინო.',
+      price: 0,
+      currency: 'GEL',
+      in_stock: true,
+      category_key: 'gostintsy-iz-gruzii',
+      category: 'Гостинцы из Грузии'
+    },
+    {
+      external_id: 'chventan_wine_red_2025',
+      name: 'Вино красное сухое CH’VENTAN 2025',
+      name_ru: 'Вино красное сухое CH’VENTAN 2025',
+      name_en: 'Red Dry Wine CH’VENTAN 2025',
+      name_ka: 'წითელი მშრალი ღვინო CH’VENTAN 2025',
+      description: 'Вино красное сухое.',
+      description_ru: 'Направление красного сухого вина CH’VENTAN урожая 2025 года. Вино будет выпускаться ограниченными партиями.',
+      description_en: 'Red dry wine CH’VENTAN 2025.',
+      description_ka: 'წითელი მშრალი ღვინო CH’VENTAN 2025.',
+      price: 0,
+      currency: 'GEL',
+      in_stock: true,
+      category_key: 'gostintsy-iz-gruzii',
+      category: 'Гостинцы из Грузии'
+    },
+    {
+      external_id: 'corn_flour_farm',
+      name: 'Натуральная кукурузная мука (1 кг)',
+      name_ru: 'Натуральная кукурузная мука (1 кг)',
+      name_en: 'Natural Corn Flour (1 kg)',
+      name_ka: 'ნატურალური სიმინდის ფქვილი (1 კგ)',
+      description: 'Натуральная кукурузная мука.',
+      description_ru: 'Натуральная кукурузная мука местного производства. Идеально подходит для мчади и гоми.',
+      description_en: 'Natural local corn flour.',
+      description_ka: 'ნატურალური სიმინდის ფქვილი.',
+      price: 4,
+      currency: 'GEL',
+      in_stock: true,
+      category_key: 'gostintsy-iz-gruzii',
+      category: 'Гостинцы из Грузии'
+    },
+    {
+      external_id: 'tea_first_grade_40g',
+      name: 'Чай высшего сорта (40 г)',
+      name_ru: 'Чай высшего сорта (40 г)',
+      name_en: 'Premium Tea (40 g)',
+      name_ka: 'უმაღლესი ხარისხის ჩაი (40 გ)',
+      description: 'Чай высшего сорта.',
+      description_ru: 'Сырой чай собирают в мае методом отбора — по три листа (почки). Затем следует завяливание, скручивание, ферментация (окисление) и сушка.',
+      description_en: 'Premium tea, hand-picked in May. 40g package.',
+      description_ka: 'უმაღლესი ხარისხის ჩაი.',
+      price: 2.4,
+      currency: 'GEL',
+      in_stock: true,
+      category_key: 'gostintsy-iz-gruzii',
+      category: 'Гостинцы из Грузии'
+    },
+    {
+      external_id: 'tea_second_grade_40g',
+      name: 'Чай второго сорта (40 г)',
+      name_ru: 'Чай второго сорта (40 г)',
+      name_en: 'Second Grade Tea (40 g)',
+      name_ka: 'მეორე ხარისხის ჩაი (40 გ)',
+      description: 'Чай второго сорта.',
+      description_ru: 'Чай второго сорта. Сырой чай собирают в мае, завяливают, скручивают, ферментируют и сушат.',
+      description_en: 'Second grade tea. 40g package.',
+      description_ka: 'მეორე ხარისხის ჩაი.',
+      price: 1.2,
+      currency: 'GEL',
+      in_stock: true,
+      category_key: 'gostintsy-iz-gruzii',
+      category: 'Гостинцы из Грузии'
+    }
+  ];
+
+  try {
+    for (const p of products) {
+      const existing = await sql`SELECT id FROM products WHERE external_id = ${p.external_id}`;
+      
+      if (existing.length === 0) {
+        await sql`
+          INSERT INTO products (
+            external_id, name, name_ru, name_en, name_ka, 
+            description, description_ru, description_en, description_ka, 
+            price, currency, in_stock, category_key, category
+          ) VALUES (
+            ${p.external_id}, ${p.name}, ${p.name_ru}, ${p.name_en}, ${p.name_ka},
+            ${p.description}, ${p.description_ru}, ${p.description_en}, ${p.description_ka},
+            ${p.price}, ${p.currency}, ${p.in_stock}, ${p.category_key}, ${p.category}
+          )
+        `;
+        console.log(`✅ Добавлен: ${p.name_ru}`);
+      } else {
+        console.log(`⏭ Пропущен (уже есть): ${p.name_ru}`);
+      }
+    }
+    console.log('🎉 Все товары фермеров успешно добавлены!');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Ошибка при добавлении:', error);
+    process.exit(1);
   }
-
-  const data: any[] = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-  console.log(`📦 Загружено ${data.length} товаров из ${DATA_FILE}`);
-
-  console.log('🧹 Очистка старых данных...');
-  // Сначала products, потом categories — на случай внешних ключей.
-  await prisma.products.deleteMany();
-  await prisma.categories.deleteMany();
-
-  // ── Категории ───────────────────────────────────────────────────────────
-  // Ключ берём из РЕАЛЬНОГО поля category_key в данных, НЕ слугифицируем имя.
-  // Это устраняет два бага старого скрипта:
-  //   1) разные категории с одинаковым именем ("Сад": sad + garden) -> конфликт @unique;
-  //   2) кириллический slug не совпадает с ключами вида 'climate', по которым фильтрует сайт.
-  const catMap = new Map<string, { name: string; category_image: string | null }>();
-  for (const it of data) {
-    const key = it.category_key;
-    if (!key || catMap.has(key)) continue;
-    catMap.set(key, {
-      name: it.category_ru || it.category || it.category_en || key,
-      // У категорий нет своего изображения в дампе — берём первое фото товара категории.
-      category_image: it.image_url || null,
-    });
-  }
-
-  const categoriesData = Array.from(catMap.entries()).map(([category_key, v]) => ({
-    name: v.name,
-    category_key,
-    parent_id: null,                 // иерархии в дампе нет
-    category_image: v.category_image,
-  }));
-
-  await prisma.categories.createMany({ data: categoriesData, skipDuplicates: true });
-  console.log(`✅ Категорий восстановлено: ${categoriesData.length}`);
-
-  // ── Товары ──────────────────────────────────────────────────────────────
-  const productsData = data.map((item) => {
-    const created = pgToDate(item.created_at);
-    const updated = pgToDate(item.updated_at);
-
-    const row: any = {
-      external_id: item.external_id != null ? String(item.external_id) : null,
-      source: item.source || 'market',
-      source_url: item.source_url || null,
-      gorgia_url: item.gorgia_url || null,
-
-      // Названия / описания (все языки)
-      name: item.name || '',
-      name_ru: item.name_ru || null,
-      name_en: item.name_en || null,
-      name_ka: item.name_ka || null,
-      description: item.description || null,
-      description_ru: item.description_ru || null,
-      description_en: item.description_en || null,
-      description_ka: item.description_ka || null,
-
-      // Цена / наличие. Decimal принимает строку -> без потери точности.
-      price: item.price != null && item.price !== '' ? new Prisma.Decimal(item.price) : null,
-      currency: item.currency || 'GEL',
-      in_stock: Boolean(item.in_stock),
-      availability: item.availability || null,
-
-      // Категории (ключ + все языки)
-      category: item.category || null,
-      category_en: item.category_en || null,
-      category_ka: item.category_ka || null,
-      category_key: item.category_key || null,
-      sub_category: item.sub_category || null,
-      sub_category_en: item.sub_category_en || null,
-      sub_category_ka: item.sub_category_ka || null,
-
-      // Идентификаторы
-      sku: item.sku || null,
-
-      // Картинки
-      image_url: item.image_url || null,
-      images: Array.isArray(item.images) ? item.images : [],
-    };
-
-    if (created) row.created_at = created;
-    if (updated) row.updated_at = updated;
-    if (PRESERVE_IDS && item.id != null) row.id = BigInt(item.id);
-
-    return row;
-  });
-
-  console.log(`🚀 Импорт ${productsData.length} товаров батчами по ${BATCH}...`);
-  let done = 0;
-  for (const part of chunk(productsData, BATCH)) {
-    const res = await prisma.products.createMany({ data: part, skipDuplicates: true });
-    done += res.count;
-    console.log(`   ...${done}/${productsData.length}`);
-  }
-
-  // ── Сброс sequence ────────────────────────────────────────────────────────
-  // После вставки с явными id автоинкремент надо сдвинуть на max(id),
-  // иначе следующая вставка без id упадёт на конфликте PRIMARY KEY.
-  if (PRESERVE_IDS) {
-    await prisma.$executeRawUnsafe(
-      `SELECT setval(pg_get_serial_sequence('products','id'),
-        GREATEST((SELECT COALESCE(MAX(id),1) FROM products), 1))`,
-    );
-    await prisma.$executeRawUnsafe(
-      `SELECT setval(pg_get_serial_sequence('categories','id'),
-        GREATEST((SELECT COALESCE(MAX(id),1) FROM categories), 1))`,
-    );
-    console.log('🔧 Sequence для products/categories обновлены.');
-  }
-
-  // ── Контроль ───────────────────────────────────────────────────────────────
-  const [pCount, cCount] = await Promise.all([
-    prisma.products.count(),
-    prisma.categories.count(),
-  ]);
-  console.log(`📊 Итого в БД: товаров ${pCount}, категорий ${cCount}`);
-  console.log('✅ Импорт успешно завершён!');
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Ошибка импорта:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+main();

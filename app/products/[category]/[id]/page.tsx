@@ -1,10 +1,8 @@
-export const revalidate = 600;
-
 import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
+import ProductCard from '@/components/ProductCard'; // <-- ДОБАВЛЕН ИМПОРТ
 import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-
 
 type Params = Promise<{ category: string; id: string }>;
 
@@ -21,7 +19,7 @@ type NeonProduct = {
   description_ru: string | null;
   description_en: string | null;
   description_ka: string | null;
-  price: any; // Используем any для безопасной обработки Decimal/строки
+  price: any;
   currency: string;
   in_stock: boolean;
   category: string | null;
@@ -46,7 +44,6 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
   const allImages = [p.image_url, ...imgs].filter(Boolean) as string[];
   const uniqueImages = [...new Set(allImages)];
 
-  // Безопасное определение канонической категории
   const trueCategoryKey = p.category_key || (p.external_id && p.external_id.includes('_') ? p.external_id.split('_')[0] : category);
 
   return {
@@ -71,7 +68,7 @@ function toClientProduct(p: NeonProduct, category: string, id: string) {
     sub_category_en: p.sub_category_en || undefined,
     sub_category_ka: p.sub_category_ka || undefined,
 
-    price:           p.price ? Number(p.price) : 0, // Принудительно приводим к числу
+    price:           p.price ? Number(p.price) : 0,
     in_stock:        p.in_stock,
     currency:        p.currency,
 
@@ -100,7 +97,6 @@ async function getProduct(category: string, id: string) {
     `;
 
     if (!rows || rows.length === 0) {
-      console.warn(`[DB] Товар с ID ${numericId} не найден в базе данных.`);
       return null;
     }
 
@@ -108,6 +104,31 @@ async function getProduct(category: string, id: string) {
   } catch (err) {
     console.error('Ошибка при получении товара из БД:', err);
     return null;
+  }
+}
+
+// НОВАЯ ФУНКЦИЯ ДЛЯ ПОЛУЧЕНИЯ ПОХОЖИХ ТОВАРОВ НА ЧИСТОМ SQL
+async function getRelatedProducts(categoryKey: string, excludeId: number) {
+  try {
+    const rows = await sql`
+      SELECT
+        id, external_id, source_url, gorgia_url,
+        name, name_ru, name_en, name_ka,
+        description, description_ru, description_en, description_ka,
+        price, currency, in_stock,
+        category, category_en, category_ka, category_key,
+        sub_category, sub_category_en, sub_category_ka,
+        image_url, images
+      FROM products
+      WHERE category_key = ${categoryKey} AND id != ${excludeId}
+      LIMIT 4
+    `;
+    
+    if (!rows || rows.length === 0) return [];
+    return rows.map(r => toClientProduct(r as unknown as NeonProduct, categoryKey, String(r.id)));
+  } catch (err) {
+    console.error('Ошибка при получении похожих товаров:', err);
+    return [];
   }
 }
 
@@ -158,8 +179,8 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
 
   if (!product) notFound();
 
-  // Отключаем принудительный редирект, чтобы страница открывалась в любом случае.
-  // Правильный URL уже передается поисковикам через canonical в метаданных выше.
+  // ВЫЗЫВАЕМ ПОХОЖИЕ ТОВАРЫ
+  const relatedProducts = await getRelatedProducts(product.trueCategoryKey || category, Number(product.id));
 
   const allImages = [product.image_url, ...(product.image_urls || [])].filter(Boolean) as string[];
   const absoluteImageUrls = allImages.map(url =>
@@ -218,7 +239,21 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
+      
+      {/* ОСНОВНОЙ КОНТЕНТ ТОВАРА */}
       <ProductDetailClient product={product} />
+
+      {/* БЛОК РЕКОМЕНДАЦИЙ СНИЗУ */}
+      {relatedProducts.length > 0 && (
+        <div className="container mx-auto px-4 mt-8 md:mt-16 mb-16 max-w-7xl">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 border-b pb-4">Вам также может понравиться</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+            {relatedProducts.map(p => (
+              <ProductCard key={p.id} product={p as any} index={0} />
+            ))}
+          </div>
+        </div>
+      )}
     </>
   );
 }
