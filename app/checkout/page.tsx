@@ -11,14 +11,14 @@ const FREE_SHIPPING_THRESHOLD = 100;
 const SHIPPING_COST = 20;
 
 const getSocialOptions = (t: (key: string) => string) => [
-    { key: 'telegram', label: t('checkout.telegram'), selectedColor: 'bg-sky-500', hoverColor: 'hover:bg-sky-600' },
-    { key: 'whatsapp', label: t('checkout.whatsapp'), selectedColor: 'bg-green-500', hoverColor: 'hover:bg-green-600' },
-    { key: 'facebook', label: t('checkout.facebook'), selectedColor: 'bg-blue-600', hoverColor: 'hover:bg-blue-700' },
+  { key: 'telegram', label: t('checkout.telegram'), selectedColor: 'bg-sky-500', hoverColor: 'hover:bg-sky-600' },
+  { key: 'whatsapp', label: t('checkout.whatsapp'), selectedColor: 'bg-green-500', hoverColor: 'hover:bg-green-600' },
+  { key: 'facebook', label: t('checkout.facebook'), selectedColor: 'bg-blue-600', hoverColor: 'hover:bg-blue-700' },
 ];
 
 // Simple Spinner component
 const Spinner = () => (
-    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-600"></div>
+  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-brand-600"></div>
 );
 
 export default function CheckoutPage() {
@@ -119,6 +119,20 @@ export default function CheckoutPage() {
     try {
       const result = await handlePlaceOrder(orderDetails);
       if (result.success) {
+        // ==========================================
+        // 🎯 ОТПРАВЛЯЕМ СОБЫТИЕ ПОКУПКИ В FACEBOOK
+        // ==========================================
+        if (typeof window !== 'undefined' && (window as any).fbq) {
+          (window as any).fbq('track', 'Purchase', {
+            value: total, // Точная итоговая сумма
+            currency: 'GEL',
+            content_type: 'product',
+            content_ids: checkoutItems.map(item => item.id), // ID всех купленных товаров
+            num_items: cartCount // Общее количество единиц
+          });
+        }
+        // ==========================================
+
         addOrder(checkoutItems.map(item => ({...item, shippingCost: shippingCost})));
         clearCart();
         router.push('/order-success');
@@ -160,7 +174,7 @@ export default function CheckoutPage() {
           ) : (
             <p className="text-center text-ink-600">{t('checkout.empty')}</p>
           )}
-           <div className="mt-6 pt-4 border-t border-ink-200">
+            <div className="mt-6 pt-4 border-t border-ink-200">
               <div className="flex justify-between text-ink-600 mb-2">
                 <span>{t('checkout.subtotal')}</span>
                 <span>₾{subtotal.toFixed(2)}</span>

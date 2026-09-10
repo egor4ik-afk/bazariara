@@ -7,7 +7,6 @@ import { ThemeProvider, themeInitScript } from '@/contexts/ThemeContext'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
-// import { FacebookPixelEvents } from '@/components/FacebookPixelEvents' // Закомментировали импорт пикселя
 
 const siteName = 'BAZARI ARA'
 const siteUrl = new URL('https://bazariara.ge')
@@ -203,11 +202,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             alt=""
           />
         </noscript>
-        
-        {/* Facebook Pixel Script (ЗАКОММЕНТИРОВАНО) */}
-        {/* 
+        {/* Facebook Pixel Script */}
         <Script id="fb-pixel-base" strategy="afterInteractive">
-          {\`
+          {`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
             n.callMethod.apply(n,arguments):n.queue.push(arguments)};
@@ -216,9 +213,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '\${process.env.NEXT_PUBLIC_FB_PIXEL_ID}');
+            fbq('init', '${process.env.NEXT_PUBLIC_FB_PIXEL_ID}');
             fbq('track', 'PageView');
-          \`}
+          `}
         </Script>
         <noscript>
           <img
@@ -229,8 +226,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             alt=""
           />
         </noscript>
-        <FacebookPixelEvents />
-        */}
 
       </body>
     </html>
