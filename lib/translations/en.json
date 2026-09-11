@@ -101,9 +101,11 @@
     "searchPlaceholder": "Search by name...",
     "allProducts": "All Products",
     "inStock": "In Stock",
-    "page": "Page {current} of {total}",
+    "page": "page",
     "photo": "photo {number}",
-    "loading": "Loading home page..."
+    "loading": "Loading home page...",
+    "heroTitle": "The Georgia you want to take home",
+    "heroSubtitle": "Local food and gifts from small Georgian producers, plus everything you need for travelling. We pick it ourselves and deliver across Tbilisi."
   },
   "product": {
     "backToProducts": "Back to Products",

@@ -109,6 +109,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Sitemap producers error:', e);
   }
 
+  // Регионы — только непустые: страница без товаров и производителей
+  // в индексе даст Soft 404.
+  let regionEntries: MetadataRoute.Sitemap = [];
+  try {
+    const regions = await sql`
+      SELECT r.slug FROM regions r
+      WHERE r.is_active
+        AND (EXISTS (SELECT 1 FROM producers p WHERE p.region_id = r.id AND p.status = 'active')
+          OR EXISTS (SELECT 1 FROM products x WHERE x.region_id = r.id AND x.source = 'gorgia'))
+    `;
+    regionEntries = regions.flatMap((r: any) =>
+      localizedEntries(`/regions/${r.slug}`, new Date(), 'weekly', 0.7)
+    );
+  } catch (e) {
+    console.error('Sitemap regions error:', e);
+  }
+
   return [
     ...localizedEntries('/', new Date(), 'daily', 1),
     ...localizedEntries('/privacy-policy', new Date(), 'yearly', 0.3),
@@ -117,7 +134,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localizedEntries('/powerbank-i-zaryadki', new Date(), 'monthly', 0.6),
     ...localizedEntries('/gostintsy-iz-gruzii', new Date(), 'weekly', 0.9),
     ...localizedEntries('/farmers', new Date(), 'weekly', 0.8),
+    ...localizedEntries('/regions', new Date(), 'weekly', 0.8),
     ...producerEntries,
+    ...regionEntries,
     ...entries,
   ];
 }

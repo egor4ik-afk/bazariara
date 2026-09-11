@@ -65,5 +65,10 @@
   },
   "checkout": {
     "errorPhoneInvalid": "Please check the number — it looks incomplete"
+  },
+  "home": {
+    "heroTitle": "The Georgia you want to take home",
+    "heroSubtitle": "Local food and gifts from small Georgian producers, plus everything you need for travelling. We pick it ourselves and deliver across Tbilisi.",
+    "page": "page"
   }
 }

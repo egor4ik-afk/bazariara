@@ -7,6 +7,8 @@ import HomeHeader from '@/components/HomeHeader';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { getCategories, getSubCategories, getProducts } from './actions';
 import { notFound } from 'next/navigation';
+import { headers } from 'next/headers';
+import { ProducersSection, RegionsSection, ProducerCTASection } from '@/components/home/HomeSections';
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
@@ -25,7 +27,12 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   // НЕ добавляем page=1 в canonical
   if (page > 1) canonicalParams.set('page', String(page));
   const canonicalQuery = canonicalParams.toString();
-  const canonical = `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`;
+  // Canonical обязан совпадать с реальным URL. Middleware редиректит / на /ru,
+  // поэтому canonical без префикса указывал на адрес, который сам редиректит.
+  const hdrs = await headers();
+  const lh = hdrs.get('x-locale');
+  const loc = lh === 'en' || lh === 'ka' ? lh : 'ru';
+  const canonical = `https://bazariara.ge/${loc}${canonicalQuery ? '?' + canonicalQuery : ''}`;
 
   // ✅ Сайт однояыычный (ru). Hreflang убираем — Google разберётся сам.
   // Если в будущем добавите грузинскую версию (/ka/...), раскомментируйте и
@@ -41,8 +48,8 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 
   if (!category || category === 'all') {
     return {
-      title: 'BAZARI ARA: гостинцы из Грузии, туризм и отдых в Тбилиси — доставка за 2 часа',
-      description: 'Мёд, чурчхела, грузинский чай и специи, туристическое снаряжение, повербанки и товары для животных в Тбилиси. Доставка по городу за 2 часа.',
+      title: 'Грузинские продукты, подарки и товары для туризма в Тбилиси — Bazari Ara',
+      description: 'Грузинские продукты от местных производителей, подарки, сувениры и товары для путешествий. Отбираем сами и доставляем по Тбилиси.',
       alternates,
     };
   }
@@ -68,6 +75,10 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
 }
 
 export default async function HomePage({ searchParams }: { searchParams: SearchParams }) {
+  const hdrs = await headers();
+  const lh = hdrs.get('x-locale');
+  const locale: 'ru' | 'en' | 'ka' = lh === 'en' || lh === 'ka' ? lh : 'ru';
+
   const params = await searchParams;
 
   const selectedCategory    = params.category || 'all';
@@ -103,7 +114,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name: 'Товары BAZARI ARA',
-    description: 'Товары для дома, сада, туризма и отдыха в Тбилиси',
+    description: 'Грузинские продукты, подарки и товары для туризма в Тбилиси',
     numberOfItems: total,
     itemListElement: products.slice(0, 10).map((product, index) => {
       const catKey = (product as any).category_key
@@ -114,7 +125,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         item: {
           '@type': 'Product',
           name: product.name_ru || product.name_en || product.name_ka || product.name,
-          url: `https://bazariara.ge/products/${catKey}/${product.id}`,
+          url: `https://bazariara.ge/${locale}/products/${catKey}/${product.id}`,
           image: product.image_url || undefined,
           offers: {
             '@type': 'Offer',
@@ -232,6 +243,17 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
               </div>
             )}
           </nav>
+        )}
+
+        {/* Блоки новой главной (ТЗ раздел 14). Показываем только на самой
+            главной: при выбранной категории или поиске человек решает
+            конкретную задачу, и эти секции только мешают. */}
+        {isHomePage && (
+          <>
+            <ProducersSection locale={locale} />
+            <RegionsSection locale={locale} />
+            <ProducerCTASection locale={locale} />
+          </>
         )}
       </div>
     </div>
