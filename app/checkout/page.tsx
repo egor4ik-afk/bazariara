@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useCart } from '@/contexts/CartContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import PhoneInput, { buildPhone, DEFAULT_COUNTRY, type Country } from '@/components/PhoneInput';
 import { useRouter } from 'next/navigation';
 import { handlePlaceOrder } from './actions';
 
@@ -28,6 +29,8 @@ export default function CheckoutPage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [socialMedia, setSocialMedia] = useState({
     telegram: '',
     whatsapp: '',
@@ -52,10 +55,9 @@ export default function CheckoutPage() {
   const cartCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
   const socialOptions = getSocialOptions(t);
 
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target.value;
-    const digits = input.replace(/[^0-9]/g, '');
-    setPhone(digits);
+  const handlePhoneChange = (v: string) => {
+    setPhone(v);
+    if (phoneError) setPhoneError(null);   // не ругаемся, пока человек печатает
   };
 
   const handleSocialMediaInputChange = (platform: string, value: string) => {
@@ -84,13 +86,21 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Телефон необязателен, если оставили мессенджер, но если введён —
+    // должен быть корректным. Раньше в базу уезжали обрубки вроде «+99512».
+    const fullPhoneNumber = phone ? buildPhone(country, phone) : '';
+    if (phone && !fullPhoneNumber) {
+      setPhoneError(t('checkout.errorPhoneInvalid'));
+      setIsSubmitting(false);
+      return;
+    }
+
     if (checkoutItems.length === 0) {
         setError(t('checkout.errorEmptyCart'));
         setIsSubmitting(false);
         return;
     }
 
-    const fullPhoneNumber = phone ? `+995${phone}` : '';
     const socialContacts = selectedSocial.reduce((acc, p) => {
         if (socialMedia[p as keyof typeof socialMedia]) {
             acc[p] = socialMedia[p as keyof typeof socialMedia];
@@ -99,7 +109,7 @@ export default function CheckoutPage() {
     }, {} as Record<string, string>);
 
     const orderDetails = {
-      customer: { name, phone: fullPhoneNumber, social: socialContacts },
+      customer: { name, phone: fullPhoneNumber || undefined, social: socialContacts },
       items: checkoutItems.map(item => ({
         product: {
           id: item.id,
@@ -217,21 +227,14 @@ export default function CheckoutPage() {
                 
                 <div className="mb-6">
                     <label htmlFor="phone" className="block text-ink-700 mb-2 font-medium">{t('checkout.phone')}</label>
-                    <div className="flex items-center bg-ink-100 border border-ink-300 rounded-lg focus-within:ring-2 focus-within:ring-brand-500 transition-all duration-300">
-                        <div className="flex items-center pl-4 pr-3 pointer-events-none">
-                            <img src="https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1ec-1f1ea.png" alt="Georgia Flag" className="w-6 h-6 mr-2"/>
-                            <span className="text-ink-900 font-medium">+995</span>
-                        </div>
-                        <input 
-                            type="tel" 
-                            id="phone"
-                            value={phone}
-                            onChange={handlePhoneChange}
-                            className="flex-1 bg-transparent px-4 py-3 text-ink-900 placeholder-gray-400 focus:outline-none"
-                            placeholder={t('checkout.phonePlaceholder')}
-                            maxLength={9}
-                        />
-                    </div>
+                    <PhoneInput
+                        country={country}
+                        onCountryChange={setCountry}
+                        value={phone}
+                        onChange={handlePhoneChange}
+                        error={phoneError}
+                        placeholder={t('checkout.phonePlaceholder')}
+                    />
                 </div>
 
                 <div className="mb-6">

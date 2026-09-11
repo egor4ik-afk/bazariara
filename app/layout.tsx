@@ -4,6 +4,7 @@ import { CartProvider } from '@/contexts/CartContext'
 import { OrderProvider } from '@/contexts/OrderContext'
 import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ThemeProvider, themeInitScript } from '@/contexts/ThemeContext'
+import { CONTACTS } from '@/lib/contacts'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
@@ -97,12 +98,12 @@ const websiteJsonLd = {
       },
       contactPoint: {
         '@type': 'ContactPoint',
-        telephone: '+995591017495',
+        telephone: CONTACTS.phoneE164,
         contactType: 'customer service',
         availableLanguage: ['Russian', 'Georgian'],
         areaServed: 'GE',
       },
-      sameAs: ['https://t.me/bazariarage'],
+      sameAs: [CONTACTS.telegram, CONTACTS.whatsapp],
       address: {
         '@type': 'PostalAddress',
         addressLocality: 'Тбилиси',
@@ -122,7 +123,7 @@ const websiteJsonLd = {
         addressLocality: 'Тбилиси',
         addressCountry: 'GE',
       },
-      telephone: '+995591017495',
+      telephone: CONTACTS.phoneE164,
       openingHoursSpecification: {
         '@type': 'OpeningHoursSpecification',
         dayOfWeek: [

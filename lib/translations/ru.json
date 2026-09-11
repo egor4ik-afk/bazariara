@@ -57,7 +57,8 @@
     "submitOrder": "Отправить заказ",
     "errorContactRequired": "Укажите имя и хотя бы один контакт: телефон или соцсеть.",
     "errorEmptyCart": "Ваша корзина пуста.",
-    "errorOrderFailed": "Не удалось разместить заказ."
+    "errorOrderFailed": "Не удалось разместить заказ.",
+    "errorPhoneInvalid": "Проверьте номер: он введён не полностью"
   },
   "orders": {
     "title": "Мои заказы",

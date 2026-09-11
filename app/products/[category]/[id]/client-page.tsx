@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import ProductOrigin from '@/components/ProductOrigin';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
 import 'swiper/css';
@@ -216,6 +217,14 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                   <span className="text-sm font-semibold text-brand-700 bg-brand-100 rounded-full px-3 py-1">{t('product.inStock')}</span>
                 )}
               </div>
+              <ProductOrigin
+                originType={(product as any).origin_type}
+                producerSlug={(product as any).farmer_slug}
+                producerName={(product as any).farmer_name}
+                regionSlug={(product as any).region_slug}
+                regionName={(product as any).region_name}
+              />
+
               {getDescription() && (
                 <div className="text-ink-700 leading-relaxed space-y-4 whitespace-pre-line">
                   {getDescription()!.split('\n').map((p, i) => <p key={i}>{p}</p>)}

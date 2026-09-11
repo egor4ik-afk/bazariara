@@ -62,5 +62,8 @@
     "producer": "Producer",
     "region": "Region",
     "importedNote": "Imported product. Brand shown, not local origin."
+  },
+  "checkout": {
+    "errorPhoneInvalid": "Please check the number — it looks incomplete"
   }
 }

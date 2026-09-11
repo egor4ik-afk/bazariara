@@ -57,7 +57,8 @@
     "submitOrder": "შეკვეთის გაგზავნა",
     "errorContactRequired": "მიუთითეთ სახელი და მინიმუმ ერთი კონტაქტი.",
     "errorEmptyCart": "თქვენი კალათა ცარიელია.",
-    "errorOrderFailed": "შეკვეთის განთავსება ვერ მოხერხდა."
+    "errorOrderFailed": "შეკვეთის განთავსება ვერ მოხერხდა.",
+    "errorPhoneInvalid": "შეამოწმეთ ნომერი — არასრულად ჩანს"
   },
   "orders": {
     "title": "ჩემი შეკვეთები",

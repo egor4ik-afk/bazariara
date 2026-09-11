@@ -95,6 +95,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Sitemap error:', error);
   }
 
+  // Страницы производителей — их не было в карте вообще,
+  // Google находил бы их только по внутренним ссылкам.
+  let producerEntries: MetadataRoute.Sitemap = [];
+  try {
+    const producers = await sql`
+      SELECT slug, updated_at FROM producers WHERE status = 'active'
+    `;
+    producerEntries = producers.flatMap((p: any) =>
+      localizedEntries(`/farmers/${p.slug}`, p.updated_at ? new Date(p.updated_at) : new Date(), 'weekly', 0.7)
+    );
+  } catch (e) {
+    console.error('Sitemap producers error:', e);
+  }
+
   return [
     ...localizedEntries('/', new Date(), 'daily', 1),
     ...localizedEntries('/privacy-policy', new Date(), 'yearly', 0.3),
@@ -102,6 +116,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localizedEntries('/turisticheskoe-snaryazhenie', new Date(), 'monthly', 0.6),
     ...localizedEntries('/powerbank-i-zaryadki', new Date(), 'monthly', 0.6),
     ...localizedEntries('/gostintsy-iz-gruzii', new Date(), 'weekly', 0.9),
+    ...localizedEntries('/farmers', new Date(), 'weekly', 0.8),
+    ...producerEntries,
     ...entries,
   ];
 }

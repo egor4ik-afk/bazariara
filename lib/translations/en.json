@@ -57,7 +57,8 @@
     "submitOrder": "Submit Order",
     "errorContactRequired": "Please provide your name and at least one contact: phone or social media.",
     "errorEmptyCart": "Your cart is empty.",
-    "errorOrderFailed": "Failed to place order."
+    "errorOrderFailed": "Failed to place order.",
+    "errorPhoneInvalid": "Please check the number — it looks incomplete"
   },
   "orders": {
     "title": "My Orders",

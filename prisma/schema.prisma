@@ -52,6 +52,11 @@ model products {
   @@index([source, category_key])
   @@index([source, sub_category])
   @@index([in_stock, updated_at])
+  farmer_slug     String?
+  farmer_name     String?
+  producer_id     Int?
+  region_id       Int?
+  origin_type     String?
 }
 
 model categories {
@@ -80,7 +85,9 @@ model categories_backup_20260712 {
 }
 
 model orders {
-  id         Int       @id @default(autoincrement())
+  id               Int       @id @default(autoincrement())
+  referral_source  String?
+  referral_comment String?
   customer   Json
   items      Json
   subtotal   Decimal?  @db.Decimal(10, 2)
@@ -162,4 +169,60 @@ model subcategories {
 
   // ── Добавлено: под фильтр WHERE category_key = ... ──
   @@index([category_key])
+}
+
+model regions {
+  id          Int       @id @default(autoincrement())
+  slug        String    @unique
+  name        String
+  name_en     String?
+  name_ka     String?
+  description String?
+  image_url   String?
+  is_active   Boolean   @default(true)
+  sort_order  Int       @default(100)
+  created_at  DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model producers {
+  id              Int       @id @default(autoincrement())
+  slug            String    @unique
+  name            String
+  name_en         String?
+  name_ka         String?
+  region_id       Int?
+  locality        String?
+  description     String?
+  description_en  String?
+  description_ka  String?
+  image_url       String?
+  logo_url        String?
+  website         String?
+  instagram       String?
+  facebook        String?
+  status          String    @default("active")
+  seo_title       String?
+  seo_description String?
+  sort_order      Int       @default(100)
+  created_at      DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([region_id])
+  @@index([status])
+}
+
+model producer_applications {
+  id           Int      @id @default(autoincrement())
+  contact_name String
+  brand_name   String
+  phone        String
+  region       String?
+  products     String
+  social       String?
+  description  String?
+  status       String   @default("new")
+  admin_note   String?
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([status])
 }
