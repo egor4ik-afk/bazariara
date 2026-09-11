@@ -41,7 +41,8 @@ async function sendTelegramNotification(
   items: (OrderItem & { link?: string | null })[],
   total: number,
   shippingCost: number,
-  createdAt: Date
+  createdAt: Date,
+  orderId?: number
 ) {
   const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
   const CHAT_ID   = process.env.TELEGRAM_CHAT_ID;
@@ -66,7 +67,7 @@ async function sendTelegramNotification(
 
   const subtotal = total - shippingCost;
   const message = [
-    `🛒 *НОВЫЙ ЗАКАЗ*`,
+    orderId ? `🛒 *НОВЫЙ ЗАКАЗ №${orderId}*` : `🛒 *НОВЫЙ ЗАКАЗ*`,
     ``,
     `👤 *${customer.name}*`,
     contactDetails,
@@ -122,6 +123,11 @@ export async function handlePlaceOrder(orderDetails: OrderDetails) {
       )
     `;
 
+    // Опрос «откуда узнали» заполняется ПОСЛЕ оформления, отдельным запросом,
+    // поэтому колонки добавляем здесь же — таблица создаётся на лету.
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS referral_source text`;
+    await sql`ALTER TABLE orders ADD COLUMN IF NOT EXISTS referral_comment text`;
+
     // ✅ Загружаем source_url по числовому id для каждого товара
     const itemsWithLinks = await Promise.all(
       items.map(async item => {
@@ -130,7 +136,7 @@ export async function handlePlaceOrder(orderDetails: OrderDetails) {
       })
     );
 
-    await sql`
+    const inserted = await sql`
       INSERT INTO orders (customer, items, subtotal, shipping, total, created_at)
       VALUES (
         ${JSON.stringify(customer)}::jsonb,
@@ -146,10 +152,16 @@ export async function handlePlaceOrder(orderDetails: OrderDetails) {
         })))}::jsonb,
         ${subtotal}, ${shippingCost}, ${total}, ${createdAt.toISOString()}
       )
+      RETURNING id
     `;
 
-    await sendTelegramNotification(customer, itemsWithLinks, total, shippingCost, createdAt);
-    return { success: true };
+    const orderId = inserted[0]?.id as number | undefined;
+
+    await sendTelegramNotification(customer, itemsWithLinks, total, shippingCost, createdAt, orderId);
+
+    // orderId возвращаем, чтобы страница «спасибо» могла привязать ответ
+    // на вопрос «откуда узнали» к конкретному заказу.
+    return { success: true, orderId };
 
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Неизвестная ошибка';

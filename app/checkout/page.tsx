@@ -135,6 +135,11 @@ export default function CheckoutPage() {
 
         addOrder(checkoutItems.map(item => ({...item, shippingCost: shippingCost})));
         clearCart();
+        // id нужен странице «спасибо», чтобы привязать ответ на вопрос
+        // «откуда узнали» к конкретному заказу
+        if (result.orderId) {
+          try { sessionStorage.setItem('lastOrderId', String(result.orderId)); } catch {}
+        }
         router.push('/order-success');
       } else {
         throw new Error(result.message || t('checkout.errorOrderFailed'));

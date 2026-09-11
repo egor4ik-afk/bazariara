@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import { useLanguage } from '@/contexts/LanguageContext';
+import ReferralSurvey from './ReferralSurvey';
 
 export default function OrderSuccessPage() {
   const { t } = useLanguage();
 
   return (
     <div className="bg-cream-100 min-h-screen text-ink-900 flex items-center justify-center p-4">
-      <main className="max-w-md w-full bg-surface rounded-lg shadow-lg p-8 text-center">
+      <main className="max-w-lg w-full bg-surface rounded-2xl border border-ink-200 shadow-card p-8 text-center">
         <CheckCircleIcon className="w-20 h-20 text-brand-700 mx-auto mb-6" />
         <h1 className="text-3xl font-bold mb-4">{t('orderSuccess.title')}</h1>
         <p className="text-ink-700 mb-8">{t('orderSuccess.thanks')}</p>
@@ -28,6 +29,8 @@ export default function OrderSuccessPage() {
             {t('orderSuccess.backHome')}
           </Link>
         </div>
+
+        <ReferralSurvey />
       </main>
     </div>
   );

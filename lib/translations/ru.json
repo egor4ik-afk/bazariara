@@ -164,5 +164,29 @@
     "light": "Светлая тема",
     "dark": "Тёмная тема",
     "system": "Как в системе"
+  },
+  "referral": {
+    "question": "Откуда вы о нас узнали?",
+    "hint": "Один клик — и мы поймём, что работает. Можно пропустить.",
+    "thanks": "Спасибо, это правда помогает!",
+    "skip": "Пропустить",
+    "send": "Отправить",
+    "otherPlaceholder": "Расскажите, где именно",
+    "source": {
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "google": "Поиск Google",
+      "friend": "Посоветовали",
+      "telegram": "Telegram",
+      "passing_by": "Проходил мимо",
+      "other": "Другое"
+    }
+  },
+  "origin": {
+    "title": "Откуда этот товар",
+    "madeInGeorgia": "Сделано в Грузии",
+    "producer": "Производитель",
+    "region": "Регион",
+    "importedNote": "Импортный товар. Указан бренд-производитель."
   }
 }

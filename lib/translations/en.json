@@ -155,5 +155,29 @@
     "light": "Light theme",
     "dark": "Dark theme",
     "system": "System theme"
+  },
+  "referral": {
+    "question": "How did you hear about us?",
+    "hint": "One tap and we will know what works. Feel free to skip.",
+    "thanks": "Thank you, this really helps!",
+    "skip": "Skip",
+    "send": "Send",
+    "otherPlaceholder": "Tell us where exactly",
+    "source": {
+      "instagram": "Instagram",
+      "facebook": "Facebook",
+      "google": "Google search",
+      "friend": "A friend told me",
+      "telegram": "Telegram",
+      "passing_by": "Walked past",
+      "other": "Other"
+    }
+  },
+  "origin": {
+    "title": "Where this comes from",
+    "madeInGeorgia": "Made in Georgia",
+    "producer": "Producer",
+    "region": "Region",
+    "importedNote": "Imported product. Brand shown, not local origin."
   }
 }
