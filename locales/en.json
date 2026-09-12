@@ -1,7 +1,14 @@
 {
   "footer": {
     "farmers": "Farmers",
-    "terms": "Terms of Service"
+    "terms": "Terms of Service",
+    "regions": "Regions of Georgia",
+    "blog": "Travel guide",
+    "sectionsTitle": "Sections",
+    "catalogTitle": "Catalogue",
+    "contactsTitle": "Contacts",
+    "hours": "Daily 09:00–21:00",
+    "tagline": "Georgian food from local producers and everything for travelling. Delivery across Tbilisi."
   },
   "header": {
     "farmers": "Farmers"

@@ -274,18 +274,6 @@ export default function AdminCategoriesPage() {
   return (
     <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
 
-      {/* Header */}
-      <div style={{ borderBottom: '1px solid #2a2d3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 32, height: 32, background: '#c8f135', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⚡</div>
-          <span style={{ fontWeight: 600, fontSize: 16 }}>bazariara.ge admin</span>
-        </div>
-        <nav style={{ display: 'flex', gap: 8 }}>
-          <Link href="/admin"           style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', textDecoration: 'none' }}>Дашборд</Link>
-          <Link href="/admin/products"  style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', textDecoration: 'none' }}>Товары</Link>
-          <Link href="/admin/categories" style={{ color: '#c8f135', fontSize: 13, padding: '6px 12px', borderRadius: 6, background: '#1e2a0e', textDecoration: 'none' }}>Категории</Link>
-        </nav>
-      </div>
 
       <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
 

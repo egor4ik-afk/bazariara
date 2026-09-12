@@ -106,7 +106,27 @@ export default function SidebarMenu() {
           </button>
         </div>
 
-        <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-brand-800 mb-6 shrink-0">
+        <nav className="shrink-0 mb-5 pb-5 border-b border-ink-200">
+          {[
+            { href: `/${language}/farmers`,  icon: '🌿', label: t('footer.farmers') },
+            { href: `/${language}/regions`,  icon: '📍', label: t('footer.regions') },
+            { href: `/${language}/blog`,     icon: '📖', label: t('footer.blog') },
+            { href: `/${language}/gostintsy-iz-gruzii`, icon: '🎁', label: t('footer.gifts') },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setIsOpen(false)}
+              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-ink-800
+                         font-semibold hover:bg-brand-600/10 hover:text-brand-700 transition-colors"
+            >
+              <span aria-hidden="true">{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        <h2 className="text-xl font-bold text-ink-900 mb-4 shrink-0">
           {t('common.categories')}
         </h2>
 
@@ -128,16 +148,6 @@ export default function SidebarMenu() {
                   </div>
                 </li>
                 
-                {/* Фермеры */}
-                <li className="mb-2">
-                  <div className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-ink-700 hover:bg-brand-600/10 hover:text-brand-600 border border-transparent hover:border-brand-600/30 transition-all duration-200">
-                    <Link href={`/${language}/farmers`} onClick={() => setIsOpen(false)} className="flex items-center flex-grow">
-                      <CategoryIcon />
-                      <span>{t('sidebar.farmers')}</span>
-                    </Link>
-                  </div>
-                </li>
-
                 {/* Категории */}
                 {categories.map(category => (
                   <li key={category.key} className="mb-2">

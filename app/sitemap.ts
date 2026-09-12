@@ -126,6 +126,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     console.error('Sitemap regions error:', e);
   }
 
+  let postEntries: MetadataRoute.Sitemap = [];
+  try {
+    const posts = await sql`
+      SELECT slug, updated_at FROM posts WHERE status = 'published'
+    `;
+    postEntries = posts.flatMap((p: any) =>
+      localizedEntries(`/blog/${p.slug}`, p.updated_at ? new Date(p.updated_at) : new Date(), 'monthly', 0.7)
+    );
+  } catch (e) {
+    console.error('Sitemap posts error:', e);
+  }
+
   return [
     ...localizedEntries('/', new Date(), 'daily', 1),
     ...localizedEntries('/privacy-policy', new Date(), 'yearly', 0.3),
@@ -135,8 +147,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localizedEntries('/gostintsy-iz-gruzii', new Date(), 'weekly', 0.9),
     ...localizedEntries('/farmers', new Date(), 'weekly', 0.8),
     ...localizedEntries('/regions', new Date(), 'weekly', 0.8),
+    ...localizedEntries('/blog', new Date(), 'daily', 0.8),
     ...producerEntries,
     ...regionEntries,
+    ...postEntries,
     ...entries,
   ];
 }

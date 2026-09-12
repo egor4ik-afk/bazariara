@@ -269,19 +269,6 @@ export default function AdminProductsClient({
   return (
     <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
 
-      {/* Header */}
-      <div style={{ borderBottom: '1px solid #2a2d3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ width: 32, height: 32, background: '#c8f135', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>⚡</div>
-          <span style={{ fontWeight: 600, fontSize: 16 }}>bazariara.ge admin</span>
-        </div>
-        <nav style={{ display: 'flex', gap: 8 }}>
-          <Link href="/admin"            style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', borderRadius: 6, textDecoration: 'none' }}>Дашборд</Link>
-          <Link href="/admin/products"   style={{ color: '#c8f135', fontSize: 13, padding: '6px 12px', borderRadius: 6, background: '#1e2a0e', textDecoration: 'none' }}>Товары</Link>
-          <Link href="/admin/categories" style={{ color: '#aaa', fontSize: 13, padding: '6px 12px', borderRadius: 6, textDecoration: 'none' }}>Категории</Link>
-          <Link href="/admin/products/new" style={{ color: '#0f1117', fontSize: 13, padding: '6px 14px', borderRadius: 6, background: '#c8f135', textDecoration: 'none', fontWeight: 600 }}>+ Добавить</Link>
-        </nav>
-      </div>
 
       <div style={{ padding: '24px 32px', maxWidth: 1500, margin: '0 auto' }}>
 

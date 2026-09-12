@@ -154,3 +154,23 @@ body {
     transition-duration: .01ms !important;
   }
 }
+
+/* Типографика статей блога. Markdown рендерится в чистый HTML,
+   поэтому стили задаём здесь, а не классами на каждом теге. */
+.post-body h2 { font-size: 1.5rem; font-weight: 700; margin: 2rem 0 .75rem; color: rgb(var(--ink-900)); }
+.post-body h3 { font-size: 1.2rem; font-weight: 700; margin: 1.5rem 0 .5rem; color: rgb(var(--ink-900)); }
+.post-body p  { margin-bottom: 1rem; }
+.post-body ul, .post-body ol { margin: 0 0 1rem 1.25rem; }
+.post-body ul { list-style: disc; }
+.post-body ol { list-style: decimal; }
+.post-body li { margin-bottom: .4rem; }
+.post-body a  { color: rgb(var(--brand-700)); text-decoration: underline; }
+.post-body strong { font-weight: 700; color: rgb(var(--ink-900)); }
+.post-body blockquote {
+  border-left: 3px solid rgb(var(--brand-400));
+  padding-left: 1rem; margin: 1.25rem 0; color: rgb(var(--ink-600)); font-style: italic;
+}
+.post-body code {
+  background: rgb(var(--cream-300)); padding: .1rem .35rem;
+  border-radius: .25rem; font-size: .9em;
+}
