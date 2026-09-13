@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import sql from '@/lib/db';
 import ProductCard from '@/components/ProductCard';
 import { Product } from '@/lib/types';
@@ -15,11 +16,23 @@ function getLocale(h: Headers): Locale {
   return l === 'en' || l === 'ka' ? l : 'ru';
 }
 
+/**
+ * Черновик отдаёт 404 всем, кроме залогиненного администратора.
+ *
+ * Без этого единственный способ увидеть статью перед публикацией —
+ * опубликовать её, то есть показать миру недописанный текст. Проверяем
+ * ту же куку, что и админка; для обычного посетителя поведение не
+ * меняется, и в индекс черновик не попадёт.
+ */
 async function getPost(slug: string) {
   try {
-    const rows = await sql`
-      SELECT * FROM posts WHERE slug = ${slug} AND status = 'published' LIMIT 1
-    `;
+    const jar = await cookies();
+    const isAdmin = jar.get('admin_token')?.value === process.env.ADMIN_SECRET;
+
+    const rows = isAdmin
+      ? await sql`SELECT * FROM posts WHERE slug = ${slug} LIMIT 1`
+      : await sql`SELECT * FROM posts WHERE slug = ${slug} AND status = 'published' LIMIT 1`;
+
     return rows[0] ?? null;
   } catch (e) {
     console.error('getPost:', e);
@@ -42,6 +55,8 @@ export async function generateMetadata(
 
   return {
     title, description,
+    // Черновик не должен попасть в индекс, даже если ссылку кому-то дали.
+    robots: post.status === 'published' ? undefined : { index: false, follow: false },
     alternates: { canonical: url },
     openGraph: {
       title, description, url, type: 'article',
@@ -96,12 +111,42 @@ function renderMarkdown(md: string): string {
 
     if (b.startsWith('&gt; ')) return `<blockquote>${inline(b.slice(5))}</blockquote>`;
 
+    // Картинка отдельным блоком: ![подпись](url)
+    const img = b.match(/^!\[([^\]]*)\]\(([^)\s]+)\)$/);
+    if (img) {
+      const caption = img[1];
+      return `<figure><img src="${img[2]}" alt="${caption}" loading="lazy" />`
+        + (caption ? `<figcaption>${caption}</figcaption>` : '')
+        + `</figure>`;
+    }
+
+    // Видео: ссылка на YouTube или Vimeo отдельной строкой превращается
+    // в плеер. Заливать видео к себе нельзя — лимит тела функции на
+    // Vercel 4.5 МБ, любой ролик его перекрывает.
+    // Редактор вставляет видео как @video[url] — разворачиваем в голую ссылку
+    // и дальше обрабатываем общим кодом.
+    const tagged = b.match(/^@video\[([^\]]+)\]$/);
+    const vurl = tagged ? tagged[1] : b;
+
+    const yt = vurl.match(/^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/);
+    if (yt) {
+      return `<div class="post-video"><iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}"`
+        + ` title="video" loading="lazy" allowfullscreen`
+        + ` allow="accelerometer; clipboard-write; encrypted-media; picture-in-picture"></iframe></div>`;
+    }
+    const vm = vurl.match(/^(?:https?:\/\/)?(?:www\.)?vimeo\.com\/(\d+)/);
+    if (vm) {
+      return `<div class="post-video"><iframe src="https://player.vimeo.com/video/${vm[1]}"`
+        + ` title="video" loading="lazy" allowfullscreen></iframe></div>`;
+    }
+
     return `<p>${inline(b).replace(/\n/g, '<br/>')}</p>`;
   }).join('');
 }
 
 function inline(s: string): string {
   return s
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)\)/g, '<img src="$2" alt="$1" loading="lazy" />')
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, '<a href="$2">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|\W)\*([^*]+)\*/g, '$1<em>$2</em>')
@@ -184,6 +229,15 @@ export default async function PostPage(
           {' / '}
           <Link href={`/${locale}/blog`} className="hover:text-brand-700">{L.back}</Link>
         </nav>
+
+        {post.status !== 'published' && (
+          <div className="max-w-3xl mb-6 px-4 py-3 rounded-xl bg-clay/10 border border-clay/40">
+            <p className="text-sm font-semibold text-ink-800">
+              Черновик — виден только вам. Чтобы страница открылась у посетителей,
+              переключите статус на «Опубликована» в /admin/blog.
+            </p>
+          </div>
+        )}
 
         <article className="max-w-3xl">
           <h1 className="text-3xl md:text-4xl font-extrabold mb-4 leading-tight">{title}</h1>

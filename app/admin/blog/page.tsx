@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 
 type Post = {
   id: number; slug: string; title: string; excerpt: string | null;
@@ -15,6 +15,8 @@ type Post = {
 type Links = { regions: number[]; producers: number[]; products: number[]; tags: number[] };
 
 const box = { background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%' } as const;
+const toolBtn = { padding: '5px 10px', borderRadius: 6, border: '1px solid #2a2d3a', background: 'transparent', color: '#ccc', fontSize: 12, cursor: 'pointer' } as const;
+
 const card = { background: '#1a1d28', border: '1px solid #2a2d3a', borderRadius: 12, padding: 16 } as const;
 
 const EMPTY: Partial<Post> = { status: 'draft', author_name: 'BAZARI ARA', body: '' };
@@ -27,6 +29,9 @@ export default function BlogAdmin() {
   const [links, setLinks] = useState<Links>(EMPTY_LINKS);
   const [msg, setMsg] = useState<string | null>(null);
   const [lang, setLang] = useState<'ru' | 'en' | 'ka'>('ru');
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
     const [p, r] = await Promise.all([
@@ -63,6 +68,78 @@ export default function BlogAdmin() {
   };
 
   const set = (k: keyof Post) => (e: any) => setEditing({ ...editing!, [k]: e.target.value });
+
+  /** Вставляет текст в позицию курсора, а не в конец — иначе картинка
+   *  всегда улетала бы в самый низ статьи. */
+  const insertAtCursor = (snippet: string) => {
+    const el = bodyRef.current;
+    const key = field('body');
+    const current = String(editing?.[key] || '');
+    if (!el) {
+      setEditing({ ...editing!, [key]: current + '\n\n' + snippet });
+      return;
+    }
+    const start = el.selectionStart ?? current.length;
+    const end = el.selectionEnd ?? start;
+    const next = current.slice(0, start) + snippet + current.slice(end);
+    setEditing({ ...editing!, [key]: next });
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  /** Загрузка в тот же бакет, что и фото товаров: роут сам конвертирует
+   *  HEIC, применяет EXIF-поворот и жмёт до 2000px. */
+  const uploadFile = async (file: File, asCover = false) => {
+    if (!file.type.startsWith('image/')) {
+      setMsg('Видео заливать в бакет не нужно — вставьте ссылку на YouTube кнопкой «Видео».');
+      return;
+    }
+    setUploading(true);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/admin/upload?filename=${encodeURIComponent(file.name)}`, {
+        method: 'POST',
+        body: file,
+      });
+      const data = await res.json();
+      if (!res.ok || !data.url) throw new Error(data.error || 'Ошибка загрузки');
+
+      if (asCover) setEditing((p) => ({ ...p!, cover_url: data.url }));
+      else insertAtCursor(`\n\n![${file.name.replace(/\.[^.]+$/, '')}](${data.url})\n\n`);
+
+      setMsg('Загружено');
+    } catch (e: any) {
+      setMsg(`Ошибка: ${e.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  /** Скриншоты приходят из буфера обмена, а не файлом — самый частый путь. */
+  const onPaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'));
+    if (!item) return;
+    const file = item.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    uploadFile(new File([file], `screenshot-${Date.now()}.png`, { type: file.type }));
+  };
+
+  const onDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    e.preventDefault();
+    uploadFile(file);
+  };
+
+  const insertVideo = () => {
+    const url = prompt('Ссылка на YouTube или Vimeo:');
+    if (!url) return;
+    insertAtCursor(`\n\n@video[${url.trim()}]\n\n`);
+  };
 
   const toggle = (kind: keyof Links, id: number) =>
     setLinks((p) => ({
@@ -136,15 +213,43 @@ export default function BlogAdmin() {
             </Field>
 
             <Field label={`Текст (${lang.toUpperCase()}) — Markdown: ## заголовок, **жирный**, - список, [ссылка](url)`}>
-              <textarea style={{ ...box, minHeight: 320, fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.6 }}
+              <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                  style={toolBtn}>🖼 Изображение</button>
+                <button onClick={insertVideo} style={toolBtn}>▶ Видео</button>
+                <button onClick={() => insertAtCursor('\n\n## ')} style={toolBtn}>H2</button>
+                <button onClick={() => insertAtCursor('**жирный**')} style={toolBtn}>B</button>
+                <button onClick={() => insertAtCursor('\n- ')} style={toolBtn}>Список</button>
+                <button onClick={() => insertAtCursor('[текст](https://)')} style={toolBtn}>Ссылка</button>
+                <span style={{ fontSize: 11, color: uploading ? '#A6CE8A' : '#8b90a0' }}>
+                  {uploading ? 'Загружаю…' : 'Скриншот можно вставить прямо в текст: Ctrl+V'}
+                </span>
+              </div>
+
+              <input ref={fileRef} type="file" accept="image/*,.heic,.heif" style={{ display: 'none' }}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f); e.target.value = ''; }} />
+
+              <textarea
+                ref={bodyRef}
+                onPaste={onPaste}
+                onDrop={onDrop}
+                onDragOver={(e) => e.preventDefault()}
+                style={{ ...box, minHeight: 320, fontFamily: 'ui-monospace, monospace', fontSize: 12, lineHeight: 1.6 }}
                 value={(editing[field('body')] as string) || ''} onChange={set(field('body'))} />
             </Field>
 
             {lang === 'ru' && (
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
-                  <Field label="Обложка (URL)">
-                    <input style={box} value={editing.cover_url || ''} onChange={set('cover_url')} />
+                  <Field label="Обложка">
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input style={box} value={editing.cover_url || ''} onChange={set('cover_url')} placeholder="URL или загрузите файл" />
+                      <label style={{ ...toolBtn, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center' }}>
+                        Файл
+                        <input type="file" accept="image/*,.heic,.heif" style={{ display: 'none' }}
+                          onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(f, true); e.target.value = ''; }} />
+                      </label>
+                    </div>
                   </Field>
                   <Field label="Статус">
                     <select style={box} value={editing.status || 'draft'} onChange={set('status')}>

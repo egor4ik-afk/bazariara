@@ -8,7 +8,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/solid';
 import { getCategories, getSubCategories, getProducts } from './actions';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
-import { ProducersSection, RegionsSection, ProducerCTASection } from '@/components/home/HomeSections';
+import { ProducersSection, RegionsSection, BlogSection, ProducerCTASection } from '@/components/home/HomeSections';
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
@@ -252,6 +252,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           <>
             <ProducersSection locale={locale} />
             <RegionsSection locale={locale} />
+            <BlogSection locale={locale} />
             <ProducerCTASection locale={locale} />
           </>
         )}

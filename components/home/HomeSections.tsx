@@ -175,6 +175,77 @@ export async function RegionsSection({ locale }: { locale: Locale }) {
   );
 }
 
+/* ────────────────────────── Блог ────────────────────────── */
+
+export async function BlogSection({ locale }: { locale: Locale }) {
+  const L = {
+    ru: { title: 'Путеводитель по Грузии', all: 'Все статьи',
+          lead: 'Маршруты, регионы и практические советы — что посмотреть, что попробовать и что увезти с собой.' },
+    en: { title: 'Georgia travel guide', all: 'All articles',
+          lead: 'Routes, regions and practical advice — what to see, what to try and what to take home.' },
+    ka: { title: 'საქართველოს გზამკვლევი', all: 'ყველა სტატია',
+          lead: 'მარშრუტები, რეგიონები და პრაქტიკული რჩევები.' },
+  }[locale];
+
+  let posts: any[] = [];
+  try {
+    posts = await sql`
+      SELECT slug, title, title_en, title_ka, excerpt, excerpt_en, excerpt_ka,
+             cover_url, published_at
+      FROM posts WHERE status = 'published'
+      ORDER BY published_at DESC NULLS LAST, id DESC
+      LIMIT 3
+    `;
+  } catch (e) {
+    console.error('BlogSection:', e);
+  }
+
+  // Пока нет ни одной опубликованной статьи, блок не показываем:
+  // пустой раздел на главной выглядит как недоделанный сайт.
+  if (posts.length === 0) return null;
+
+  const pick = (p: any, f: string) =>
+    locale === 'en' ? (p[`${f}_en`] || p[f]) : locale === 'ka' ? (p[`${f}_ka`] || p[f]) : p[f];
+
+  return (
+    <section className="mt-16">
+      <div className="flex items-end justify-between gap-4 flex-wrap mb-2">
+        <h2 className="text-2xl md:text-3xl font-bold text-ink-900">{L.title}</h2>
+        <Link href={`/${locale}/blog`} className="text-brand-700 font-semibold hover:underline whitespace-nowrap">
+          {L.all} →
+        </Link>
+      </div>
+      <p className="text-ink-600 max-w-2xl mb-6">{L.lead}</p>
+
+      <div className="grid sm:grid-cols-3 gap-5">
+        {posts.map((p) => (
+          <Link
+            key={p.slug}
+            href={`/${locale}/blog/${p.slug}`}
+            className="group bg-surface rounded-2xl border border-ink-200 shadow-card
+                       overflow-hidden hover:shadow-cardHover hover:border-brand-300 transition-all"
+          >
+            {p.cover_url && (
+              <div className="aspect-[16/9] bg-cream-200 overflow-hidden">
+                <img src={p.cover_url} alt="" loading="lazy"
+                     className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+              </div>
+            )}
+            <div className="p-5">
+              <h3 className="font-bold text-ink-900 mb-2 group-hover:text-brand-700 transition-colors">
+                {pick(p, 'title')}
+              </h3>
+              {pick(p, 'excerpt') && (
+                <p className="text-sm text-ink-600 leading-relaxed clamp-2">{pick(p, 'excerpt')}</p>
+              )}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 /* ───────────────────── Призыв для производителей ───────────────────── */
 
 export function ProducerCTASection({ locale }: { locale: Locale }) {

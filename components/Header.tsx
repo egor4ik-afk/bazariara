@@ -48,14 +48,33 @@ export default function Header() {
         {/* Левая часть */}
         <div className="flex items-center gap-2 sm:gap-4 min-w-0">
           <SidebarMenu />
-          <Link href={`/${language}`} className="text-lg sm:text-2xl font-bold text-ink-900 hover:text-brand-700 transition-colors duration-300 whitespace-nowrap">
+          <Link href={`/${language}`} className="text-base sm:text-xl font-bold text-ink-900 hover:text-brand-700 transition-colors duration-300 whitespace-nowrap">
             BAZARI ARA
           </Link>
         </div>
 
+        {/* Разделы: только на широком экране. На мобильных они в бургере —
+            дублировать их в шапке значит выдавить корзину за край. */}
+        <nav className="hidden lg:flex items-center gap-1 mx-2">
+          {[
+            { href: `/${language}/farmers`, label: t('footer.farmers') },
+            { href: `/${language}/regions`, label: t('footer.regions') },
+            { href: `/${language}/blog`,    label: t('footer.blog') },
+          ].map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="px-3 py-1.5 rounded-lg text-sm font-semibold text-ink-700
+                         hover:text-brand-700 hover:bg-brand-50 transition-colors whitespace-nowrap"
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+
         {/* Правая часть */}
         {isClient && (
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
             {/* Дропдаун языка */}
             <div ref={dropdownRef} className="relative">

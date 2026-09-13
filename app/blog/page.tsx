@@ -2,6 +2,7 @@
 import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { cookies } from 'next/headers';
 import sql from '@/lib/db';
 
 export const revalidate = 300;
@@ -53,16 +54,25 @@ export default async function BlogIndex() {
   const locale = getLocale(hdrs);
   const c = COPY[locale];
 
+  const jar = await cookies();
+  const isAdmin = jar.get('admin_token')?.value === process.env.ADMIN_SECRET;
+
   let posts: any[] = [];
   try {
-    posts = await sql`
-      SELECT slug, title, title_en, title_ka, excerpt, excerpt_en, excerpt_ka,
-             cover_url, published_at, author_name
-      FROM posts
-      WHERE status = 'published'
-      ORDER BY published_at DESC NULLS LAST, id DESC
-      LIMIT 50
-    `;
+    // Администратор видит и черновики — с пометкой, чтобы не спутать.
+    posts = isAdmin
+      ? await sql`
+          SELECT slug, title, title_en, title_ka, excerpt, excerpt_en, excerpt_ka,
+                 cover_url, published_at, author_name, status
+          FROM posts WHERE status <> 'hidden'
+          ORDER BY published_at DESC NULLS FIRST, id DESC LIMIT 50
+        `
+      : await sql`
+          SELECT slug, title, title_en, title_ka, excerpt, excerpt_en, excerpt_ka,
+                 cover_url, published_at, author_name, status
+          FROM posts WHERE status = 'published'
+          ORDER BY published_at DESC NULLS LAST, id DESC LIMIT 50
+        `;
   } catch (e) {
     console.error('BlogIndex:', e);
   }
@@ -97,6 +107,10 @@ export default async function BlogIndex() {
                 <div className="p-5 flex flex-col flex-grow">
                   <h2 className="text-lg font-bold mb-2 group-hover:text-brand-700 transition-colors">
                     {pick(p, 'title')}
+                    {p.status !== 'published' && (
+                      <span className="ml-2 align-middle text-[11px] font-bold px-2 py-0.5
+                                       rounded-full bg-clay/15 text-clay">черновик</span>
+                    )}
                   </h2>
                   {pick(p, 'excerpt') && (
                     <p className="text-sm text-ink-600 leading-relaxed">{pick(p, 'excerpt')}</p>

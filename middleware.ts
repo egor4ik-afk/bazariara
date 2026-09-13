@@ -26,6 +26,7 @@ const GONE_CATEGORY_KEYS = new Set([
 const LIVE_CATEGORY_KEYS = new Set([
   'hiking', 'power', 'animals',
   'med', 'spetsii', 'churchhelaipastila', 'chay', 'otkrytki',
+  'vino', 'bakalea',
 ]);
 
 function isLocale(value: string | undefined): value is Locale {
