@@ -112,7 +112,7 @@ export default function CategoryCarousel({
         ref={desktopRef} 
         className="flex overflow-x-auto pb-4 pt-1 px-1 snap-x snap-mandatory [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        <div className="flex gap-3 md:gap-4 w-max">
+        <div className="flex gap-1 md:gap-2 w-max">
           {categories.map((cat) => {
             const active = selectedCategory === cat.key;
             return (
