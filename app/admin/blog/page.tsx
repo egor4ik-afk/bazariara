@@ -14,10 +14,10 @@ type Post = {
 
 type Links = { regions: number[]; producers: number[]; products: number[]; tags: number[] };
 
-const box = { background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%' } as const;
-const toolBtn = { padding: '5px 10px', borderRadius: 6, border: '1px solid #2a2d3a', background: 'transparent', color: '#ccc', fontSize: 12, cursor: 'pointer' } as const;
+const box = { background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%' } as const;
+const toolBtn = { padding: '5px 10px', borderRadius: 6, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-700))', fontSize: 12, cursor: 'pointer' } as const;
 
-const card = { background: '#1a1d28', border: '1px solid #2a2d3a', borderRadius: 12, padding: 16 } as const;
+const card = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: 16 } as const;
 
 const EMPTY: Partial<Post> = { status: 'draft', author_name: 'BAZARI ARA', body: '' };
 const EMPTY_LINKS: Links = { regions: [], producers: [], products: [], tags: [] };
@@ -32,6 +32,7 @@ export default function BlogAdmin() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
+  const coverRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
@@ -197,20 +198,20 @@ export default function BlogAdmin() {
   const field = (base: 'title' | 'excerpt' | 'body') => (base + suffix) as keyof Post;
 
   return (
-    <div style={{ padding: 24, color: '#fff', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: 24, color: 'rgb(var(--ink-900))', maxWidth: 1100, margin: '0 auto' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 18 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Блог — путеводитель по Грузии</h1>
         {!editing && (
           <button
             onClick={() => { setEditing({ ...EMPTY }); setLinks(EMPTY_LINKS); }}
-            style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: 8, border: 'none', background: '#5E9C3C', color: '#fff', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+            style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
           >
             + Новая статья
           </button>
         )}
       </div>
 
-      {msg && <p style={{ color: '#A6CE8A', fontSize: 13, marginBottom: 12 }}>{msg}</p>}
+      {msg && <p style={{ color: 'rgb(var(--brand-600))', fontSize: 13, marginBottom: 12 }}>{msg}</p>}
 
       {editing ? (
         <div style={{ ...card }}>
@@ -218,11 +219,11 @@ export default function BlogAdmin() {
             {(['ru', 'en', 'ka'] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)}
                 style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                         border: '1px solid #2a2d3a', background: lang === l ? '#487B2C' : 'transparent', color: '#fff' }}>
+                         border: '1px solid rgb(var(--ink-200))', background: lang === l ? 'rgb(var(--brand-600))' : 'transparent', color: 'rgb(var(--ink-900))' }}>
                 {l.toUpperCase()}
               </button>
             ))}
-            <span style={{ fontSize: 11, color: '#8b90a0', alignSelf: 'center', marginLeft: 6 }}>
+            <span style={{ fontSize: 11, color: 'rgb(var(--ink-500))', alignSelf: 'center', marginLeft: 6 }}>
               {lang === 'ru' ? 'основной язык' : 'перевод, можно оставить пустым'}
             </span>
           </div>
@@ -236,7 +237,7 @@ export default function BlogAdmin() {
               <Field label="Адрес статьи (slug)">
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input style={box} value={editing.slug || ''} onChange={set('slug')} placeholder="chto-privezti-iz-gruzii" />
-                  <button onClick={autoSlug} style={{ padding: '0 14px', borderRadius: 8, border: '1px solid #2a2d3a', background: 'transparent', color: '#aaa', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <button onClick={autoSlug} style={{ padding: '0 14px', borderRadius: 8, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-600))', fontSize: 12, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     Из заголовка
                   </button>
                 </div>
@@ -257,7 +258,7 @@ export default function BlogAdmin() {
                 <button onClick={() => insertAtCursor('**жирный**')} style={toolBtn}>B</button>
                 <button onClick={() => insertAtCursor('\n- ')} style={toolBtn}>Список</button>
                 <button onClick={() => insertAtCursor('[текст](https://)')} style={toolBtn}>Ссылка</button>
-                <span style={{ fontSize: 11, color: uploading ? '#A6CE8A' : '#8b90a0' }}>
+                <span style={{ fontSize: 11, color: uploading ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-500))' }}>
                   {uploading ? 'Загружаю…' : 'Скриншот можно вставить прямо в текст: Ctrl+V'}
                 </span>
               </div>
@@ -310,7 +311,7 @@ export default function BlogAdmin() {
                 <Picker title="Регионы" items={refs.regions} selected={links.regions} onToggle={(id) => toggle('regions', id)} />
                 <Picker title="Производители" items={refs.producers} selected={links.producers} onToggle={(id) => toggle('producers', id)} />
                 <Picker title="Рубрики" items={refs.tags} selected={links.tags} onToggle={(id) => toggle('tags', id)} />
-                <p style={{ fontSize: 11, color: '#8b90a0' }}>
+                <p style={{ fontSize: 11, color: 'rgb(var(--ink-500))' }}>
                   Связи работают в обе стороны: статья покажет блоки с регионом и производителем,
                   а на их страницах появится ссылка на статью.
                 </p>
@@ -319,16 +320,16 @@ export default function BlogAdmin() {
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button onClick={save} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: '#5E9C3C', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={save} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, cursor: 'pointer' }}>
               Сохранить
             </button>
             <button onClick={() => { setEditing(null); setLinks(EMPTY_LINKS); }}
-              style={{ padding: '10px 22px', borderRadius: 8, border: '1px solid #2a2d3a', background: 'transparent', color: '#aaa', cursor: 'pointer' }}>
+              style={{ padding: '10px 22px', borderRadius: 8, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-600))', cursor: 'pointer' }}>
               Отмена
             </button>
             {editing.slug && editing.status === 'published' && (
               <a href={`/ru/blog/${editing.slug}`} target="_blank" rel="noreferrer"
-                 style={{ alignSelf: 'center', marginLeft: 'auto', color: '#A6CE8A', fontSize: 12 }}>
+                 style={{ alignSelf: 'center', marginLeft: 'auto', color: 'rgb(var(--brand-600))', fontSize: 12 }}>
                 Открыть на сайте →
               </a>
             )}
@@ -336,7 +337,7 @@ export default function BlogAdmin() {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 10 }}>
-          {posts.length === 0 && <p style={{ color: '#8b90a0', fontSize: 13 }}>Статей пока нет.</p>}
+          {posts.length === 0 && <p style={{ color: 'rgb(var(--ink-500))', fontSize: 13 }}>Статей пока нет.</p>}
           {posts.map((p) => (
             <div key={p.id} style={{ ...card, display: 'flex', gap: 14, alignItems: 'center' }}>
               <div style={{ flexGrow: 1, minWidth: 0 }}>
@@ -344,22 +345,22 @@ export default function BlogAdmin() {
                   {p.title}
                   <span style={{
                     marginLeft: 8, fontSize: 11, padding: '2px 8px', borderRadius: 99,
-                    background: p.status === 'published' ? '#487B2C' : '#2a2d3a',
-                    color: p.status === 'published' ? '#fff' : '#8b90a0',
+                    background: p.status === 'published' ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-200))',
+                    color: p.status === 'published' ? 'rgb(var(--ink-900))' : 'rgb(var(--ink-500))',
                   }}>
                     {p.status === 'published' ? 'опубликована' : p.status === 'draft' ? 'черновик' : 'скрыта'}
                   </span>
                 </p>
-                <p style={{ fontSize: 12, color: '#8b90a0' }}>
+                <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))' }}>
                   /blog/{p.slug} · {new Date(p.updated_at).toLocaleDateString('ru-RU')}
                 </p>
               </div>
               <button onClick={() => open(p.id)}
-                style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #2a2d3a', background: 'transparent', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
+                style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-900))', fontSize: 12, cursor: 'pointer' }}>
                 Править
               </button>
               <button onClick={() => remove(p.id)}
-                style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid #3a2a2a', background: 'transparent', color: '#C2703D', fontSize: 12, cursor: 'pointer' }}>
+                style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--clay))', fontSize: 12, cursor: 'pointer' }}>
                 Удалить
               </button>
             </div>
@@ -373,7 +374,7 @@ export default function BlogAdmin() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 11, color: '#8b90a0', marginBottom: 5 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 11, color: 'rgb(var(--ink-500))', marginBottom: 5 }}>{label}</label>
       {children}
     </div>
   );
@@ -385,7 +386,7 @@ function Picker({ title, items, selected, onToggle }: {
   if (items.length === 0) return null;
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 11, color: '#8b90a0', marginBottom: 6 }}>{title}</label>
+      <label style={{ display: 'block', fontSize: 11, color: 'rgb(var(--ink-500))', marginBottom: 6 }}>{title}</label>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
         {items.map((it) => {
           const on = selected.includes(it.id);
@@ -393,9 +394,9 @@ function Picker({ title, items, selected, onToggle }: {
             <button key={it.id} onClick={() => onToggle(it.id)}
               style={{
                 padding: '5px 12px', borderRadius: 99, fontSize: 12, cursor: 'pointer',
-                border: '1px solid ' + (on ? '#5E9C3C' : '#2a2d3a'),
-                background: on ? '#1e2a0e' : 'transparent',
-                color: on ? '#A6CE8A' : '#aaa',
+                border: '1px solid ' + (on ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-200))'),
+                background: on ? 'rgb(var(--brand-50))' : 'transparent',
+                color: on ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-600))',
               }}>
               {it.name}
             </button>

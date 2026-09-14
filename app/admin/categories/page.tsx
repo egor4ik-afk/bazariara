@@ -138,12 +138,12 @@ type DbCategory = { category: string | null; sub_category: string | null; cnt: n
 const mono = "'DM Mono', 'Fira Mono', monospace";
 
 const badge = (n: number) => (
-  <span style={{ background: '#1e2a0e', color: '#c8f135', fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 10 }}>
+  <span style={{ background: 'rgb(var(--brand-50))', color: 'rgb(var(--brand-600))', fontSize: 11, fontWeight: 600, padding: '2px 7px', borderRadius: 10 }}>
     {n.toLocaleString()}
   </span>
 );
 
-function RunBtn({ label, url, color = '#c8f135', small = false }: { label: string; url: string; color?: string; small?: boolean }) {
+function RunBtn({ label, url, color = 'rgb(var(--brand-600))', small = false }: { label: string; url: string; color?: string; small?: boolean }) {
   const [s, setS] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState('');
 
@@ -158,8 +158,8 @@ function RunBtn({ label, url, color = '#c8f135', small = false }: { label: strin
     setTimeout(() => setS('idle'), 8000);
   }
 
-  const bg  = s === 'running' ? '#333' : s === 'done' ? '#1a3a1a' : s === 'error' ? '#3a1a1a' : color;
-  const tc  = s === 'running' ? '#888' : s === 'done' ? '#4ade80' : s === 'error' ? '#f87171' : '#0f1117';
+  const bg  = s === 'running' ? 'rgb(var(--ink-200))' : s === 'done' ? 'rgb(var(--brand-50))' : s === 'error' ? 'rgb(var(--clay))' : color;
+  const tc  = s === 'running' ? 'rgb(var(--ink-500))' : s === 'done' ? 'rgb(var(--brand-600))' : s === 'error' ? 'rgb(var(--clay))' : 'rgb(var(--cream-100))';
   const lbl = s === 'running' ? '⟳ …' : s === 'done' ? '✓ ' + msg : s === 'error' ? '✕ ' + msg : label;
 
   return (
@@ -272,17 +272,17 @@ export default function AdminCategoriesPage() {
   const nullCount = dbCats.find(r => r.category === null)?.cnt ?? 0;
 
   return (
-    <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
+    <div style={{ fontFamily: mono, minHeight: '100vh', background: 'rgb(var(--cream-100))', color: 'rgb(var(--ink-900))' }}>
 
 
       <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
 
         {/* Быстрые кнопки */}
-        <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '20px 24px', marginBottom: 24, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-          <RunBtn label="▶ Обновить цены и наличие" url="/api/admin/trigger-update" color="#c8f135" />
-          <RunBtn label="▶ Парсить все категории"   url="/api/admin/trigger-scrape" color="#60a5fa" />
-          <div style={{ color: '#444', fontSize: 12 }}>
-            Без категории: <span style={{ color: nullCount > 100 ? '#facc15' : '#666' }}>{nullCount.toLocaleString()}</span> товаров
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '20px 24px', marginBottom: 24, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+          <RunBtn label="▶ Обновить цены и наличие" url="/api/admin/trigger-update" color="rgb(var(--brand-600))" />
+          <RunBtn label="▶ Парсить все категории"   url="/api/admin/trigger-scrape" color="rgb(var(--brand-600))" />
+          <div style={{ color: 'rgb(var(--ink-300))', fontSize: 12 }}>
+            Без категории: <span style={{ color: nullCount > 100 ? 'rgb(var(--clay))' : 'rgb(var(--ink-500))' }}>{nullCount.toLocaleString()}</span> товаров
           </div>
         </div>
 
@@ -291,24 +291,24 @@ export default function AdminCategoriesPage() {
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Поиск категории..."
-            style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 280, outline: 'none' }}
+            style={{ padding: '8px 14px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 280, outline: 'none' }}
           />
-          {search && <button onClick={() => setSearch('')} style={{ color: '#666', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>✕ сбросить</button>}
-          <span style={{ color: '#444', fontSize: 12 }}>{filtered.length} категорий</span>
+          {search && <button onClick={() => setSearch('')} style={{ color: 'rgb(var(--ink-500))', background: 'none', border: 'none', cursor: 'pointer', fontSize: 13 }}>✕ сбросить</button>}
+          <span style={{ color: 'rgb(var(--ink-300))', fontSize: 12 }}>{filtered.length} категорий</span>
         </div>
 
         {/* Таблица категорий */}
         {Object.entries(grouped).map(([cat, subs]) => (
-          <div key={cat} style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, marginBottom: 16, overflow: 'hidden' }}>
-            <div style={{ padding: '14px 20px', borderBottom: '1px solid #2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1e2130' }}>
+          <div key={cat} style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, marginBottom: 16, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 20px', borderBottom: '1px solid rgb(var(--ink-200))', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgb(var(--surface-2))' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ color: '#fff', fontWeight: 600, fontSize: 14 }}>{cat}</span>
+                <span style={{ color: 'rgb(var(--ink-900))', fontWeight: 600, fontSize: 14 }}>{cat}</span>
                 {!loading && badge(getCategoryTotal(cat))}
               </div>
               <RunBtn
                 label="▶ Парсить всю категорию"
                 url={`/api/admin/trigger-category?category=${encodeURIComponent(cat)}`}
-                color="#60a5fa" small
+                color="rgb(var(--brand-600))" small
               />
             </div>
             <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -316,24 +316,24 @@ export default function AdminCategoriesPage() {
                 {subs.map((s, i) => {
                   const cnt = s.sub_category ? getCount(s.category, s.sub_category) : getCategoryTotal(s.category);
                   return (
-                    <tr key={i} style={{ borderBottom: '1px solid #1e2130' }}>
-                      <td style={{ padding: '10px 20px', color: s.sub_category ? '#aaa' : '#888', width: 240 }}>
-                        {s.sub_category || <span style={{ color: '#555', fontStyle: 'italic' }}>все товары</span>}
+                    <tr key={i} style={{ borderBottom: '1px solid rgb(var(--surface-2))' }}>
+                      <td style={{ padding: '10px 20px', color: s.sub_category ? 'rgb(var(--ink-600))' : 'rgb(var(--ink-500))', width: 240 }}>
+                        {s.sub_category || <span style={{ color: 'rgb(var(--ink-500))', fontStyle: 'italic' }}>все товары</span>}
                       </td>
                       <td style={{ padding: '10px 12px', width: 80 }}>
                         {!loading && cnt > 0
                           ? badge(cnt)
-                          : !loading && <span style={{ color: '#333', fontSize: 11 }}>—</span>
+                          : !loading && <span style={{ color: 'rgb(var(--ink-200))', fontSize: 11 }}>—</span>
                         }
                       </td>
-                      <td style={{ padding: '10px 12px', color: '#333', fontSize: 11, maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <td style={{ padding: '10px 12px', color: 'rgb(var(--ink-200))', fontSize: 11, maxWidth: 340, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.url}
                       </td>
                       <td style={{ padding: '10px 16px', textAlign: 'right' }}>
                         <RunBtn
                           label="▶ Парсить"
                           url={`/api/admin/trigger-category?url=${encodeURIComponent(s.url)}&category=${encodeURIComponent(s.category)}&sub_category=${encodeURIComponent(s.sub_category)}`}
-                          color="#2a3a0a" small
+                          color="rgb(var(--brand-50))" small
                         />
                       </td>
                     </tr>
@@ -345,75 +345,75 @@ export default function AdminCategoriesPage() {
         ))}
 
         {/* Создать категорию / подкатегорию — реальные канонические таблицы categories/subcategories */}
-        <div style={{ background: '#1a1d27', border: '1px solid #3a4a1e', borderRadius: 12, padding: '24px', marginTop: 24 }}>
-          <h3 style={{ color: '#c8f135', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--brand-100))', borderRadius: 12, padding: '24px', marginTop: 24 }}>
+          <h3 style={{ color: 'rgb(var(--brand-600))', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
             + Новая категория / подкатегория
           </h3>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Название категории (ru)</div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Название категории (ru)</div>
               <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Обогреватели"
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 240, outline: 'none' }} />
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }} />
             </div>
             <button onClick={createCategory} disabled={createBusy || !newCatName.trim()}
-              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#c8f135', color: '#0f1117', fontSize: 13, fontWeight: 600 }}>
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgb(var(--brand-600))', color: 'rgb(var(--cream-100))', fontSize: 13, fontWeight: 600 }}>
               Создать категорию (EN/KA автоматически)
             </button>
           </div>
 
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>В какую категорию</div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>В какую категорию</div>
               <select value={newSubForCat} onChange={e => setNewSubForCat(e.target.value)}
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 240, outline: 'none' }}>
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }}>
                 <option value="">— выберите —</option>
                 {realCategories.map(c => <option key={c.category_key} value={c.category_key}>{c.name} [{c.category_key}]</option>)}
               </select>
             </div>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Название подкатегории (ru)</div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Название подкатегории (ru)</div>
               <input value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Вентиляторы"
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 240, outline: 'none' }} />
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }} />
             </div>
             <button onClick={createSubcategory} disabled={createBusy || !newSubForCat || !newSubName.trim()}
-              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: '#3b82f6', color: '#fff', fontSize: 13, fontWeight: 600 }}>
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgb(var(--brand-600))', color: 'rgb(var(--ink-900))', fontSize: 13, fontWeight: 600 }}>
               Создать подкатегорию (EN/KA автоматически)
             </button>
           </div>
 
           {createStatus && (
-            <div style={{ marginTop: 12, fontSize: 12, color: createStatus.startsWith('✓') ? '#4ade80' : '#f87171' }}>
+            <div style={{ marginTop: 12, fontSize: 12, color: createStatus.startsWith('✓') ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))' }}>
               {createStatus}
             </div>
           )}
         </div>
 
         {/* Новая категория вручную */}
-        <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginTop: 24 }}>
-          <h3 style={{ color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '24px', marginTop: 24 }}>
+          <h3 style={{ color: 'rgb(var(--ink-500))', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
             Произвольный URL
           </h3>
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>URL</div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>URL</div>
               <input value={customUrl} onChange={e => setCustomUrl(e.target.value)} placeholder="https://gorgia.ge/ka/..."
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 340, outline: 'none' }} />
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 340, outline: 'none' }} />
             </div>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Категория</div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Категория</div>
               <input value={customCat} onChange={e => setCustomCat(e.target.value)} placeholder="Мебель"
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 160, outline: 'none' }} />
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 160, outline: 'none' }} />
             </div>
             <div>
-              <div style={{ color: '#555', fontSize: 11, marginBottom: 5 }}>Подкатегория</div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Подкатегория</div>
               <input value={customSub} onChange={e => setCustomSub(e.target.value)} placeholder="Диваны"
-                style={{ padding: '8px 12px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 160, outline: 'none' }} />
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 160, outline: 'none' }} />
             </div>
             <RunBtn
               label="▶ Запустить"
               url={`/api/admin/trigger-category?url=${encodeURIComponent(customUrl)}&category=${encodeURIComponent(customCat)}&sub_category=${encodeURIComponent(customSub)}`}
-              color="#c8f135"
+              color="rgb(var(--brand-600))"
             />
           </div>
         </div>

@@ -20,8 +20,8 @@ type Application = {
 
 type Region = { id: number; slug: string; name: string };
 
-const box = { background: '#131620', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', padding: '8px 11px', fontSize: 13, outline: 'none', width: '100%' } as const;
-const card = { background: '#1a1d28', border: '1px solid #2a2d3a', borderRadius: 12, padding: 16 } as const;
+const box = { background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', padding: '8px 11px', fontSize: 13, outline: 'none', width: '100%' } as const;
+const card = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: 16 } as const;
 
 export default function ProducersAdmin() {
   const [tab, setTab] = useState<'producers' | 'applications'>('producers');
@@ -70,7 +70,7 @@ export default function ProducersAdmin() {
   const newCount = applications.filter((a) => a.status === 'new').length;
 
   return (
-    <div style={{ padding: 24, color: '#fff', maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ padding: 24, color: 'rgb(var(--ink-900))', maxWidth: 1100, margin: '0 auto' }}>
       <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 16 }}>Производители</h1>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
@@ -80,9 +80,9 @@ export default function ProducersAdmin() {
             onClick={() => setTab(k)}
             style={{
               padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-              border: '1px solid #2a2d3a', cursor: 'pointer',
-              background: tab === k ? '#487B2C' : '#1a1d28',
-              color: '#fff',
+              border: '1px solid rgb(var(--ink-200))', cursor: 'pointer',
+              background: tab === k ? 'rgb(var(--brand-600))' : 'rgb(var(--surface))',
+              color: 'rgb(var(--ink-900))',
             }}
           >
             {k === 'producers' ? `Хозяйства (${producers.length})` : `Заявки${newCount ? ` (${newCount} новых)` : ''}`}
@@ -92,14 +92,14 @@ export default function ProducersAdmin() {
           <button
             onClick={() => setEditing({ status: 'active', sort_order: 100 })}
             style={{ padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600,
-                     border: 'none', background: '#5E9C3C', color: '#fff', cursor: 'pointer', marginLeft: 'auto' }}
+                     border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', cursor: 'pointer', marginLeft: 'auto' }}
           >
             + Добавить
           </button>
         )}
       </div>
 
-      {msg && <p style={{ color: '#A6CE8A', fontSize: 13, marginBottom: 12 }}>{msg}</p>}
+      {msg && <p style={{ color: 'rgb(var(--brand-600))', fontSize: 13, marginBottom: 12 }}>{msg}</p>}
 
       {/* ─────────── Редактор ─────────── */}
       {editing && (
@@ -156,10 +156,10 @@ export default function ProducersAdmin() {
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <button onClick={save} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: '#5E9C3C', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={save} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, cursor: 'pointer' }}>
               Сохранить
             </button>
-            <button onClick={() => setEditing(null)} style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid #2a2d3a', background: 'transparent', color: '#aaa', cursor: 'pointer' }}>
+            <button onClick={() => setEditing(null)} style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-600))', cursor: 'pointer' }}>
               Отмена
             </button>
           </div>
@@ -174,17 +174,17 @@ export default function ProducersAdmin() {
               <div style={{ flexGrow: 1, minWidth: 0 }}>
                 <p style={{ fontWeight: 700, fontSize: 15 }}>
                   {p.name}
-                  <span style={{ fontSize: 12, color: '#8b90a0', fontWeight: 400 }}> /{p.slug}</span>
-                  {p.status !== 'active' && <span style={{ marginLeft: 8, fontSize: 11, color: '#C2703D' }}>скрыт</span>}
+                  <span style={{ fontSize: 12, color: 'rgb(var(--ink-500))', fontWeight: 400 }}> /{p.slug}</span>
+                  {p.status !== 'active' && <span style={{ marginLeft: 8, fontSize: 11, color: 'rgb(var(--clay))' }}>скрыт</span>}
                 </p>
-                <p style={{ fontSize: 12, color: '#8b90a0' }}>
+                <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))' }}>
                   {[p.region_name, p.locality].filter(Boolean).join(', ') || 'регион не указан'} · товаров: {p.product_count}
                 </p>
               </div>
               <a href={`/ru/farmers/${p.slug}`} target="_blank" rel="noreferrer"
-                 style={{ fontSize: 12, color: '#A6CE8A' }}>открыть</a>
+                 style={{ fontSize: 12, color: 'rgb(var(--brand-600))' }}>открыть</a>
               <button onClick={() => setEditing(p)}
-                style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid #2a2d3a', background: 'transparent', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
+                style={{ padding: '6px 14px', borderRadius: 7, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-900))', fontSize: 12, cursor: 'pointer' }}>
                 Править
               </button>
             </div>
@@ -195,40 +195,40 @@ export default function ProducersAdmin() {
       {/* ─────────── Заявки ─────────── */}
       {tab === 'applications' && (
         <div style={{ display: 'grid', gap: 10 }}>
-          {applications.length === 0 && <p style={{ color: '#8b90a0', fontSize: 13 }}>Заявок пока нет.</p>}
+          {applications.length === 0 && <p style={{ color: 'rgb(var(--ink-500))', fontSize: 13 }}>Заявок пока нет.</p>}
           {applications.map((a) => (
             <div key={a.id} style={{ ...card, opacity: a.status === 'new' ? 1 : 0.6 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
                 <p style={{ fontWeight: 700, fontSize: 15 }}>{a.brand_name}</p>
                 <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 99,
-                               background: a.status === 'new' ? '#487B2C' : '#2a2d3a' }}>
+                               background: a.status === 'new' ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-200))' }}>
                   {a.status === 'new' ? 'новая' : a.status}
                 </span>
-                <span style={{ fontSize: 11, color: '#8b90a0', marginLeft: 'auto' }}>
+                <span style={{ fontSize: 11, color: 'rgb(var(--ink-500))', marginLeft: 'auto' }}>
                   {new Date(a.created_at).toLocaleString('ru-RU')}
                 </span>
               </div>
 
-              <p style={{ fontSize: 13, color: '#ccc', marginTop: 6 }}>
-                {a.contact_name} · <a href={`tel:${a.phone}`} style={{ color: '#A6CE8A' }}>{a.phone}</a>
+              <p style={{ fontSize: 13, color: 'rgb(var(--ink-700))', marginTop: 6 }}>
+                {a.contact_name} · <a href={`tel:${a.phone}`} style={{ color: 'rgb(var(--brand-600))' }}>{a.phone}</a>
                 {a.region && ` · ${a.region}`}
               </p>
               <p style={{ fontSize: 13, marginTop: 6 }}>Производит: {a.products}</p>
-              {a.social && <p style={{ fontSize: 12, color: '#8b90a0', marginTop: 4 }}>{a.social}</p>}
-              {a.description && <p style={{ fontSize: 12, color: '#aaa', marginTop: 8, whiteSpace: 'pre-line' }}>{a.description}</p>}
-              {a.admin_note && <p style={{ fontSize: 11, color: '#8b90a0', marginTop: 8 }}>{a.admin_note}</p>}
+              {a.social && <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))', marginTop: 4 }}>{a.social}</p>}
+              {a.description && <p style={{ fontSize: 12, color: 'rgb(var(--ink-600))', marginTop: 8, whiteSpace: 'pre-line' }}>{a.description}</p>}
+              {a.admin_note && <p style={{ fontSize: 11, color: 'rgb(var(--ink-500))', marginTop: 8 }}>{a.admin_note}</p>}
 
               {a.status === 'new' && (
                 <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
                   <button
                     onClick={() => act({ action: 'application_to_producer', id: a.id })}
-                    style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: '#5E9C3C', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
+                    style={{ padding: '7px 14px', borderRadius: 7, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                   >
                     Создать хозяйство (черновик)
                   </button>
                   <button
                     onClick={() => act({ action: 'application_status', id: a.id, status: 'rejected' })}
-                    style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid #2a2d3a', background: 'transparent', color: '#aaa', fontSize: 12, cursor: 'pointer' }}
+                    style={{ padding: '7px 14px', borderRadius: 7, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-600))', fontSize: 12, cursor: 'pointer' }}
                   >
                     Отклонить
                   </button>
@@ -245,7 +245,7 @@ export default function ProducersAdmin() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={{ display: 'block', fontSize: 11, color: '#8b90a0', marginBottom: 5 }}>{label}</label>
+      <label style={{ display: 'block', fontSize: 11, color: 'rgb(var(--ink-500))', marginBottom: 5 }}>{label}</label>
       {children}
     </div>
   );

@@ -170,9 +170,9 @@ export default async function PostPage(
   const locale = getLocale(hdrs);
 
   // Связанные сущности (ТЗ 6, врезка «Ключевая CMS-функция» и раздел 11).
-  let regions: any[] = [], producers: any[] = [], rows: any[] = [];
+  let regions: any[] = [], producers: any[] = [], rows: any[] = [], tags: any[] = [];
   try {
-    [regions, producers, rows] = await Promise.all([
+    [regions, producers, rows, tags] = await Promise.all([
       sql`SELECT r.slug, r.name, r.name_en, r.name_ka FROM post_regions pr
           JOIN regions r ON r.id = pr.region_id WHERE pr.post_id = ${post.id}`,
       sql`SELECT p.slug, p.name, p.name_en, p.name_ka FROM post_producers pp
@@ -188,6 +188,8 @@ export default async function PostPage(
           JOIN products p ON p.id = pp.product_id
           WHERE pp.post_id = ${post.id} AND p.image_url IS NOT NULL
           LIMIT 8`,
+      sql`SELECT t.id, t.name, t.slug FROM post_tag_links tl
+          JOIN post_tags t ON t.id = tl.tag_id WHERE tl.post_id = ${post.id}`,
     ]);
   } catch (e) {
     console.error('PostPage links:', e);
@@ -257,8 +259,27 @@ export default async function PostPage(
             </time>
           )}
 
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {tags.map((t: any) => (
+                <Link
+                  key={t.id}
+                  href={`/${locale}/blog?tag=${t.slug || t.id}`}
+                  className="px-2.5 py-1 rounded-full bg-brand-50 border border-brand-200
+                             text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
+                >
+                  #{t.name}
+                </Link>
+              ))}
+            </div>
+          )}
+
           {post.cover_url && (
-            <img src={post.cover_url} alt="" className="w-full rounded-2xl mb-8 bg-cream-200" />
+            <img
+              src={post.cover_url}
+              alt={title}
+              className="w-full aspect-[16/9] object-cover rounded-2xl mb-8 bg-cream-200"
+            />
           )}
 
           <div

@@ -32,8 +32,8 @@ type Product = {
 } | null;
 
 const inputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 14px', background: '#131620',
-  border: '1px solid #2a2d3a', borderRadius: 8, color: '#e2e4ec',
+  width: '100%', padding: '10px 14px', background: 'rgb(var(--cream-200))',
+  border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))',
   fontSize: 13, outline: 'none', boxSizing: 'border-box',
   fontFamily: "'DM Mono', monospace",
 };
@@ -44,7 +44,7 @@ const InputField = memo(({ value, onChange, placeholder, type, step, disabled }:
   placeholder?: string; type?: string; step?: string; disabled?: boolean
 }) => (
   <input type={type || 'text'} step={step} value={value}
-    onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{...inputStyle, background: disabled? '#2a2d3a' : inputStyle.background}} disabled={disabled} />
+    onChange={e => onChange(e.target.value)} placeholder={placeholder} style={{...inputStyle, background: disabled? 'rgb(var(--ink-200))' : inputStyle.background}} disabled={disabled} />
 ));
 InputField.displayName = 'InputField';
 
@@ -67,14 +67,14 @@ const FARMERS = [
 
 const FieldWrapper = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div style={{ marginBottom: 20 }}>
-    <label style={{ display: 'block', color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</label>
+    <label style={{ display: 'block', color: 'rgb(var(--ink-500))', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</label>
     {children}
   </div>
 );
 
 const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginBottom: 20 }}>
-    <h3 style={{ color: '#666', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 20px', fontWeight: 500 }}>{title}</h3>
+  <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '24px', marginBottom: 20 }}>
+    <h3 style={{ color: 'rgb(var(--ink-500))', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 20px', fontWeight: 500 }}>{title}</h3>
     {children}
   </div>
 );
@@ -90,9 +90,9 @@ function Toast({ msg, type, onClose }: { msg: string; type: 'ok' | 'err'; onClos
       position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)',
       zIndex: 9999, display: 'flex', alignItems: 'center', gap: 12,
       padding: '12px 20px', borderRadius: 10,
-      background: type === 'ok' ? '#0d2a1a' : '#2a0d0d',
-      border: `1px solid ${type === 'ok' ? '#1a5c30' : '#5c1a1a'}`,
-      color: type === 'ok' ? '#4ade80' : '#f87171',
+      background: type === 'ok' ? 'rgb(var(--brand-50))' : 'rgb(var(--clay))',
+      border: `1px solid ${type === 'ok' ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))'}`,
+      color: type === 'ok' ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))',
       fontSize: 13, fontFamily: "'DM Mono', monospace",
       boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
       animation: 'slideDown 0.2s ease',
@@ -305,34 +305,34 @@ export default function ProductEditClient({ product }: { product: Product }) {
   const mono = "'DM Mono', 'Fira Mono', monospace";
 
   return (
-    <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
+    <div style={{ fontFamily: mono, minHeight: '100vh', background: 'rgb(var(--cream-100))', color: 'rgb(var(--ink-900))' }}>
 
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* Header */}
-      <div style={{ borderBottom: '1px solid #2a2d3a', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ borderBottom: '1px solid rgb(var(--ink-200))', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link href="/admin/products" style={{ color: '#555', textDecoration: 'none', fontSize: 13 }}>← Товары</Link>
-          <span style={{ color: '#333' }}>/</span>
-          <span style={{ fontSize: 14, color: '#aaa' }}>
+          <Link href="/admin/products" style={{ color: 'rgb(var(--ink-500))', textDecoration: 'none', fontSize: 13 }}>← Товары</Link>
+          <span style={{ color: 'rgb(var(--ink-200))' }}>/</span>
+          <span style={{ fontSize: 14, color: 'rgb(var(--ink-600))' }}>
             {isNew ? 'Новый товар' : String(product?.name_ru || product?.name || `ID ${product?.id}`)}
           </span>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           {!isNew && (
             <button onClick={deleteProduct} disabled={deleting}
-              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid #3a1a1a', borderRadius: 8, color: '#f87171', fontSize: 13, cursor: 'pointer' }}>
+              style={{ padding: '8px 16px', background: 'transparent', border: '1px solid rgb(var(--clay))', borderRadius: 8, color: 'rgb(var(--clay))', fontSize: 13, cursor: 'pointer' }}>
               {deleting ? 'Удаляем...' : 'Удалить'}
             </button>
           )}
           {!isNew && product?.source_url && (
             <a href={product.source_url} target="_blank" rel="noreferrer"
-              style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#aaa', fontSize: 13, textDecoration: 'none' }}>
+              style={{ padding: '8px 14px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-600))', fontSize: 13, textDecoration: 'none' }}>
               → gorgia.ge
             </a>
           )}
           <button onClick={save} disabled={saving || uploading !== null}
-            style={{ padding: '8px 20px', background: saving ? '#444' : '#c8f135', border: 'none', borderRadius: 8, color: saving ? '#888' : '#0f1117', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
+            style={{ padding: '8px 20px', background: saving ? 'rgb(var(--ink-300))' : 'rgb(var(--brand-600))', border: 'none', borderRadius: 8, color: saving ? 'rgb(var(--ink-500))' : 'rgb(var(--cream-100))', fontSize: 13, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer' }}>
             {saving ? 'Сохраняем...' : 'Сохранить'}
           </button>
         </div>
@@ -360,9 +360,9 @@ export default function ProductEditClient({ product }: { product: Product }) {
               disabled={generatingDesc}
               style={{
                 width: '100%', padding: '9px', marginBottom: 16,
-                background: generatingDesc ? '#1a1d27' : 'linear-gradient(135deg, #1a1d27 0%, #252a3a 100%)',
-                border: '1px solid #4a3f6b', borderRadius: 8,
-                color: generatingDesc ? '#666' : '#c8a6ff', fontSize: 13, fontWeight: 600,
+                background: generatingDesc ? 'rgb(var(--surface))' : 'linear-gradient(135deg, rgb(var(--surface)) 0%, rgb(var(--ink-100)) 100%)',
+                border: '1px solid rgb(var(--ink-300))', borderRadius: 8,
+                color: generatingDesc ? 'rgb(var(--ink-500))' : 'rgb(var(--brand-600))', fontSize: 13, fontWeight: 600,
                 cursor: generatingDesc ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                 transition: 'all 0.2s',
@@ -383,7 +383,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           <Section title="Производитель">
-            <p style={{ fontSize: 12, color: '#8b90a0', margin: '0 0 12px' }}>
+            <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))', margin: '0 0 12px' }}>
               Ферма или бренд. Имя показывается плашкой на карточке товара,
               slug ведёт на страницу /farmers/&lt;slug&gt;. Оставьте пустым для обычного товара.
             </p>
@@ -398,8 +398,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
                     farmer_name: f ? f.name : '',
                   }));
                 }}
-                style={{ width: '100%', padding: '9px 12px', background: '#131620',
-                         border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff',
+                style={{ width: '100%', padding: '9px 12px', background: 'rgb(var(--cream-200))',
+                         border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))',
                          fontSize: 13, outline: 'none' }}
               >
                 <option value="">— без производителя —</option>
@@ -421,8 +421,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
             <select
                 value={form.category_key || ''}
                 onChange={e => pickCategory(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', background: '#131620',
-                        border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff',
+                style={{ width: '100%', padding: '9px 12px', background: 'rgb(var(--cream-200))',
+                        border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))',
                         fontSize: 13, outline: 'none' }}
             >
                 <option value="">— выберите категорию —</option>
@@ -468,8 +468,8 @@ export default function ProductEditClient({ product }: { product: Product }) {
               <div style={{ display: 'flex', gap: 10 }}>
                 {([true, false] as const).map(v => (
                   <label key={String(v)} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input type="radio" name="in_stock" checked={form.in_stock === v} onChange={() => setField('in_stock', v)} style={{ accentColor: '#c8f135' }} />
-                    <span style={{ color: v ? '#4ade80' : '#f87171', fontSize: 13 }}>{v ? 'В наличии' : 'Нет в наличии'}</span>
+                    <input type="radio" name="in_stock" checked={form.in_stock === v} onChange={() => setField('in_stock', v)} style={{ accentColor: 'rgb(var(--brand-600))' }} />
+                    <span style={{ color: v ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))', fontSize: 13 }}>{v ? 'В наличии' : 'Нет в наличии'}</span>
                   </label>
                 ))}
               </div>
@@ -491,36 +491,36 @@ export default function ProductEditClient({ product }: { product: Product }) {
             />
 
             <button onClick={() => fileRef.current?.click()} disabled={uploading !== null}
-              style={{ width: '100%', padding: '10px', marginBottom: 16, background: '#131620', border: '2px dashed #2a2d3a', borderRadius: 8, color: uploading !== null ? '#666' : '#c8f135', fontSize: 13, cursor: uploading !== null ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+              style={{ width: '100%', padding: '10px', marginBottom: 16, background: 'rgb(var(--cream-200))', border: '2px dashed rgb(var(--ink-200))', borderRadius: 8, color: uploading !== null ? 'rgb(var(--ink-500))' : 'rgb(var(--brand-600))', fontSize: 13, cursor: uploading !== null ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
               {uploading !== null ? '⟳ Загружаем...' : '+ Добавить фото'}
             </button>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
               {Array.isArray(images) && images.map((img, i) => (
-                <div key={img} style={{ position: 'relative', aspectRatio: '1', background: '#131620', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid #c8f135' : '2px solid #2a2d3a' }}>
+                <div key={img} style={{ position: 'relative', aspectRatio: '1', background: 'rgb(var(--cream-200))', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid rgb(var(--brand-600))' : '2px solid rgb(var(--ink-200))' }}>
                   {uploading === i
-                    ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 11 }}>⟳ загрузка…</div>
+                    ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgb(var(--ink-500))', fontSize: 11 }}>⟳ загрузка…</div>
                     : <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   }
                   {i === 0 && (
-                    <div style={{ position: 'absolute', top: 4, left: 4, background: '#c8f135', color: '#0f1117', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>ГЛАВНОЕ</div>
+                    <div style={{ position: 'absolute', top: 4, left: 4, background: 'rgb(var(--brand-600))', color: 'rgb(var(--cream-100))', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>ГЛАВНОЕ</div>
                   )}
                   <div style={{ position: 'absolute', top: 4, right: 4, display: 'flex', gap: 4 }}>
                     {i !== 0 && (
                       <button onClick={() => makeMain(i)} title="Сделать главным"
-                        style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#c8f135', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>
+                        style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: 'rgb(var(--brand-600))', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>★</button>
                     )}
                     <button onClick={() => removeImage(i)} title="Удалить"
-                      style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: '#f87171', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
+                      style={{ background: 'rgba(0,0,0,0.7)', border: 'none', borderRadius: 4, color: 'rgb(var(--clay))', fontSize: 12, width: 22, height: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✕</button>
                   </div>
                 </div>
               ))}
               <div onClick={() => fileRef.current?.click()}
-                style={{ aspectRatio: '1', background: '#131620', borderRadius: 8, border: '2px dashed #2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#444', fontSize: 24 }}>+</div>
+                style={{ aspectRatio: '1', background: 'rgb(var(--cream-200))', borderRadius: 8, border: '2px dashed rgb(var(--ink-200))', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'rgb(var(--ink-300))', fontSize: 24 }}>+</div>
             </div>
 
             {images.length > 0 && (
-              <div style={{ color: '#444', fontSize: 11, marginTop: 8 }}>★ — сделать главным · ✕ — удалить · первое фото = главное</div>
+              <div style={{ color: 'rgb(var(--ink-300))', fontSize: 11, marginTop: 8 }}>★ — сделать главным · ✕ — удалить · первое фото = главное</div>
             )}
           </Section>
 
@@ -532,7 +532,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
               <InputField value={form.source_url} onChange={v => setField('source_url', v)} placeholder="https://gorgia.ge/ka/..." />
             </FieldWrapper>
             {!isNew && (
-              <div style={{ color: '#444', fontSize: 11, marginTop: 4 }}>
+              <div style={{ color: 'rgb(var(--ink-300))', fontSize: 11, marginTop: 4 }}>
                 ID: {product?.id} · external_id: {product?.external_id || '—'}
               </div>
             )}

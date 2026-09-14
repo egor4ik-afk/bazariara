@@ -12,20 +12,20 @@ type RecentRow = { id: number; external_id: string; name: string; price: string;
 const s: React.CSSProperties = {
   fontFamily: "'DM Mono', 'Fira Mono', monospace",
   minHeight: '100vh',
-  background: '#0f1117',
-  color: '#e2e4ec',
+  background: 'rgb(var(--cream-100))',
+  color: 'rgb(var(--ink-900))',
   padding: '0',
 };
 
 function StatCard({ label, value, sub, accent }: { label: string; value: string | number; sub?: string; accent?: string }) {
   return (
     <div style={{
-      background: '#1a1d27', borderRadius: 12, border: '1px solid #2a2d3a',
+      background: 'rgb(var(--surface))', borderRadius: 12, border: '1px solid rgb(var(--ink-200))',
       padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 6,
     }}>
-      <span style={{ color: '#555', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
-      <span style={{ fontSize: 28, fontWeight: 600, color: accent || '#fff', lineHeight: 1 }}>{value}</span>
-      {sub && <span style={{ color: '#666', fontSize: 12 }}>{sub}</span>}
+      <span style={{ color: 'rgb(var(--ink-500))', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{label}</span>
+      <span style={{ fontSize: 28, fontWeight: 600, color: accent || 'rgb(var(--ink-900))', lineHeight: 1 }}>{value}</span>
+      {sub && <span style={{ color: 'rgb(var(--ink-500))', fontSize: 12 }}>{sub}</span>}
     </div>
   );
 }
@@ -49,8 +49,8 @@ function RunButton({ label, endpoint, color }: { label: string; endpoint: string
     setTimeout(() => setState('idle'), 8000);
   }
 
-  const bg = state === 'running' ? '#333' : state === 'done' ? '#1a3a1a' : state === 'error' ? '#3a1a1a' : color;
-  const textColor = state === 'running' ? '#888' : state === 'done' ? '#4ade80' : state === 'error' ? '#f87171' : '#0f1117';
+  const bg = state === 'running' ? 'rgb(var(--ink-200))' : state === 'done' ? 'rgb(var(--brand-50))' : state === 'error' ? 'rgb(var(--clay))' : color;
+  const textColor = state === 'running' ? 'rgb(var(--ink-500))' : state === 'done' ? 'rgb(var(--brand-600))' : state === 'error' ? 'rgb(var(--clay))' : 'rgb(var(--cream-100))';
   const btnLabel = state === 'running' ? '⟳ Запускается...' : state === 'done' ? '✓ ' + msg : state === 'error' ? '✕ ' + msg : label;
 
   return (
@@ -77,56 +77,56 @@ export default function AdminDashboardClient({ stats, recent }: { stats: Stats; 
         {/* Stat cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 32 }}>
           <StatCard label="Всего товаров" value={stats.total.toLocaleString()} />
-          <StatCard label="В наличии" value={stats.inStock.toLocaleString()} accent="#4ade80" />
-          <StatCard label="Нет в наличии" value={stats.outOfStock.toLocaleString()} accent="#f87171" />
+          <StatCard label="В наличии" value={stats.inStock.toLocaleString()} accent="rgb(var(--brand-600))" />
+          <StatCard label="Нет в наличии" value={stats.outOfStock.toLocaleString()} accent="rgb(var(--clay))" />
           <StatCard label="Обновлено сегодня" value={stats.updatedToday.toLocaleString()} sub="за последние 24ч" />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 40 }}>
           <StatCard label="Категорий" value={stats.categories} />
-          <StatCard label="Без фото" value={stats.noPhoto} accent={stats.noPhoto > 50 ? '#facc15' : '#aaa'} />
-          <StatCard label="Без SKU" value={stats.noSku} accent={stats.noSku > 100 ? '#facc15' : '#aaa'} />
+          <StatCard label="Без фото" value={stats.noPhoto} accent={stats.noPhoto > 50 ? 'rgb(var(--clay))' : 'rgb(var(--ink-600))'} />
+          <StatCard label="Без SKU" value={stats.noSku} accent={stats.noSku > 100 ? 'rgb(var(--clay))' : 'rgb(var(--ink-600))'} />
           <StatCard label="Средняя цена" value={`${stats.price.avg} ₾`} sub={`${stats.price.min}–${stats.price.max} ₾`} />
         </div>
 
         {/* Scraper controls */}
-        <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px', marginBottom: 32 }}>
-          <h2 style={{ fontSize: 14, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '24px', marginBottom: 32 }}>
+          <h2 style={{ fontSize: 14, color: 'rgb(var(--ink-500))', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
             Управление парсером
           </h2>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <RunButton label="▶ Обновить цены и наличие" endpoint="/api/admin/trigger-update" color="#c8f135" />
-            <RunButton label="▶ Полный парсинг сайта" endpoint="/api/admin/trigger-scrape" color="#60a5fa" />
-            <span style={{ color: '#444', fontSize: 12 }}>Полный парсинг может занять несколько часов</span>
+            <RunButton label="▶ Обновить цены и наличие" endpoint="/api/admin/trigger-update" color="rgb(var(--brand-600))" />
+            <RunButton label="▶ Полный парсинг сайта" endpoint="/api/admin/trigger-scrape" color="rgb(var(--brand-600))" />
+            <span style={{ color: 'rgb(var(--ink-300))', fontSize: 12 }}>Полный парсинг может занять несколько часов</span>
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
 
           {/* Recent activity */}
-          <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px' }}>
+          <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '24px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 14, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Последние обновления</h2>
-              <Link href="/admin/products" style={{ color: '#c8f135', fontSize: 12, textDecoration: 'none' }}>Все товары →</Link>
+              <h2 style={{ fontSize: 14, color: 'rgb(var(--ink-500))', letterSpacing: '0.08em', textTransform: 'uppercase', margin: 0 }}>Последние обновления</h2>
+              <Link href="/admin/products" style={{ color: 'rgb(var(--brand-600))', fontSize: 12, textDecoration: 'none' }}>Все товары →</Link>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {recent.map(r => (
                 <Link key={r.id} href={`/admin/products/${r.id}`} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 12px', borderRadius: 8, background: '#131620',
+                  padding: '10px 12px', borderRadius: 8, background: 'rgb(var(--cream-200))',
                   textDecoration: 'none', border: '1px solid transparent',
                   transition: 'border-color 0.15s',
                 }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#2a2d3a')}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgb(var(--ink-200))')}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'transparent')}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                    <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: r.in_stock ? '#4ade80' : '#f87171' }} />
-                    <span style={{ color: '#ccc', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, background: r.in_stock ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))' }} />
+                    <span style={{ color: 'rgb(var(--ink-700))', fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
                   </div>
                   <div style={{ display: 'flex', gap: 12, flexShrink: 0, alignItems: 'center' }}>
-                    <span style={{ color: '#888', fontSize: 13 }}>{r.price ? Number(r.price).toFixed(0) + ' ₾' : '—'}</span>
-                    <span style={{ color: '#444', fontSize: 11 }}>{new Date(r.updated_at).toLocaleString('ru', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                    <span style={{ color: 'rgb(var(--ink-500))', fontSize: 13 }}>{r.price ? Number(r.price).toFixed(0) + ' ₾' : '—'}</span>
+                    <span style={{ color: 'rgb(var(--ink-300))', fontSize: 11 }}>{new Date(r.updated_at).toLocaleString('ru', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   </div>
                 </Link>
               ))}
@@ -134,25 +134,25 @@ export default function AdminDashboardClient({ stats, recent }: { stats: Stats; 
           </div>
 
           {/* Quick links */}
-          <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, padding: '24px' }}>
-            <h2 style={{ fontSize: 14, color: '#888', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>Быстрые фильтры</h2>
+          <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '24px' }}>
+            <h2 style={{ fontSize: 14, color: 'rgb(var(--ink-500))', letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>Быстрые фильтры</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {[
-                { label: 'Товары без фото', href: '/admin/products?filter=no_photo', count: stats.noPhoto, color: '#facc15' },
-                { label: 'Товары без SKU', href: '/admin/products?filter=no_sku', count: stats.noSku, color: '#facc15' },
-                { label: 'Нет в наличии', href: '/admin/products?in_stock=false', count: stats.outOfStock, color: '#f87171' },
-                { label: 'Все товары', href: '/admin/products', count: stats.total, color: '#4ade80' },
+                { label: 'Товары без фото', href: '/admin/products?filter=no_photo', count: stats.noPhoto, color: 'rgb(var(--clay))' },
+                { label: 'Товары без SKU', href: '/admin/products?filter=no_sku', count: stats.noSku, color: 'rgb(var(--clay))' },
+                { label: 'Нет в наличии', href: '/admin/products?in_stock=false', count: stats.outOfStock, color: 'rgb(var(--clay))' },
+                { label: 'Все товары', href: '/admin/products', count: stats.total, color: 'rgb(var(--brand-600))' },
               ].map(link => (
                 <Link key={link.href} href={link.href} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '12px 16px', borderRadius: 8, background: '#131620',
+                  padding: '12px 16px', borderRadius: 8, background: 'rgb(var(--cream-200))',
                   textDecoration: 'none', border: '1px solid transparent',
                   transition: 'border-color 0.15s',
                 }}
-                  onMouseEnter={e => (e.currentTarget.style.borderColor = '#2a2d3a')}
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgb(var(--ink-200))')}
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'transparent')}
                 >
-                  <span style={{ color: '#ccc', fontSize: 14 }}>{link.label}</span>
+                  <span style={{ color: 'rgb(var(--ink-700))', fontSize: 14 }}>{link.label}</span>
                   <span style={{ color: link.color, fontSize: 14, fontWeight: 600 }}>{link.count.toLocaleString()}</span>
                 </Link>
               ))}

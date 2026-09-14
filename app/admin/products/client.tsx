@@ -263,11 +263,11 @@ export default function AdminProductsClient({
 
   const missingBadge = (val: string | null) =>
     val
-      ? <span style={{ color: '#4ade80', fontSize: 11 }}>✓</span>
-      : <span style={{ color: '#f87171', fontSize: 11 }}>✗</span>;
+      ? <span style={{ color: 'rgb(var(--brand-600))', fontSize: 11 }}>✓</span>
+      : <span style={{ color: 'rgb(var(--clay))', fontSize: 11 }}>✗</span>;
 
   return (
-    <div style={{ fontFamily: mono, minHeight: '100vh', background: '#0f1117', color: '#e2e4ec' }}>
+    <div style={{ fontFamily: mono, minHeight: '100vh', background: 'rgb(var(--cream-100))', color: 'rgb(var(--ink-900))' }}>
 
 
       <div style={{ padding: '24px 32px', maxWidth: 1500, margin: '0 auto' }}>
@@ -275,17 +275,17 @@ export default function AdminProductsClient({
         {/* Фильтры */}
         <form method="GET" action="/admin/products" style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
           <input name="search" defaultValue={filters.search} placeholder="Поиск по имени…"
-            style={{ padding: '8px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, width: 260, outline: 'none' }} />
+            style={{ padding: '8px 14px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 260, outline: 'none' }} />
 
           <select name="in_stock" defaultValue={filters.inStock}
-            style={{ padding: '8px 12px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}>
+            style={{ padding: '8px 12px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, outline: 'none' }}>
             <option value="">Все</option>
             <option value="true">В наличии</option>
             <option value="false">Нет в наличии</option>
           </select>
 
           <select name="filter" defaultValue={filters.filter}
-            style={{ padding: '8px 12px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}>
+            style={{ padding: '8px 12px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, outline: 'none' }}>
             <option value="">Без фильтра</option>
             <option value="no_photo">Без фото</option>
             <option value="no_name_en">Нет name_en</option>
@@ -296,67 +296,67 @@ export default function AdminProductsClient({
           </select>
 
           <select name="category_key" defaultValue={filters.categoryKey}
-            style={{ padding: '8px 12px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#fff', fontSize: 13, outline: 'none' }}>
+            style={{ padding: '8px 12px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, outline: 'none' }}>
             <option value="">Все категории</option>
             {categories.map(c => <option key={c.key} value={c.key}>{c.name} [{c.key}]</option>)}
           </select>
 
           <button type="submit"
-            style={{ padding: '8px 18px', background: '#c8f135', border: 'none', borderRadius: 8, color: '#0f1117', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+            style={{ padding: '8px 18px', background: 'rgb(var(--brand-600))', border: 'none', borderRadius: 8, color: 'rgb(var(--cream-100))', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             Применить
           </button>
           {(filters.search || filters.inStock || filters.filter || filters.categoryKey) && (
-            <Link href="/admin/products" style={{ color: '#666', fontSize: 13, textDecoration: 'none' }}>✕ Сбросить</Link>
+            <Link href="/admin/products" style={{ color: 'rgb(var(--ink-500))', fontSize: 13, textDecoration: 'none' }}>✕ Сбросить</Link>
           )}
         </form>
 
         {/* Пакетные действия */}
-        <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ color: '#555', fontSize: 12, whiteSpace: 'nowrap' }}>
-            Выбрано: <span style={{ color: selected.size > 0 ? '#c8f135' : '#555', fontWeight: 600 }}>{selected.size}</span>
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: 'rgb(var(--ink-500))', fontSize: 12, whiteSpace: 'nowrap' }}>
+            Выбрано: <span style={{ color: selected.size > 0 ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-500))', fontWeight: 600 }}>{selected.size}</span>
           </span>
 
           <select value={batchField} onChange={e => setBatchField(e.target.value as any)}
-            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            style={{ padding: '6px 10px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }}>
             <option value="description">Заполнить описание</option>
             <option value="name_en">Заполнить name_en</option>
             <option value="name_ka">Заполнить name_ka</option>
           </select>
 
           <select value={provider} onChange={e => setProvider(e.target.value as any)}
-            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            style={{ padding: '6px 10px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }}>
             <option value="opencode">OpenCode Go</option>
             <option value="yandex">YandexGPT (fallback)</option>
           </select>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#555', fontSize: 12 }}>Пачка:</span>
+            <span style={{ color: 'rgb(var(--ink-500))', fontSize: 12 }}>Пачка:</span>
             <input type="number" value={batchSize} min={1} max={50} onChange={e => setBatchSize(Number(e.target.value))}
-              style={{ width: 50, padding: '5px 8px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }} />
+              style={{ width: 50, padding: '5px 8px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }} />
           </div>
 
           <button onClick={runBatch} disabled={batchRunning || selected.size === 0}
             style={{
               padding: '7px 16px', borderRadius: 7, border: 'none', cursor: batchRunning || selected.size === 0 ? 'not-allowed' : 'pointer',
-              background: batchRunning ? '#333' : selected.size === 0 ? '#222' : '#c8f135',
-              color: batchRunning || selected.size === 0 ? '#555' : '#0f1117',
+              background: batchRunning ? 'rgb(var(--ink-200))' : selected.size === 0 ? 'rgb(var(--ink-200))' : 'rgb(var(--brand-600))',
+              color: batchRunning || selected.size === 0 ? 'rgb(var(--ink-500))' : 'rgb(var(--cream-100))',
               fontSize: 12, fontWeight: 600,
             }}>
             {batchRunning ? '⟳ Обрабатываю…' : '▶ Запустить пачкой'}
           </button>
 
           {batchStatus && (
-            <span style={{ fontSize: 12, color: batchStatus.startsWith('✓') ? '#4ade80' : batchStatus.startsWith('✕') ? '#f87171' : '#aaa' }}>
+            <span style={{ fontSize: 12, color: batchStatus.startsWith('✓') ? 'rgb(var(--brand-600))' : batchStatus.startsWith('✕') ? 'rgb(var(--clay))' : 'rgb(var(--ink-600))' }}>
               {batchStatus}
             </span>
           )}
         </div>
 
-        <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-          <span style={{ color: '#888', fontSize: 12, whiteSpace: 'nowrap', fontWeight: 600 }}>🖼 Обработка фото:</span>
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 10, padding: '14px 18px', marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+          <span style={{ color: 'rgb(var(--ink-500))', fontSize: 12, whiteSpace: 'nowrap', fontWeight: 600 }}>🖼 Обработка фото:</span>
  
           <select value={imageEffect} onChange={e => setImageEffect(e.target.value as any)}
-            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            style={{ padding: '6px 10px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }}>
             <option value="product">✨ Товарный вид (комбо)</option>
             <option value="whitebg">⬜ Белый фон</option>
             <option value="frame">🔲 Рамка с отступом</option>
@@ -365,49 +365,49 @@ export default function AdminProductsClient({
           </select>
  
           <select value={imageTarget} onChange={e => setImageTarget(e.target.value as any)}
-            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            style={{ padding: '6px 10px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }}>
             <option value="main">Только главное фото</option>
             <option value="all">Все фото товара</option>
           </select>
  
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ color: '#555', fontSize: 12 }}>Пачка:</span>
+            <span style={{ color: 'rgb(var(--ink-500))', fontSize: 12 }}>Пачка:</span>
             <input type="number" value={batchSize} min={1} max={20} onChange={e => setBatchSize(Number(e.target.value))}
-              style={{ width: 50, padding: '5px 8px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }} />
+              style={{ width: 50, padding: '5px 8px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }} />
           </div>
  
           <button onClick={runImageBatch} disabled={imageRunning || selected.size === 0}
             style={{
               padding: '7px 16px', borderRadius: 7, border: 'none',
               cursor: imageRunning || selected.size === 0 ? 'not-allowed' : 'pointer',
-              background: imageRunning ? '#333' : selected.size === 0 ? '#222' : '#3b82f6',
-              color: imageRunning || selected.size === 0 ? '#555' : '#fff',
+              background: imageRunning ? 'rgb(var(--ink-200))' : selected.size === 0 ? 'rgb(var(--ink-200))' : 'rgb(var(--brand-600))',
+              color: imageRunning || selected.size === 0 ? 'rgb(var(--ink-500))' : 'rgb(var(--ink-900))',
               fontSize: 12, fontWeight: 600,
             }}>
             {imageRunning ? '⟳ Обрабатываю…' : '🖼 Обработать фото'}
           </button>
  
           {imageStatus && (
-            <span style={{ fontSize: 12, color: imageStatus.startsWith('✓') ? '#4ade80' : imageStatus.startsWith('✕') ? '#f87171' : '#aaa' }}>
+            <span style={{ fontSize: 12, color: imageStatus.startsWith('✓') ? 'rgb(var(--brand-600))' : imageStatus.startsWith('✕') ? 'rgb(var(--clay))' : 'rgb(var(--ink-600))' }}>
               {imageStatus}
             </span>
           )}
         </div>
 
         {/* Массовые операции */}
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid #2a2d3a', marginTop: 10 }}>
-          <span style={{ color: '#555', fontSize: 12 }}>
-            Выбрано: <span style={{ color: selected.size > 0 ? '#c8f135' : '#555', fontWeight: 600 }}>{selected.size}</span>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', padding: '10px 0', borderTop: '1px solid rgb(var(--ink-200))', marginTop: 10 }}>
+          <span style={{ color: 'rgb(var(--ink-500))', fontSize: 12 }}>
+            Выбрано: <span style={{ color: selected.size > 0 ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-500))', fontWeight: 600 }}>{selected.size}</span>
           </span>
 
           <select value={bulkCategoryKey} onChange={e => { setBulkCategoryKey(e.target.value); setBulkSubKey(''); }}
-            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: '#fff', fontSize: 12, outline: 'none' }}>
+            style={{ padding: '6px 10px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }}>
             <option value="">Категория для смены…</option>
             {fullCategories.map(c => <option key={c.key} value={c.key}>{c.name} [{c.key}]</option>)}
           </select>
 
           <select value={bulkSubKey} onChange={e => setBulkSubKey(e.target.value)} disabled={!bulkCategoryKey}
-            style={{ padding: '6px 10px', background: '#131620', border: '1px solid #2a2d3a', borderRadius: 7, color: bulkCategoryKey ? '#fff' : '#555', fontSize: 12, outline: 'none' }}>
+            style={{ padding: '6px 10px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: bulkCategoryKey ? 'rgb(var(--ink-900))' : 'rgb(var(--ink-500))', fontSize: 12, outline: 'none' }}>
             <option value="">Подкатегория (опционально)…</option>
             {bulkSubOptions.map(s => <option key={s.key} value={s.key}>{s.name} [{s.key}]</option>)}
           </select>
@@ -416,8 +416,8 @@ export default function AdminProductsClient({
             style={{
               padding: '7px 16px', borderRadius: 7, border: 'none',
               cursor: bulkRunning || selected.size === 0 || !bulkCategoryKey ? 'not-allowed' : 'pointer',
-              background: bulkRunning ? '#333' : (selected.size === 0 || !bulkCategoryKey) ? '#222' : '#3b82f6',
-              color: bulkRunning || selected.size === 0 || !bulkCategoryKey ? '#555' : '#fff',
+              background: bulkRunning ? 'rgb(var(--ink-200))' : (selected.size === 0 || !bulkCategoryKey) ? 'rgb(var(--ink-200))' : 'rgb(var(--brand-600))',
+              color: bulkRunning || selected.size === 0 || !bulkCategoryKey ? 'rgb(var(--ink-500))' : 'rgb(var(--ink-900))',
               fontSize: 12, fontWeight: 600,
             }}>
             {bulkRunning ? '⟳ Применяю…' : '↪ Применить категорию'}
@@ -425,89 +425,89 @@ export default function AdminProductsClient({
 
           <button onClick={bulkDelete} disabled={bulkRunning || selected.size === 0}
             style={{
-              padding: '7px 16px', borderRadius: 7, border: '1px solid #5c1a1a',
+              padding: '7px 16px', borderRadius: 7, border: '1px solid rgb(var(--clay))',
               cursor: bulkRunning || selected.size === 0 ? 'not-allowed' : 'pointer',
               background: 'transparent',
-              color: bulkRunning || selected.size === 0 ? '#555' : '#f87171',
+              color: bulkRunning || selected.size === 0 ? 'rgb(var(--ink-500))' : 'rgb(var(--clay))',
               fontSize: 12, fontWeight: 600,
             }}>
             🗑 Удалить выбранные
           </button>
 
           {bulkStatus && (
-            <span style={{ fontSize: 12, color: bulkStatus.startsWith('✓') ? '#4ade80' : bulkStatus.startsWith('✕') ? '#f87171' : '#aaa' }}>
+            <span style={{ fontSize: 12, color: bulkStatus.startsWith('✓') ? 'rgb(var(--brand-600))' : bulkStatus.startsWith('✕') ? 'rgb(var(--clay))' : 'rgb(var(--ink-600))' }}>
               {bulkStatus}
             </span>
           )}
         </div>
 
         {/* Инфо строка */}
-        <div style={{ color: '#555', fontSize: 12, marginBottom: 12 }}>
+        <div style={{ color: 'rgb(var(--ink-500))', fontSize: 12, marginBottom: 12 }}>
           Найдено: {total.toLocaleString()} товаров · стр. {currentPage} из {totalPages}
         </div>
 
         {/* Таблица */}
-        <div style={{ background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, overflow: 'hidden' }}>
           <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead>
-              <tr style={{ borderBottom: '1px solid #2a2d3a' }}>
+              <tr style={{ borderBottom: '1px solid rgb(var(--ink-200))' }}>
                 <th style={{ ...cellStyle, width: 36 }}>
                   <input type="checkbox"
                     checked={selected.size === products.length && products.length > 0}
                     onChange={toggleAll}
-                    style={{ cursor: 'pointer', accentColor: '#c8f135' }}
+                    style={{ cursor: 'pointer', accentColor: 'rgb(var(--brand-600))' }}
                   />
                 </th>
                 {['Фото', 'Название', 'Категория', 'Переводы', 'Описание', 'Цена', 'Наличие', 'Обновлено', ''].map((h, i) => (
-                  <th key={i} style={{ ...cellStyle, color: '#555', textAlign: 'left', fontWeight: 500, letterSpacing: '0.05em', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                  <th key={i} style={{ ...cellStyle, color: 'rgb(var(--ink-500))', textAlign: 'left', fontWeight: 500, letterSpacing: '0.05em', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {products.map((p) => (
                 <tr key={p.id}
-                  style={{ borderBottom: '1px solid #1e2130', background: selected.has(p.id) ? '#1a2a0e' : 'transparent', transition: 'background 0.15s' }}>
+                  style={{ borderBottom: '1px solid rgb(var(--surface-2))', background: selected.has(p.id) ? 'rgb(var(--brand-50))' : 'transparent', transition: 'background 0.15s' }}>
 
                   {/* Чекбокс */}
                   <td style={cellStyle}>
                     <input type="checkbox"
                       checked={selected.has(p.id)}
                       onChange={() => toggleOne(p.id)}
-                      style={{ cursor: 'pointer', accentColor: '#c8f135' }}
+                      style={{ cursor: 'pointer', accentColor: 'rgb(var(--brand-600))' }}
                     />
                   </td>
 
                   {/* Фото */}
                   <td style={{ ...cellStyle, width: 52 }}>
                     {p.image_url
-                      ? <img src={p.image_url} alt="" width={40} height={40} style={{ borderRadius: 6, objectFit: 'cover', background: '#222' }} />
-                      : <div style={{ width: 40, height: 40, borderRadius: 6, background: '#2a2d3a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: 18 }}>□</div>
+                      ? <img src={p.image_url} alt="" width={40} height={40} style={{ borderRadius: 6, objectFit: 'cover', background: 'rgb(var(--ink-200))' }} />
+                      : <div style={{ width: 40, height: 40, borderRadius: 6, background: 'rgb(var(--ink-200))', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgb(var(--ink-300))', fontSize: 18 }}>□</div>
                     }
                   </td>
 
                   {/* Название */}
                   <td style={{ ...cellStyle, maxWidth: 280 }}>
-                    <div style={{ color: '#ddd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                    <div style={{ color: '#444', fontSize: 10, marginTop: 2 }}>{p.external_id}</div>
+                    <div style={{ color: 'rgb(var(--ink-700))', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                    <div style={{ color: 'rgb(var(--ink-300))', fontSize: 10, marginTop: 2 }}>{p.external_id}</div>
                   </td>
 
                   {/* Категория */}
-                  <td style={{ ...cellStyle, color: '#666', whiteSpace: 'nowrap' }}>
+                  <td style={{ ...cellStyle, color: 'rgb(var(--ink-500))', whiteSpace: 'nowrap' }}>
                     <div>{p.category || '—'}</div>
-                    <div style={{ color: '#444', fontSize: 10 }}>[{p.category_key}]</div>
+                    <div style={{ color: 'rgb(var(--ink-300))', fontSize: 10 }}>[{p.category_key}]</div>
                   </td>
 
                   {/* Переводы названия */}
                   <td style={cellStyle}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ color: '#555', fontSize: 10 }}>EN</span>{missingBadge(p.name_en)}
-                      <span style={{ color: '#555', fontSize: 10 }}>KA</span>{missingBadge(p.name_ka)}
+                      <span style={{ color: 'rgb(var(--ink-500))', fontSize: 10 }}>EN</span>{missingBadge(p.name_en)}
+                      <span style={{ color: 'rgb(var(--ink-500))', fontSize: 10 }}>KA</span>{missingBadge(p.name_ka)}
                     </div>
                     {(!p.name_en || !p.name_ka) && (
                       <button
                         onClick={() => translateOne(p, !p.name_en ? 'name_en' : 'name_ka')}
                         disabled={inlineLoading === p.id}
-                        style={{ marginTop: 4, padding: '2px 7px', fontSize: 10, background: '#1e2a0e', border: '1px solid #2a3a0a', borderRadius: 4, color: '#c8f135', cursor: 'pointer' }}>
+                        style={{ marginTop: 4, padding: '2px 7px', fontSize: 10, background: 'rgb(var(--brand-50))', border: '1px solid rgb(var(--brand-50))', borderRadius: 4, color: 'rgb(var(--brand-600))', cursor: 'pointer' }}>
                         {inlineLoading === p.id ? '⟳' : '+ перевести'}
                       </button>
                     )}
@@ -516,22 +516,22 @@ export default function AdminProductsClient({
                   {/* Описание */}
                   <td style={cellStyle}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ color: '#555', fontSize: 10 }}>RU</span>{missingBadge(p.description_ru)}
-                      <span style={{ color: '#555', fontSize: 10 }}>EN</span>{missingBadge(p.description_en)}
-                      <span style={{ color: '#555', fontSize: 10 }}>KA</span>{missingBadge(p.description_ka)}
+                      <span style={{ color: 'rgb(var(--ink-500))', fontSize: 10 }}>RU</span>{missingBadge(p.description_ru)}
+                      <span style={{ color: 'rgb(var(--ink-500))', fontSize: 10 }}>EN</span>{missingBadge(p.description_en)}
+                      <span style={{ color: 'rgb(var(--ink-500))', fontSize: 10 }}>KA</span>{missingBadge(p.description_ka)}
                     </div>
                     {(!p.description_ru || !p.description_en || !p.description_ka) && (
                       <button
                         onClick={() => translateOne(p, 'description')}
                         disabled={inlineLoading === p.id}
-                        style={{ marginTop: 4, padding: '2px 7px', fontSize: 10, background: '#1e2a0e', border: '1px solid #2a3a0a', borderRadius: 4, color: '#c8f135', cursor: 'pointer' }}>
+                        style={{ marginTop: 4, padding: '2px 7px', fontSize: 10, background: 'rgb(var(--brand-50))', border: '1px solid rgb(var(--brand-50))', borderRadius: 4, color: 'rgb(var(--brand-600))', cursor: 'pointer' }}>
                         {inlineLoading === p.id ? '⟳' : '+ сгенерировать'}
                       </button>
                     )}
                   </td>
 
                   {/* Цена */}
-                  <td style={{ ...cellStyle, color: '#ccc', whiteSpace: 'nowrap' }}>
+                  <td style={{ ...cellStyle, color: 'rgb(var(--ink-700))', whiteSpace: 'nowrap' }}>
                     {p.price ? `${Number(p.price).toFixed(0)} ₾` : '—'}
                   </td>
 
@@ -540,8 +540,8 @@ export default function AdminProductsClient({
                     <span style={{
                       display: 'inline-flex', alignItems: 'center', gap: 4,
                       padding: '2px 7px', borderRadius: 10, fontSize: 11, fontWeight: 500,
-                      background: p.in_stock ? '#1a3a1a' : '#2a1a1a',
-                      color: p.in_stock ? '#4ade80' : '#f87171',
+                      background: p.in_stock ? 'rgb(var(--brand-50))' : 'rgb(var(--ink-100))',
+                      color: p.in_stock ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))',
                     }}>
                       <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor' }} />
                       {p.in_stock ? 'есть' : 'нет'}
@@ -549,14 +549,14 @@ export default function AdminProductsClient({
                   </td>
 
                   {/* Обновлено */}
-                  <td style={{ ...cellStyle, color: '#444', whiteSpace: 'nowrap' }}>
+                  <td style={{ ...cellStyle, color: 'rgb(var(--ink-300))', whiteSpace: 'nowrap' }}>
                     {new Date(p.updated_at).toLocaleString('ru', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                   </td>
 
                   {/* Изменить */}
                   <td style={cellStyle}>
                     <Link href={`/admin/products/${p.id}`}
-                      style={{ color: '#c8f135', fontSize: 11, textDecoration: 'none', padding: '3px 9px', border: '1px solid #2a3a0a', borderRadius: 6, whiteSpace: 'nowrap' }}>
+                      style={{ color: 'rgb(var(--brand-600))', fontSize: 11, textDecoration: 'none', padding: '3px 9px', border: '1px solid rgb(var(--brand-50))', borderRadius: 6, whiteSpace: 'nowrap' }}>
                       Изменить
                     </Link>
                   </td>
@@ -571,14 +571,14 @@ export default function AdminProductsClient({
           <div style={{ display: 'flex', gap: 8, marginTop: 20, justifyContent: 'center', alignItems: 'center' }}>
             {currentPage > 1 && (
               <Link href={buildUrl(filters, currentPage - 1)}
-                style={{ padding: '6px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#ccc', textDecoration: 'none', fontSize: 13 }}>
+                style={{ padding: '6px 14px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-700))', textDecoration: 'none', fontSize: 13 }}>
                 ← Назад
               </Link>
             )}
-            <span style={{ color: '#666', fontSize: 13 }}>стр. {currentPage} / {totalPages}</span>
+            <span style={{ color: 'rgb(var(--ink-500))', fontSize: 13 }}>стр. {currentPage} / {totalPages}</span>
             {currentPage < totalPages && (
               <Link href={buildUrl(filters, currentPage + 1)}
-                style={{ padding: '6px 14px', background: '#1a1d27', border: '1px solid #2a2d3a', borderRadius: 8, color: '#ccc', textDecoration: 'none', fontSize: 13 }}>
+                style={{ padding: '6px 14px', background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-700))', textDecoration: 'none', fontSize: 13 }}>
                 Вперёд →
               </Link>
             )}

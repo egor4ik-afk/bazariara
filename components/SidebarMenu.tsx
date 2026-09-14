@@ -199,8 +199,31 @@ export default function SidebarMenu() {
           )}
         </div>
 
+        {/* Разделы — внизу, под категориями: меню открывают ради товаров,
+            а не ради ссылок. Две колонки, чтобы на телефоне список
+            не тянулся вниз. */}
+        <div className="shrink-0 mt-4 pt-4 border-t border-ink-200">
+          <div className="grid grid-cols-2 gap-x-3">
+            {[
+              { href: `/${language}/farmers`,  label: t('footer.farmers') },
+              { href: `/${language}/regions`,  label: t('footer.regions') },
+              { href: `/${language}/blog`,     label: t('footer.blog') },
+              { href: `/${language}/gostintsy-iz-gruzii`, label: t('footer.gifts') },
+            ].map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsOpen(false)}
+                className="py-2 text-sm font-medium text-ink-600 hover:text-brand-700 transition-colors truncate"
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
         {/* Футер меню: Настройки (Тема и Карусель) */}
-        <div className="shrink-0 mt-auto pt-6 border-t border-ink-200 space-y-4">
+        <div className="shrink-0 mt-auto pt-5 border-t border-ink-200 space-y-4">
           
           {/* Тема */}
           <div className="flex items-center justify-between">

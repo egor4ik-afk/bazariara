@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import ThemeToggle from '@/components/ThemeToggle';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
@@ -42,15 +43,15 @@ export default function AdminNav() {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 16, padding: '12px 24px',
-      borderBottom: '1px solid #1e2029', background: '#0f1117', flexWrap: 'wrap',
+      borderBottom: '1px solid rgb(var(--surface-2))', background: 'rgb(var(--cream-100))', flexWrap: 'wrap',
       position: 'sticky', top: 0, zIndex: 40,
     }}>
       <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
         <div style={{
-          width: 30, height: 30, background: '#c8f135', borderRadius: 6,
+          width: 30, height: 30, background: 'rgb(var(--brand-600))', borderRadius: 6,
           display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
         }}>⚡</div>
-        <span style={{ fontWeight: 600, fontSize: 15, color: '#fff' }}>bazariara.ge admin</span>
+        <span style={{ fontWeight: 600, fontSize: 15, color: 'rgb(var(--ink-900))' }}>bazariara.ge admin</span>
       </Link>
 
       <nav style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
@@ -61,8 +62,8 @@ export default function AdminNav() {
               key={item.href}
               href={item.href}
               style={{
-                color: active ? '#c8f135' : '#aaa',
-                background: active ? '#1e2a0e' : 'transparent',
+                color: active ? 'rgb(var(--brand-600))' : 'rgb(var(--ink-600))',
+                background: active ? 'rgb(var(--brand-50))' : 'transparent',
                 fontSize: 13, padding: '6px 12px', borderRadius: 6,
                 textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6,
               }}
@@ -70,7 +71,7 @@ export default function AdminNav() {
               {item.label}
               {item.badge === 'applications' && newApps > 0 && (
                 <span style={{
-                  background: '#C2703D', color: '#fff', fontSize: 10, fontWeight: 700,
+                  background: 'rgb(var(--clay))', color: 'rgb(var(--ink-900))', fontSize: 10, fontWeight: 700,
                   borderRadius: 99, padding: '1px 6px', lineHeight: 1.6,
                 }}>
                   {newApps}
@@ -79,17 +80,18 @@ export default function AdminNav() {
             </Link>
           );
         })}
+        <ThemeToggle />
       </nav>
 
       <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
         <Link href="/admin/products/new" style={{
-          color: '#0f1117', fontSize: 13, padding: '6px 14px', borderRadius: 6,
-          background: '#c8f135', textDecoration: 'none', fontWeight: 600,
+          color: 'rgb(var(--cream-100))', fontSize: 13, padding: '6px 14px', borderRadius: 6,
+          background: 'rgb(var(--brand-600))', textDecoration: 'none', fontWeight: 600,
         }}>
           + Товар
         </Link>
         <a href="/ru" target="_blank" rel="noreferrer" style={{
-          color: '#aaa', fontSize: 13, padding: '6px 12px', textDecoration: 'none',
+          color: 'rgb(var(--ink-600))', fontSize: 13, padding: '6px 12px', textDecoration: 'none',
         }}>
           Сайт ↗
         </a>
