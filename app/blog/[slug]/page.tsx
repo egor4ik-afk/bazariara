@@ -128,6 +128,12 @@ function renderMarkdown(md: string): string {
     const tagged = b.match(/^@video\[([^\]]+)\]$/);
     const vurl = tagged ? tagged[1] : b;
 
+    // Файл, залитый в наш бакет: отдаём нативным плеером браузера.
+    if (/\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(vurl)) {
+      return `<div class="post-video post-video--file">`
+        + `<video src="${vurl}" controls preload="metadata" playsinline></video></div>`;
+    }
+
     const yt = vurl.match(/^(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,})/);
     if (yt) {
       return `<div class="post-video"><iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}"`

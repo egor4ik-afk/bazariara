@@ -31,6 +31,7 @@ export default function BlogAdmin() {
   const [lang, setLang] = useState<'ru' | 'en' | 'ka'>('ru');
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
   const bodyRef = useRef<HTMLTextAreaElement>(null);
 
   const load = useCallback(async () => {
@@ -135,10 +136,45 @@ export default function BlogAdmin() {
     uploadFile(file);
   };
 
-  const insertVideo = () => {
+  const insertVideoLink = () => {
     const url = prompt('Ссылка на YouTube или Vimeo:');
     if (!url) return;
     insertAtCursor(`\n\n@video[${url.trim()}]\n\n`);
+  };
+
+  /**
+   * Загрузка видео прямо в бакет, мимо Vercel.
+   *
+   * Через обычный роут ролик не пройдёт: у serverless-функции лимит тела
+   * 4.5 МБ. Здесь функция отдаёт только подпись (сотни байт), а сам файл
+   * браузер кладёт в Yandex Object Storage сам — размер перестаёт мешать.
+   */
+  const uploadVideo = async (file: File) => {
+    setUploading(true);
+    setMsg(null);
+    try {
+      const signRes = await fetch('/api/admin/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename: file.name, size: file.size }),
+      });
+      const sign = await signRes.json();
+      if (!signRes.ok) throw new Error(sign.error || 'Не удалось получить ссылку');
+
+      const put = await fetch(sign.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': sign.contentType, 'x-amz-acl': 'public-read' },
+        body: file,
+      });
+      if (!put.ok) throw new Error(`Бакет ответил ${put.status}`);
+
+      insertAtCursor(`\n\n@video[${sign.publicUrl}]\n\n`);
+      setMsg('Видео загружено');
+    } catch (e: any) {
+      setMsg(`Ошибка: ${e.message}`);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const toggle = (kind: keyof Links, id: number) =>
@@ -216,7 +252,7 @@ export default function BlogAdmin() {
               <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap', alignItems: 'center' }}>
                 <button onClick={() => fileRef.current?.click()} disabled={uploading}
                   style={toolBtn}>🖼 Изображение</button>
-                <button onClick={insertVideo} style={toolBtn}>▶ Видео</button>
+                <button onClick={insertVideoLink} style={toolBtn}>▶ Видео</button>
                 <button onClick={() => insertAtCursor('\n\n## ')} style={toolBtn}>H2</button>
                 <button onClick={() => insertAtCursor('**жирный**')} style={toolBtn}>B</button>
                 <button onClick={() => insertAtCursor('\n- ')} style={toolBtn}>Список</button>
