@@ -77,6 +77,25 @@ export default async function BlogIndex() {
     console.error('BlogIndex:', e);
   }
 
+  const tagsByPost: Record<string, { name: string; slug: string | null }[]> = {};
+  try {
+    if (posts.length > 0) {
+      const slugs = posts.map((p) => p.slug);
+      const rows = await sql`
+        SELECT p.slug AS post_slug, t.name, t.slug
+        FROM posts p
+        JOIN post_tag_links tl ON tl.post_id = p.id
+        JOIN post_tags t ON t.id = tl.tag_id
+        WHERE p.slug = ANY(${slugs})
+      `;
+      for (const r of rows as any[]) {
+        (tagsByPost[r.post_slug] ||= []).push({ name: r.name, slug: r.slug });
+      }
+    }
+  } catch (e) {
+    console.error('BlogIndex tags:', e);
+  }
+
   const pick = (p: any, f: string) =>
     locale === 'en' ? (p[`${f}_en`] || p[f]) : locale === 'ka' ? (p[`${f}_ka`] || p[f]) : p[f];
 
@@ -114,6 +133,20 @@ export default async function BlogIndex() {
                   </h2>
                   {pick(p, 'excerpt') && (
                     <p className="text-sm text-ink-600 leading-relaxed">{pick(p, 'excerpt')}</p>
+                  )}
+
+                  {(tagsByPost[p.slug] || []).length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {(tagsByPost[p.slug] || []).slice(0, 3).map((t) => (
+                        <span
+                          key={t.name}
+                          className="px-2 py-0.5 rounded-full bg-brand-50 border border-brand-200
+                                     text-[11px] font-semibold text-brand-700"
+                        >
+                          #{t.name}
+                        </span>
+                      ))}
+                    </div>
                   )}
                   {p.published_at && (
                     <time className="mt-auto pt-4 text-xs text-ink-500" dateTime={p.published_at}>

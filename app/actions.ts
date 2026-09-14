@@ -10,9 +10,19 @@ type Row = Record<string, unknown>;
 export const getCategories = unstable_cache(
   async () => {
     const catRows = await sql`
-      SELECT category_key AS key, name, name_en, name_ka, category_image AS image_url
-      FROM categories
-      ORDER BY name
+      SELECT c.category_key AS key, c.name, c.name_en, c.name_ka,
+             COALESCE(
+               NULLIF(c.category_image, ''),
+               (SELECT p.image_url FROM products p
+                WHERE p.category_key = c.category_key
+                  AND p.source = 'gorgia'
+                  AND p.image_url IS NOT NULL
+                  AND p.image_url NOT LIKE '/placeholder%'
+                ORDER BY p.in_stock DESC, p.id
+                LIMIT 1)
+             ) AS image_url
+      FROM categories c
+      ORDER BY c.name
     `;
     return (catRows as Row[]).map((r) => ({
       key:      r.key as string,
@@ -30,10 +40,21 @@ export const getSubCategories = unstable_cache(
   async (category: string) => {
     if (category === 'all') return [];
     const subRows = await sql`
-      SELECT key, name, name_en, name_ka, image_url
-      FROM subcategories
-      WHERE category_key = ${category}
-      ORDER BY name
+      SELECT s.key, s.name, s.name_en, s.name_ka,
+             COALESCE(
+               NULLIF(s.image_url, ''),
+               (SELECT p.image_url FROM products p
+                WHERE p.category_key = s.category_key
+                  AND p.sub_category = s.name
+                  AND p.source = 'gorgia'
+                  AND p.image_url IS NOT NULL
+                  AND p.image_url NOT LIKE '/placeholder%'
+                ORDER BY p.in_stock DESC, p.id
+                LIMIT 1)
+             ) AS image_url
+      FROM subcategories s
+      WHERE s.category_key = ${category}
+      ORDER BY s.name
     `;
     return (subRows as Row[]).map((r) => ({
       key:      r.key as string,

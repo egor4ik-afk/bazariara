@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -52,6 +52,16 @@ export default function CategoryCarousel({
     const left = item.offsetLeft - el.clientWidth / 2 + item.clientWidth / 2;
     el.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
   }, [selectedCategory, categories, isVisible]);
+
+  // Ссылки, которые реально не открылись. Держим в состоянии, чтобы
+  // не пытаться грузить их повторно при каждом ререндере.
+  const [broken, setBroken] = useState<Record<string, boolean>>({});
+  const markBroken = useCallback((key: string) => {
+    setBroken((p) => (p[key] ? p : { ...p, [key]: true }));
+  }, []);
+
+  const hasImage = (cat: Category) =>
+    Boolean(cat.imageUrl) && !cat.imageUrl!.startsWith('/placeholder') && !broken[cat.key];
 
   const getName = (cat: Category) => {
     switch (language) {

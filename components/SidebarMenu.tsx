@@ -106,26 +106,6 @@ export default function SidebarMenu() {
           </button>
         </div>
 
-        <nav className="shrink-0 mb-5 pb-5 border-b border-ink-200">
-          {[
-            { href: `/${language}/farmers`,  icon: '🌿', label: t('footer.farmers') },
-            { href: `/${language}/regions`,  icon: '📍', label: t('footer.regions') },
-            { href: `/${language}/blog`,     icon: '📖', label: t('footer.blog') },
-            { href: `/${language}/gostintsy-iz-gruzii`, icon: '🎁', label: t('footer.gifts') },
-          ].map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={() => setIsOpen(false)}
-              className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-ink-800
-                         font-semibold hover:bg-brand-600/10 hover:text-brand-700 transition-colors"
-            >
-              <span aria-hidden="true">{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
-        </nav>
-
         <h2 className="text-xl font-bold text-ink-900 mb-4 shrink-0">
           {t('common.categories')}
         </h2>
