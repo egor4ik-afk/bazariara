@@ -26,6 +26,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ applications: rows });
     }
 
+    if (what === 'products') {
+      const pid = Number(req.nextUrl.searchParams.get('id'));
+      const rows = await sql`
+        SELECT id, sku, COALESCE(name_ru, name) AS name, price, in_stock, image_url, category_key
+        FROM products WHERE producer_id = ${pid}
+        ORDER BY in_stock DESC, id
+      `;
+      return NextResponse.json({ products: rows });
+    }
+
     if (what === 'regions') {
       const rows = await sql`
         SELECT id, slug, name, name_en, name_ka, is_active, sort_order
@@ -57,31 +67,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'slug и name обязательны' }, { status: 400 });
   }
 
+  // /farmers/join — статическая страница анкеты, она перекрывает
+  // динамический /farmers/[slug]. Фермер с таким slug стал бы недоступен.
+  if (RESERVED_SLUGS.has(slug)) {
+    return NextResponse.json({ error: `slug «${slug}» зарезервирован, выберите другой` }, { status: 400 });
+  }
+
   try {
     const [row] = await sql`
       INSERT INTO producers (
-        slug, name, name_en, name_ka, region_id, locality,
+        slug, name, name_en, name_ka, region_id,
+        locality, locality_en, locality_ka,
         description, description_en, description_ka,
-        image_url, website, instagram, facebook,
-        status, seo_title, seo_description, sort_order
+        image_url, website, instagram, facebook, status,
+        seo_title, seo_title_en, seo_title_ka,
+        seo_description, seo_description_en, seo_description_ka,
+        sort_order
       ) VALUES (
         ${slug}, ${body.name}, ${body.name_en || null}, ${body.name_ka || null},
-        ${body.region_id ? Number(body.region_id) : null}, ${body.locality || null},
+        ${body.region_id ? Number(body.region_id) : null},
+        ${body.locality || null}, ${body.locality_en || null}, ${body.locality_ka || null},
         ${body.description || null}, ${body.description_en || null}, ${body.description_ka || null},
         ${body.image_url || null}, ${body.website || null},
-        ${body.instagram || null}, ${body.facebook || null},
-        ${body.status || 'active'}, ${body.seo_title || null}, ${body.seo_description || null},
+        ${body.instagram || null}, ${body.facebook || null}, ${body.status || 'active'},
+        ${body.seo_title || null}, ${body.seo_title_en || null}, ${body.seo_title_ka || null},
+        ${body.seo_description || null}, ${body.seo_description_en || null}, ${body.seo_description_ka || null},
         ${body.sort_order ?? 100}
       )
       ON CONFLICT (slug) DO UPDATE SET
         name = EXCLUDED.name, name_en = EXCLUDED.name_en, name_ka = EXCLUDED.name_ka,
-        region_id = EXCLUDED.region_id, locality = EXCLUDED.locality,
+        region_id = EXCLUDED.region_id,
+        locality = EXCLUDED.locality, locality_en = EXCLUDED.locality_en, locality_ka = EXCLUDED.locality_ka,
         description = EXCLUDED.description,
         description_en = EXCLUDED.description_en, description_ka = EXCLUDED.description_ka,
         image_url = EXCLUDED.image_url, website = EXCLUDED.website,
         instagram = EXCLUDED.instagram, facebook = EXCLUDED.facebook,
         status = EXCLUDED.status,
-        seo_title = EXCLUDED.seo_title, seo_description = EXCLUDED.seo_description,
+        seo_title = EXCLUDED.seo_title, seo_title_en = EXCLUDED.seo_title_en, seo_title_ka = EXCLUDED.seo_title_ka,
+        seo_description = EXCLUDED.seo_description,
+        seo_description_en = EXCLUDED.seo_description_en, seo_description_ka = EXCLUDED.seo_description_ka,
         sort_order = EXCLUDED.sort_order, updated_at = NOW()
       RETURNING id, slug
     `;
@@ -143,6 +167,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
   }
 }
+
+const RESERVED_SLUGS = new Set(['join', 'new', 'admin', 'api']);
 
 const MAP: Record<string, string> = {
   а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',м:'m',

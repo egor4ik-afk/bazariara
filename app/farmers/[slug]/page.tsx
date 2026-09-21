@@ -18,6 +18,9 @@ type Producer = {
   image_url: string | null;
   website: string | null; instagram: string | null; facebook: string | null;
   seo_title: string | null; seo_description: string | null;
+  seo_title_en?: string | null; seo_title_ka?: string | null;
+  seo_description_en?: string | null; seo_description_ka?: string | null;
+  locality_en?: string | null; locality_ka?: string | null;
   region_slug: string | null;
   region_name: string | null; region_name_en: string | null; region_name_ka: string | null;
 };
@@ -32,7 +35,9 @@ function getLocale(h: Headers): Locale {
 async function getProducer(slug: string): Promise<Producer | null> {
   try {
     const rows = await sql`
-      SELECT p.id, p.slug, p.name, p.name_en, p.name_ka, p.locality,
+      SELECT p.id, p.slug, p.name, p.name_en, p.name_ka,
+             p.locality, p.locality_en, p.locality_ka,
+             p.seo_title_en, p.seo_title_ka, p.seo_description_en, p.seo_description_ka,
              p.description, p.description_en, p.description_ka,
              p.image_url, p.website, p.instagram, p.facebook,
              p.seo_title, p.seo_description,
@@ -70,8 +75,11 @@ async function getProducts(producerId: number) {
              farmer_slug, farmer_name,
              image_url, images
       FROM products
-      WHERE producer_id = ${producerId} AND source = 'gorgia'
-      ORDER BY in_stock DESC, category_key, id
+      WHERE producer_id = ${producerId}
+        AND source = 'gorgia'
+        AND in_stock
+        AND image_url IS NOT NULL
+      ORDER BY category_key, id
     `;
   } catch (e) {
     console.error('Ошибка загрузки товаров производителя:', e);
@@ -91,9 +99,9 @@ export async function generateMetadata(
   const name = pick(producer, 'name', locale);
   const region = pickRegion(producer, locale);
 
-  const title = producer.seo_title
+  const title = pick(producer, 'seo_title', locale)
     || `${name} — товары производителя${region ? ` из региона ${region}` : ''} | BAZARI ARA`;
-  const description = producer.seo_description
+  const description = pick(producer, 'seo_description', locale)
     || `Продукты от ${name}${region ? `, ${region}` : ''}. Ассортимент, история хозяйства и доставка по Тбилиси.`;
 
   const url = `https://bazariara.ge/${locale}/farmers/${slug}`;
@@ -116,10 +124,21 @@ export async function generateMetadata(
   };
 }
 
-function pick(p: Producer, field: 'name' | 'description', locale: Locale): string {
-  if (locale === 'en') return (p[`${field}_en`] as string) || (p[field] as string) || '';
-  if (locale === 'ka') return (p[`${field}_ka`] as string) || (p[field] as string) || '';
-  return (p[field] as string) || '';
+/**
+ * Единое правило fallback для всего раздела (ТЗ 5.2):
+ * поле на выбранном языке → если пусто, русский. Никогда — пустая строка
+ * при заполненном русском. Английский промежуточным шагом не берём:
+ * русский здесь основной, на нём заполнено всё.
+ */
+function pick(
+  p: Producer,
+  field: 'name' | 'description' | 'locality' | 'seo_title' | 'seo_description',
+  locale: Locale
+): string {
+  const base = ((p as any)[field] as string) || '';
+  if (locale === 'ru') return base;
+  const tr = ((p as any)[`${field}_${locale}`] as string) || '';
+  return tr.trim() ? tr : base;
 }
 
 function pickRegion(p: Producer, locale: Locale): string {
@@ -149,7 +168,8 @@ export default async function ProducerPage(
   const name = pick(producer, 'name', locale);
   const description = pick(producer, 'description', locale);
   const region = pickRegion(producer, locale);
-  const place = [region, producer.locality].filter(Boolean).join(', ');
+  const locality = pick(producer, 'locality', locale);
+  const place = [region, locality].filter(Boolean).join(', ');
 
   const socials = [
     producer.website   && { label: 'Сайт',      href: producer.website },
@@ -165,7 +185,7 @@ export default async function ProducerPage(
     url: `https://bazariara.ge/${locale}/farmers/${slug}`,
     image: producer.image_url || undefined,
     address: place
-      ? { '@type': 'PostalAddress', addressRegion: region, addressLocality: producer.locality || undefined, addressCountry: 'GE' }
+      ? { '@type': 'PostalAddress', addressRegion: region, addressLocality: locality || undefined, addressCountry: 'GE' }
       : undefined,
     sameAs: socials.map((s) => s.href),
   };
@@ -204,7 +224,7 @@ export default async function ProducerPage(
                     {region}
                   </Link>
                 ) : region}
-                {producer.locality && `, ${producer.locality}`}
+                {locality && `, ${locality}`}
               </p>
             )}
 
@@ -245,7 +265,7 @@ export default async function ProducerPage(
             <p className="text-ink-500">
               {locale === 'en' ? 'No products available right now.'
                 : locale === 'ka' ? 'ამჟამად პროდუქცია არ არის.'
-                : 'Сейчас товаров этого производителя нет в наличии.'}
+                : 'Сейчас товаров этого производителя нет в продаже.'}
             </p>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">

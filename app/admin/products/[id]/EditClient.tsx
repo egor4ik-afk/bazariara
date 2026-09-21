@@ -1,4 +1,6 @@
 'use client';
+
+import ProducerPicker from '@/app/admin/ProducerPicker';
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -27,6 +29,7 @@ type Product = {
   sub_category_ka?: string;
   farmer_slug?: string;
   farmer_name?: string;
+  producer_id?: number | null;
   image_url?: string;
   images?: string[];
 } | null;
@@ -55,15 +58,6 @@ const TextareaField = memo(({ value, onChange, placeholder }: {
     placeholder={placeholder} style={textareaStyle} />
 ));
 TextareaField.displayName = 'TextareaField';
-
-/**
- * Список ферм. Пока их единицы, поэтому держим здесь, а не в отдельной таблице:
- * добавить хозяйство = одна строка. Поле slug/name всё равно остаётся
- * редактируемым вручную, так что справочник ничего не запрещает.
- */
-const FARMERS = [
-  { slug: 'chventan', name: 'CH\u2019VENTAN' },
-];
 
 const FieldWrapper = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div style={{ marginBottom: 20 }}>
@@ -151,6 +145,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
     sub_category_ka: String(product?.sub_category_ka || ''),
     farmer_slug:     String(product?.farmer_slug || ''),
     farmer_name:     String(product?.farmer_name || ''),
+    producer_id:     product?.producer_id ?? null,
     source_url:      String(product?.source_url || ''),
   });
 
@@ -382,38 +377,28 @@ export default function ProductEditClient({ product }: { product: Product }) {
             </FieldWrapper>
           </Section>
 
-          <Section title="Производитель">
+          <Section title="Фермер / производитель">
             <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))', margin: '0 0 12px' }}>
-              Ферма или бренд. Имя показывается плашкой на карточке товара,
-              slug ведёт на страницу /farmers/&lt;slug&gt;. Оставьте пустым для обычного товара.
+              Выберите из списка производителей. Имя и ссылка на страницу фермера
+              подставятся на сайте сами. Чтобы товар был без фермера — нажмите ×.
             </p>
-            <FieldWrapper label="Компания / ферма">
-              <select
-                value={form.farmer_slug || ''}
-                onChange={e => {
-                  const f = FARMERS.find(x => x.slug === e.target.value);
-                  setForm(prev => ({
-                    ...prev,
-                    farmer_slug: f ? f.slug : '',
-                    farmer_name: f ? f.name : '',
-                  }));
-                }}
-                style={{ width: '100%', padding: '9px 12px', background: 'rgb(var(--cream-200))',
-                         border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))',
-                         fontSize: 13, outline: 'none' }}
-              >
-                <option value="">— без производителя —</option>
-                {FARMERS.map(f => (
-                  <option key={f.slug} value={f.slug}>{f.name}</option>
-                ))}
-              </select>
+            <FieldWrapper label="Фермер">
+              <ProducerPicker
+                value={form.producer_id ?? null}
+                onChange={(id, p) => setForm(prev => ({
+                  ...prev,
+                  producer_id: id,
+                  // имя и slug проставит триггер в БД; здесь — только
+                  // чтобы превью в форме сразу было актуальным
+                  farmer_slug: p ? p.slug : '',
+                  farmer_name: p ? p.name : '',
+                }))}
+              />
             </FieldWrapper>
-            <FieldWrapper label="Название (как на карточке)">
-              <InputField value={form.farmer_name} onChange={v => setField('farmer_name', v)} placeholder="CH'VENTAN" />
-            </FieldWrapper>
-            <FieldWrapper label="Slug (URL страницы фермера)">
-              <InputField value={form.farmer_slug} onChange={v => setField('farmer_slug', v)} placeholder="chventan" />
-            </FieldWrapper>
+            <p style={{ fontSize: 11, color: 'rgb(var(--ink-500))', marginTop: 6 }}>
+              Нужного фермера нет? Создайте его в разделе{' '}
+              <a href="/admin/producers" style={{ color: 'rgb(var(--brand-600))' }}>Производители</a>.
+            </p>
           </Section>
 
           <Section title="Категория">

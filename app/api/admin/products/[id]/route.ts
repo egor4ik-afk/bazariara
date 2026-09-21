@@ -39,6 +39,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Params }) {
   maybe('sub_category',    'sub_category');
   maybe('sub_category_en', 'sub_category_en');
   maybe('sub_category_ka', 'sub_category_ka');
+  // Триггер trg_sync_product_producer сам проставит farmer_slug/farmer_name
+  // по producer_id — отдельно их слать не нужно, но и не вредно.
+  maybe('producer_id',     'producer_id', v => (v ? Number(v) : null));
   maybe('farmer_slug',     'farmer_slug', v => String(v || '').trim() || null);
   maybe('farmer_name',     'farmer_name', v => String(v || '').trim() || null);
   maybe('image_url',       'image_url');

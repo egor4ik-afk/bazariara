@@ -44,12 +44,19 @@ const COPY = {
   },
 } as const;
 
-export default function ProducerApplicationForm({ locale }: { locale: Locale }) {
+export default function ProducerApplicationForm({
+  locale,
+  startOpen = false,
+}: {
+  locale: Locale;
+  /** На отдельной странице анкеты форма открыта сразу. */
+  startOpen?: boolean;
+}) {
   const c = COPY[locale];
 
   // Форма развёрнута не сразу: на главной это блок-призыв, а не анкета
   // на девять полей поперёк экрана.
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(startOpen);
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);

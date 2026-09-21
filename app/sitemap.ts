@@ -146,6 +146,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...localizedEntries('/powerbank-i-zaryadki', new Date(), 'monthly', 0.6),
     ...localizedEntries('/gostintsy-iz-gruzii', new Date(), 'weekly', 0.9),
     ...localizedEntries('/farmers', new Date(), 'weekly', 0.8),
+    ...localizedEntries('/farmers/join', new Date(), 'monthly', 0.5),
     ...localizedEntries('/regions', new Date(), 'weekly', 0.8),
     ...localizedEntries('/blog', new Date(), 'daily', 0.8),
     ...producerEntries,

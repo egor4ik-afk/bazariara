@@ -189,6 +189,7 @@ export default function SidebarMenu() {
               { href: `/${language}/regions`,  label: t('footer.regions') },
               { href: `/${language}/blog`,     label: t('footer.blog') },
               { href: `/${language}/gostintsy-iz-gruzii`, label: t('footer.gifts') },
+              { href: `/${language}/farmers/join`, label: t('footer.becomeFarmer') },
             ].map((item) => (
               <Link
                 key={item.href}

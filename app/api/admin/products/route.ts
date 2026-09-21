@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     category_key: category_key_in,
     category, category_en, category_ka,
     sub_category, sub_category_en, sub_category_ka,
-    farmer_slug, farmer_name,
+    farmer_slug, farmer_name, producer_id,
     image_url, source_url, images,
   } = body;
 
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       availability,
       category, category_en, category_ka,
       sub_category, sub_category_en, sub_category_ka,
-      farmer_slug, farmer_name,
+      farmer_slug, farmer_name, producer_id,
       image_url, images, source_url
     ) VALUES (
       'gorgia', ${external_id || null}, ${category_key}, 'GEL',
@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       ${catRu}, ${catEn}, ${catKa},
       ${sub_category || null}, ${sub_category_en || null}, ${sub_category_ka || null},
       ${(farmer_slug || '').trim() || null}, ${(farmer_name || '').trim() || null},
+      ${producer_id ? Number(producer_id) : null},
       ${image_url || null},
       ${JSON.stringify(imagesArray)}::jsonb,
       ${source_url || null}

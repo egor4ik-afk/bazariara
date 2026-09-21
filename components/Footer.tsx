@@ -22,6 +22,7 @@ const Footer = () => {
     { href: L('/farmers'),  label: t('footer.farmers') },
     { href: L('/regions'),  label: t('footer.regions') },
     { href: L('/blog'),     label: t('footer.blog') },
+    { href: L('/farmers/join'), label: t('footer.becomeFarmer') },
   ];
 
   const catalog = [

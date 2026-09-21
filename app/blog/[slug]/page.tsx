@@ -79,15 +79,31 @@ function pick(p: any, field: string, locale: Locale): string {
  * формате, а `react-markdown` с плагинами — это +60 КБ в бандл ради
  * пяти конструкций. Если формат усложнится, замена займёт полчаса.
  */
-function renderMarkdown(md: string): string {
+function renderMarkdown(md: string, coverUrl?: string | null): string {
   const esc = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const blocks = esc(md).split(/\n{2,}/);
 
+  // Обложка и картинки в тексте — два независимых механизма (ТЗ v1.0, раздел 7).
+  // Обложка в тело не вставляется никогда. Но в старых статьях её уже
+  // вставили в начало текста руками, и она выводилась дважды: в шапке и
+  // сразу под ней. Пропускаем ТОЛЬКО первую картинку текста и ТОЛЬКО если
+  // это тот же самый файл. Любая другая картинка — в том числе та же
+  // обложка ниже по тексту, если автор так решил, — остаётся на месте.
+  let firstContentSeen = false;
+
   return blocks.map((block) => {
     const b = block.trim();
     if (!b) return '';
+
+    const isFirst = !firstContentSeen;
+    firstContentSeen = true;
+
+    if (isFirst && coverUrl) {
+      const lead = b.match(/^!\[[^\]]*\]\(([^)\s]+)\)$/);
+      if (lead && sameImage(lead[1], coverUrl)) return '';
+    }
 
     if (b.startsWith('### ')) return `<h3>${inline(b.slice(4))}</h3>`;
     if (b.startsWith('## '))  return `<h2>${inline(b.slice(3))}</h2>`;
@@ -148,6 +164,14 @@ function renderMarkdown(md: string): string {
 
     return `<p>${inline(b).replace(/\n/g, '<br/>')}</p>`;
   }).join('');
+}
+
+/** Сравнение без учёта протокола, query и регистра — один файл
+ *  мог попасть в текст и в обложку с разными хвостами. */
+function sameImage(a: string, b: string): boolean {
+  const norm = (u: string) =>
+    u.replace(/&amp;/g, '&').replace(/^https?:\/\//, '').split('?')[0].toLowerCase();
+  return norm(a) === norm(b);
 }
 
 function inline(s: string): string {
@@ -284,7 +308,7 @@ export default async function PostPage(
 
           <div
             className="post-body text-ink-800 leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: renderMarkdown(body) }}
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(body, post.cover_url) }}
           />
         </article>
 

@@ -9,6 +9,10 @@ type Producer = {
   website: string | null; instagram: string | null; facebook: string | null;
   status: string; seo_title: string | null; seo_description: string | null;
   sort_order: number; product_count: number;
+  description_en?: string | null; description_ka?: string | null;
+  locality_en?: string | null; locality_ka?: string | null;
+  seo_title_en?: string | null; seo_title_ka?: string | null;
+  seo_description_en?: string | null; seo_description_ka?: string | null;
 };
 
 type Application = {
@@ -30,6 +34,8 @@ export default function ProducersAdmin() {
   const [regions, setRegions] = useState<Region[]>([]);
   const [editing, setEditing] = useState<Partial<Producer> | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [lang, setLang] = useState<'ru' | 'en' | 'ka'>('ru');
+  const [linked, setLinked] = useState<any[]>([]);
 
   const load = useCallback(async () => {
     const [p, a, r] = await Promise.all([
@@ -43,6 +49,19 @@ export default function ProducersAdmin() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Список товаров фермера — подгружаем при открытии редактора (ТЗ 4.1).
+  useEffect(() => {
+    if (!editing?.id) { setLinked([]); return; }
+    fetch(`/api/admin/producers?what=products&id=${editing.id}`)
+      .then((r) => r.json())
+      .then((d) => setLinked(d.products || []));
+  }, [editing?.id]);
+
+  /** Поле текущего языка: name → name_en / name_ka. RU — базовое поле. */
+  const k = (base: string) => (lang === 'ru' ? base : `${base}_${lang}`) as keyof Producer;
+  const v = (base: string) => ((editing as any)?.[k(base)] as string) || '';
+  const setL = (base: string) => (e: any) => setEditing({ ...editing!, [k(base)]: e.target.value });
 
   const save = async () => {
     if (!editing) return;
@@ -108,52 +127,112 @@ export default function ProducersAdmin() {
             {editing.id ? `Правка: ${editing.name}` : 'Новое хозяйство'}
           </h2>
 
+          {/* Языки (ТЗ 5.1): каждое переводимое поле заполняется
+              независимо. Пустой перевод на сайте падает на русский. */}
+          <div style={{ display: 'flex', gap: 6, marginBottom: 14, alignItems: 'center' }}>
+            {(['ru', 'en', 'ka'] as const).map((l) => (
+              <button key={l} onClick={() => setLang(l)}
+                style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                         border: '1px solid rgb(var(--ink-200))',
+                         background: lang === l ? 'rgb(var(--brand-600))' : 'transparent',
+                         color: lang === l ? 'rgb(var(--on-brand))' : 'rgb(var(--ink-700))' }}>
+                {l.toUpperCase()}
+              </button>
+            ))}
+            <span style={{ fontSize: 11, color: 'rgb(var(--ink-500))', marginLeft: 6 }}>
+              {lang === 'ru' ? 'основной язык — обязателен'
+                : 'перевод; если пусто, на сайте будет русский текст'}
+            </span>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(220px,1fr))', gap: 12 }}>
-            <Field label="slug (URL)">
-              <input style={box} value={editing.slug || ''} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="chventan" />
+            <Field label={`Название (${lang.toUpperCase()})`}>
+              <input style={box} value={v('name')} onChange={setL('name')} />
             </Field>
-            <Field label="Название">
-              <input style={box} value={editing.name || ''} onChange={(e) => setEditing({ ...editing, name: e.target.value })} />
+            <Field label={`Населённый пункт (${lang.toUpperCase()})`}>
+              <input style={box} value={v('locality')} onChange={setL('locality')} />
             </Field>
-            <Field label="Название EN">
-              <input style={box} value={editing.name_en || ''} onChange={(e) => setEditing({ ...editing, name_en: e.target.value })} />
+
+            {lang === 'ru' && (
+              <>
+                <Field label="slug (URL — одинаковый для всех языков)">
+                  <input style={box} value={editing.slug || ''} onChange={(e) => setEditing({ ...editing, slug: e.target.value })} placeholder="chventan" />
+                </Field>
+                <Field label="Регион">
+                  <select style={box} value={editing.region_id ?? ''} onChange={(e) => setEditing({ ...editing, region_id: e.target.value ? Number(e.target.value) : null })}>
+                    <option value="">— не указан —</option>
+                    {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Статус">
+                  <select style={box} value={editing.status || 'active'} onChange={(e) => setEditing({ ...editing, status: e.target.value })}>
+                    <option value="active">Активен (виден на сайте)</option>
+                    <option value="hidden">Скрыт</option>
+                  </select>
+                </Field>
+                <Field label="Фото (URL)">
+                  <input style={box} value={editing.image_url || ''} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} />
+                </Field>
+                <Field label="Сайт">
+                  <input style={box} value={editing.website || ''} onChange={(e) => setEditing({ ...editing, website: e.target.value })} />
+                </Field>
+                <Field label="Instagram">
+                  <input style={box} value={editing.instagram || ''} onChange={(e) => setEditing({ ...editing, instagram: e.target.value })} />
+                </Field>
+              </>
+            )}
+          </div>
+
+          <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
+            <Field label={`История хозяйства (${lang.toUpperCase()}) — абзацы разделяйте пустой строкой`}>
+              <textarea style={{ ...box, minHeight: 120, fontFamily: 'inherit' }}
+                value={v('description')} onChange={setL('description')} />
             </Field>
-            <Field label="Название KA">
-              <input style={box} value={editing.name_ka || ''} onChange={(e) => setEditing({ ...editing, name_ka: e.target.value })} />
+            <Field label={`SEO Title (${lang.toUpperCase()})`}>
+              <input style={box} value={v('seo_title')} onChange={setL('seo_title')} />
             </Field>
-            <Field label="Регион">
-              <select style={box} value={editing.region_id ?? ''} onChange={(e) => setEditing({ ...editing, region_id: e.target.value ? Number(e.target.value) : null })}>
-                <option value="">— не указан —</option>
-                {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
-              </select>
-            </Field>
-            <Field label="Населённый пункт">
-              <input style={box} value={editing.locality || ''} onChange={(e) => setEditing({ ...editing, locality: e.target.value })} />
-            </Field>
-            <Field label="Статус">
-              <select style={box} value={editing.status || 'active'} onChange={(e) => setEditing({ ...editing, status: e.target.value })}>
-                <option value="active">Активен (виден на сайте)</option>
-                <option value="hidden">Скрыт</option>
-              </select>
-            </Field>
-            <Field label="Фото (URL)">
-              <input style={box} value={editing.image_url || ''} onChange={(e) => setEditing({ ...editing, image_url: e.target.value })} />
-            </Field>
-            <Field label="Сайт">
-              <input style={box} value={editing.website || ''} onChange={(e) => setEditing({ ...editing, website: e.target.value })} />
-            </Field>
-            <Field label="Instagram">
-              <input style={box} value={editing.instagram || ''} onChange={(e) => setEditing({ ...editing, instagram: e.target.value })} />
+            <Field label={`SEO Description (${lang.toUpperCase()})`}>
+              <textarea style={{ ...box, minHeight: 50, fontFamily: 'inherit' }}
+                value={v('seo_description')} onChange={setL('seo_description')} />
             </Field>
           </div>
 
-          <div style={{ marginTop: 12 }}>
-            <Field label="История хозяйства (абзацы разделяйте пустой строкой)">
-              <textarea style={{ ...box, minHeight: 120, fontFamily: 'inherit' }}
-                value={editing.description || ''}
-                onChange={(e) => setEditing({ ...editing, description: e.target.value })} />
-            </Field>
-          </div>
+          {/* Связанные товары (ТЗ 4.1). Добавляются из карточки товара:
+              связь хранится в products.producer_id, дублировать её
+              ещё и здесь значило бы завести второй источник правды. */}
+          {editing.id && (
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: '1px solid rgb(var(--ink-200))' }}>
+              <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>
+                Товары фермера: {linked.length}
+              </p>
+              {linked.length === 0 ? (
+                <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))' }}>
+                  Пока нет. Откройте товар в разделе «Товары» и выберите этого фермера
+                  в блоке «Фермер / производитель».
+                </p>
+              ) : (
+                <div style={{ display: 'grid', gap: 6 }}>
+                  {linked.map((p) => (
+                    <a key={p.id} href={`/admin/products/${p.id}`}
+                       style={{ display: 'flex', gap: 10, alignItems: 'center', padding: 6,
+                                borderRadius: 8, textDecoration: 'none', color: 'rgb(var(--ink-900))',
+                                border: '1px solid rgb(var(--ink-200))' }}>
+                      {p.image_url
+                        ? <img src={p.image_url} alt="" style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 6 }} />
+                        : <span style={{ width: 36, height: 36 }} />}
+                      <span style={{ flexGrow: 1, fontSize: 13 }}>{p.name}</span>
+                      <span style={{ fontSize: 12, color: 'rgb(var(--ink-500))' }}>
+                        {p.price ? `${p.price} ₾` : '—'}
+                      </span>
+                      {!p.in_stock && (
+                        <span style={{ fontSize: 11, color: 'rgb(var(--clay))' }}>не в продаже</span>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button onClick={save} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, cursor: 'pointer' }}>
