@@ -48,6 +48,20 @@ async function autoTranslate(nameRu: string, origin: string): Promise<{ en: stri
 export async function GET(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
 
+  // Лёгкий режим для формы товара: только подкатегории одной категории.
+  const onlySubs = req.nextUrl.searchParams.get('subcategories');
+  if (onlySubs) {
+    try {
+      const rows = await sql`
+        SELECT key, name, name_en, name_ka FROM subcategories
+        WHERE category_key = ${onlySubs} ORDER BY name
+      `;
+      return NextResponse.json({ subcategories: rows });
+    } catch (e: any) {
+      return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
+    }
+  }
+
   try {
     const categories = await sql`
       SELECT c.category_key, c.name, c.name_en, c.name_ka,

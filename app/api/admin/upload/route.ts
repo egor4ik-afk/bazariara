@@ -30,7 +30,26 @@ const BUCKET    = 'izipost';
 const S3_PREFIX = 'bazariara';
 const CDN_URL   = 'https://cdn.relaxdev.ru/bazariara';
 
-const ALLOWED  = new Set(['jpg','jpeg','png','webp','gif','heic','heif','avif','tiff','tif','bmp']);
+/**
+ * Формат определяем по СОДЕРЖИМОМУ файла, а не по расширению.
+ *
+ * Список расширений ломался на любой экзотике: .jfif — это обычный JPEG,
+ * который Windows сохраняет из браузера, но в список он не входил и
+ * отбивался с «Неподдерживаемый формат». Та же история ждала .jpe, .pjpeg,
+ * .jfi, файлы без расширения и скриншоты с кривыми именами.
+ *
+ * Теперь принимаем всё, что sharp умеет прочитать. HEIC/HEIF узнаём по
+ * сигнатуре ftyp внутри файла — расширение у них тоже бывает любым.
+ */
+function sniffHeic(buf: Buffer): boolean {
+  if (buf.length < 12) return false;
+  if (buf.toString('ascii', 4, 8) !== 'ftyp') return false;
+  const brand = buf.toString('ascii', 8, 12);
+  return ['heic', 'heix', 'hevc', 'heim', 'heis', 'hevm', 'hevs', 'mif1', 'msf1'].includes(brand);
+}
+
+/** Видео и прочее в этот роут не пускаем — у функции лимит тела 4.5 МБ. */
+const VIDEO_EXT = new Set(['mp4', 'mov', 'webm', 'm4v', 'avi', 'mkv']);
 const MAX_SIZE = 4 * 1024 * 1024;   // лимит тела функции на Vercel — 4.5 МБ
 
 export async function POST(req: NextRequest) {
@@ -39,8 +58,11 @@ export async function POST(req: NextRequest) {
   const filename = req.nextUrl.searchParams.get('filename') || 'upload.jpg';
   const ext      = filename.split('.').pop()?.toLowerCase() || 'jpg';
 
-  if (!ALLOWED.has(ext)) {
-    return NextResponse.json({ error: `Неподдерживаемый формат: .${ext}` }, { status: 415 });
+  if (VIDEO_EXT.has(ext)) {
+    return NextResponse.json(
+      { error: 'Видео загружается кнопкой «Видео» — оно идёт напрямую в хранилище, минуя лимит 4.5 МБ.' },
+      { status: 415 }
+    );
   }
 
   let input = Buffer.from(await req.arrayBuffer());
@@ -54,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // HEIC/HEIF с айфона: sharp на Vercel их не декодирует, идём через JS-декодер
-    if (ext === 'heic' || ext === 'heif') {
+    if (ext === 'heic' || ext === 'heif' || sniffHeic(input)) {
       const heicConvert = (await import('heic-convert')).default;
       input = Buffer.from(
         await heicConvert({ buffer: input as any, format: 'JPEG', quality: 0.92 })
@@ -91,7 +113,9 @@ export async function POST(req: NextRequest) {
   } catch (e: any) {
     console.error('upload error:', e?.message);
     return NextResponse.json(
-      { error: `Не удалось обработать .${ext}: ${e?.message || String(e)}` },
+      // Сюда попадает только то, что sharp не смог прочитать совсем —
+      // то есть это действительно не картинка или битый файл.
+      { error: `Файл не распознан как изображение (.${ext}): ${e?.message || String(e)}` },
       { status: 500 }
     );
   }

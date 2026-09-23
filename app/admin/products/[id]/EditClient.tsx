@@ -1,6 +1,7 @@
 'use client';
 
 import ProducerPicker from '@/app/admin/ProducerPicker';
+import { isVideoUrl } from '@/lib/media';
 import { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -58,6 +59,12 @@ const TextareaField = memo(({ value, onChange, placeholder }: {
     placeholder={placeholder} style={textareaStyle} />
 ));
 TextareaField.displayName = 'TextareaField';
+
+function aiLabel(meta: any): string {
+  if (!meta) return '';
+  const who = meta.provider === 'yandex' ? '⚠️ Yandex (платно)' : 'OpenCode';
+  return `${who} · ${meta.model} · ${(meta.ms / 1000).toFixed(1)}с`;
+}
 
 const FieldWrapper = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div style={{ marginBottom: 20 }}>
@@ -189,6 +196,41 @@ export default function ProductEditClient({ product }: { product: Product }) {
     setForm(prev => ({ ...prev, [key]: value }));
   }, []);
 
+  // Кто последним ответил — показывается под кнопкой генерации.
+  const [aiInfo, setAiInfo] = useState<any>(null);
+
+  const [subs, setSubs] = useState<{ key: string; name: string; name_en: string | null; name_ka: string | null }[]>([]);
+  const [translatingSub, setTranslatingSub] = useState(false);
+
+  // Подкатегории выбранной категории: перечитываем при смене категории.
+  useEffect(() => {
+    if (!form.category_key) { setSubs([]); return; }
+    fetch(`/api/admin/categories?subcategories=${encodeURIComponent(form.category_key)}`)
+      .then(r => r.json())
+      .then(d => setSubs(d.subcategories || []))
+      .catch(() => setSubs([]));
+  }, [form.category_key]);
+
+  async function translateSub() {
+    const ru = form.sub_category.trim();
+    if (!ru) return;
+    setTranslatingSub(true);
+    try {
+      const res = await fetch('/api/admin/generate-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name_ru: ru, mode: 'name' }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error);
+      setForm(prev => ({ ...prev, sub_category: ru, sub_category_en: d.en || '', sub_category_ka: d.ka || '' }));
+      showToast(`Переведено · ${aiLabel(d.meta)}`, 'ok');
+    } catch (e: any) {
+      showToast(`Не удалось перевести: ${e.message}`, 'err');
+    }
+    setTranslatingSub(false);
+  }
+
   async function generateDescription() {
     if (!form.name_ru && !form.name_en && !form.name_ka) {
       showToast('Сначала введите название товара', 'err'); return;
@@ -201,24 +243,65 @@ export default function ProductEditClient({ product }: { product: Product }) {
         body: JSON.stringify({
           name_ru: form.name_ru, name_en: form.name_en, name_ka: form.name_ka,
           category: form.category, sub_category: form.sub_category,
-          provider: 'yandex',
           mode: 'description',
         }),
       });
-      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || res.statusText);
       if (data.ru) setField('description_ru', data.ru);
       if (data.en) setField('description_en', data.en);
       if (data.ka) setField('description_ka', data.ka);
-      showToast('Описание сгенерировано ✓', 'ok');
+      setAiInfo(data.meta || null);
+      showToast(`Описание готово · ${aiLabel(data.meta)}`, 'ok');
     } catch (e) {
       showToast(`Ошибка генерации: ${e}`, 'err');
     }
     setGeneratingDesc(false);
   }
 
+  /**
+   * Видео — напрямую в бакет по подписанной ссылке. Через /api/admin/upload
+   * оно не пройдёт: у функции Vercel лимит тела 4.5 МБ.
+   */
+  async function uploadVideo(file: File): Promise<string> {
+    const signRes = await fetch('/api/admin/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename: file.name, size: file.size }),
+    });
+    const sign = await signRes.json();
+    if (!signRes.ok) throw new Error(sign.error || 'нет подписи');
+
+    const put = await fetch(sign.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': sign.contentType, 'x-amz-acl': 'public-read' },
+      body: file,
+    });
+    if (!put.ok) throw new Error(`хранилище ответило ${put.status}`);
+    return sign.publicUrl as string;
+  }
+
   async function uploadFile(file: File, replaceIndex?: number) {
     const idx = replaceIndex ?? images.length;
+
+    if (file.type.startsWith('video/') || /\.(mp4|mov|webm|m4v)$/i.test(file.name)) {
+      setUploading(idx);
+      try {
+        const url = await uploadVideo(file);
+        setImages(prev => {
+          const next = [...prev];
+          if (replaceIndex !== undefined) next[replaceIndex] = url; else next.push(url);
+          return next;
+        });
+        showToast('Видео загружено ✓', 'ok');
+      } catch (e: any) {
+        showToast(`Ошибка загрузки видео: ${e.message}`, 'err');
+      }
+      setUploading(null);
+      if (fileRef.current) fileRef.current.value = '';
+      return;
+    }
+
     setUploading(idx);
     try {
       const res = await fetch(
@@ -366,6 +449,14 @@ export default function ProductEditClient({ product }: { product: Product }) {
               <span style={{ fontSize: 16 }}>✨</span>
               {generatingDesc ? 'Генерируем...' : 'Сгенерировать описание AI (3 языка)'}
             </button>
+            {aiInfo && (
+              <p style={{ fontSize: 11, marginTop: 6,
+                          color: aiInfo.provider === 'yandex' ? 'rgb(var(--clay))' : 'rgb(var(--ink-500))' }}>
+                Ответил: {aiLabel(aiInfo)}
+                {aiInfo.skipped?.length ? ` · не ответили: ${aiInfo.skipped.length}` : ''}
+                {aiInfo.note ? ` · ${aiInfo.note}` : ''}
+              </p>
+            )}
             <FieldWrapper label="Русский">
               <TextareaField value={form.description_ru} onChange={v => setField('description_ru', v)} placeholder="Описание..." />
             </FieldWrapper>
@@ -428,15 +519,64 @@ export default function ProductEditClient({ product }: { product: Product }) {
               <InputField value={form.category_ka} onChange={v => setField('category_ka', v)} disabled/>
             </FieldWrapper>
 
-            <FieldWrapper label="Подкатегория (ru)">
-              <InputField value={form.sub_category} onChange={v => setField('sub_category', v)} />
+            {/* Подкатегория: сначала выбор из уже существующих в этой
+                категории — с готовыми переводами. Ручной ввод остался
+                для новой, и её можно перевести кнопкой. */}
+            <FieldWrapper label="Подкатегория">
+              <select
+                value={subs.some(x => x.name === form.sub_category) ? form.sub_category : (form.sub_category ? '__custom' : '')}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (v === '__custom') { setField('sub_category', form.sub_category || ' '); return; }
+                  const sub = subs.find(x => x.name === v);
+                  setForm(prev => ({
+                    ...prev,
+                    sub_category:    sub ? sub.name : '',
+                    sub_category_en: sub ? (sub.name_en || '') : '',
+                    sub_category_ka: sub ? (sub.name_ka || '') : '',
+                  }));
+                }}
+                style={{ width: '100%', padding: '9px 12px', background: 'rgb(var(--cream-200))',
+                         border: '1px solid rgb(var(--ink-200))', borderRadius: 8,
+                         color: 'rgb(var(--ink-900))', fontSize: 13, outline: 'none' }}
+              >
+                <option value="">— без подкатегории —</option>
+                {subs.map(x => (
+                  <option key={x.key} value={x.name}>
+                    {x.name}{x.name_en ? ` · ${x.name_en}` : ''}
+                  </option>
+                ))}
+                <option value="__custom">+ Новая подкатегория…</option>
+              </select>
             </FieldWrapper>
-            <FieldWrapper label="Subcategory (en)">
-              <InputField value={form.sub_category_en} onChange={v => setField('sub_category_en', v)} />
-            </FieldWrapper>
-            <FieldWrapper label="ქვეკატეგორია (ka)">
-              <InputField value={form.sub_category_ka} onChange={v => setField('sub_category_ka', v)} />
-            </FieldWrapper>
+
+            {form.sub_category && !subs.some(x => x.name === form.sub_category) && (
+              <>
+                <FieldWrapper label="Новая подкатегория (ru)">
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ flexGrow: 1 }}>
+                      <InputField value={form.sub_category.trim()} onChange={v => setField('sub_category', v)} />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={translateSub}
+                      disabled={translatingSub || !form.sub_category.trim()}
+                      style={{ padding: '0 12px', borderRadius: 8, border: '1px solid rgb(var(--ink-200))',
+                               background: 'transparent', color: 'rgb(var(--brand-600))', fontSize: 12,
+                               fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {translatingSub ? 'Переводим…' : '🌐 Перевести'}
+                    </button>
+                  </div>
+                </FieldWrapper>
+                <FieldWrapper label="Subcategory (en)">
+                  <InputField value={form.sub_category_en} onChange={v => setField('sub_category_en', v)} />
+                </FieldWrapper>
+                <FieldWrapper label="ქვეკატეგორია (ka)">
+                  <InputField value={form.sub_category_ka} onChange={v => setField('sub_category_ka', v)} />
+                </FieldWrapper>
+              </>
+            )}
           </Section>
         </div>
 
@@ -465,11 +605,11 @@ export default function ProductEditClient({ product }: { product: Product }) {
           </Section>
 
           {/* Фото */}
-          <Section title={`Фото (${images.length})`}>
+          <Section title={`Фото и видео (${images.length})`}>
           <input
             ref={fileRef}
             type="file"
-            accept="image/*,.heic,.heif,.HEIC,.HEIF"
+            accept="image/*,video/*,.heic,.heif,.HEIC,.HEIF,.jfif"
             multiple
             style={{ display: 'none' }}
             onChange={e => { Array.from(e.target.files || []).forEach(f => uploadFile(f)); }}
@@ -477,7 +617,7 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
             <button onClick={() => fileRef.current?.click()} disabled={uploading !== null}
               style={{ width: '100%', padding: '10px', marginBottom: 16, background: 'rgb(var(--cream-200))', border: '2px dashed rgb(var(--ink-200))', borderRadius: 8, color: uploading !== null ? 'rgb(var(--ink-500))' : 'rgb(var(--brand-600))', fontSize: 13, cursor: uploading !== null ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              {uploading !== null ? '⟳ Загружаем...' : '+ Добавить фото'}
+              {uploading !== null ? '⟳ Загружаем...' : '+ Добавить фото или видео'}
             </button>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
@@ -485,7 +625,9 @@ export default function ProductEditClient({ product }: { product: Product }) {
                 <div key={img} style={{ position: 'relative', aspectRatio: '1', background: 'rgb(var(--cream-200))', borderRadius: 8, overflow: 'hidden', border: i === 0 ? '2px solid rgb(var(--brand-600))' : '2px solid rgb(var(--ink-200))' }}>
                   {uploading === i
                     ? <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgb(var(--ink-500))', fontSize: 11 }}>⟳ загрузка…</div>
-                    : <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : isVideoUrl(img)
+                      ? <video src={img} muted playsInline preload="metadata" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <img src={img} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   }
                   {i === 0 && (
                     <div style={{ position: 'absolute', top: 4, left: 4, background: 'rgb(var(--brand-600))', color: 'rgb(var(--cream-100))', fontSize: 9, fontWeight: 700, padding: '2px 5px', borderRadius: 4 }}>ГЛАВНОЕ</div>

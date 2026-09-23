@@ -2,14 +2,14 @@
 'use server';
 
 import { unstable_cache } from 'next/cache';
-import sql from '@/lib/db';
+import sql, { withRetry } from '@/lib/db';
 import { Product, Category } from '@/lib/types';
 
 type Row = Record<string, unknown>;
 
 export const getCategories = unstable_cache(
   async () => {
-    const catRows = await sql`
+    const catRows = await withRetry(() => sql`
       SELECT c.category_key AS key, c.name, c.name_en, c.name_ka,
              COALESCE(
                NULLIF(c.category_image, ''),
@@ -23,7 +23,7 @@ export const getCategories = unstable_cache(
              ) AS image_url
       FROM categories c
       ORDER BY c.name
-    `;
+    `);
     return (catRows as Row[]).map((r) => ({
       key:      r.key as string,
       name:     r.name as string,
@@ -39,7 +39,7 @@ export const getCategories = unstable_cache(
 export const getSubCategories = unstable_cache(
   async (category: string) => {
     if (category === 'all') return [];
-    const subRows = await sql`
+    const subRows = await withRetry(() => sql`
       SELECT s.key, s.name, s.name_en, s.name_ka,
              COALESCE(
                NULLIF(s.image_url, ''),
@@ -55,7 +55,7 @@ export const getSubCategories = unstable_cache(
       FROM subcategories s
       WHERE s.category_key = ${category}
       ORDER BY s.name
-    `;
+    `);
     return (subRows as Row[]).map((r) => ({
       key:      r.key as string,
       name:     r.name as string,

@@ -1,42 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
 import OpenAI from 'openai';
+import { aiChat, aiKeyName, AI_MODELS, yandexFallbackEnabled } from '@/lib/ai';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
 
 const YANDEX_FOLDER  = process.env.YANDEX_FOLDER  || 'b1gcr5m4ptniag2qpsqm';
 const YANDEX_API_KEY = process.env.YANDEX_API_KEY || '';
-const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || '';
 
-// OpenCode Go — OpenAI-compatible endpoint
-const OPENCODE_BASE_URL = 'https://opencode.ai/zen/go/v1';
 
-// Primary models (tried in order)  
-const OPENCODE_MODELS = [
-  'deepseek-v4-pro',
-  'deepseek-v4-flash',
-  'glm-5.1',
-  'kimi-k2.5',
-];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
-
-function is429(e: any): boolean {
-  return (
-    e?.status === 429 ||
-    String(e?.message || '').includes('429') ||
-    String(e?.message || '').includes('rate') ||
-    String(e?.message || '').includes('quota')
-  );
-}
-
-function isNotFound(e: any): boolean {
-  return (
-    e?.status === 404 ||
-    String(e?.message || '').includes('NOT_FOUND') ||
-    String(e?.message || '').includes('not found')
-  );
-}
 
 function parseJson(text: string): { ru: string; en: string; ka: string } {
   let clean = text.replace(/```json\s*|\s*```/g, '').trim();
@@ -49,9 +23,9 @@ function parseJson(text: string): { ru: string; en: string; ka: string } {
   try {
     const parsed = JSON.parse(clean);
     return {
-      ru: String(parsed.ru || '').slice(0, 500),
-      en: String(parsed.en || '').slice(0, 500),
-      ka: String(parsed.ka || '').slice(0, 500),
+      ru: String(parsed.ru || '').slice(0, 2000),
+      en: String(parsed.en || '').slice(0, 2000),
+      ka: String(parsed.ka || '').slice(0, 2000),
     };
   } catch {
     const get = (key: string) => {
@@ -59,9 +33,9 @@ function parseJson(text: string): { ru: string; en: string; ka: string } {
       return m ? m[1] : '';
     };
     return {
-      ru: get('ru').slice(0, 500),
-      en: get('en').slice(0, 500),
-      ka: get('ka').slice(0, 500),
+      ru: get('ru').slice(0, 2000),
+      en: get('en').slice(0, 2000),
+      ka: get('ka').slice(0, 2000),
     };
   }
 }
@@ -70,7 +44,7 @@ function parseJson(text: string): { ru: string; en: string; ka: string } {
 
 function buildDescriptionPrompt(name: string, cat: string) {
   return `You are a product copywriter for an online store in Georgia (country).
-Write a short product description (2-3 sentences, max 200 chars each) for:
+Write a product description of 80-140 words per language for:
 Product: ${name}
 Category: ${cat}
 
@@ -92,46 +66,17 @@ async function generateWithOpenCode(
   name: string,
   cat: string,
   mode: 'description' | 'name'
-): Promise<{ ru: string; en: string; ka: string }> {
-  if (!OPENCODE_API_KEY) throw new Error('OPENCODE_API_KEY not set');
-
-  const client = new OpenAI({
-    apiKey: OPENCODE_API_KEY,
-    baseURL: OPENCODE_BASE_URL,
+): Promise<{ ru: string; en: string; ka: string; _meta: Meta }> {
+  const r = await aiChat({
+    system: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
+    user: mode === 'description' ? buildDescriptionPrompt(name, cat) : buildNamePrompt(name),
+    temperature: 0.3,
+    maxTokens: mode === 'description' ? 2500 : 400,
   });
-
-  const prompt = mode === 'description'
-    ? buildDescriptionPrompt(name, cat)
-    : buildNamePrompt(name);
-
-  for (const model of OPENCODE_MODELS) {
-    try {
-      const response = await client.chat.completions.create({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 800,
-      });
-
-      const text = response.choices?.[0]?.message?.content || '';
-      return parseJson(text);
-    } catch (e: any) {
-      if (is429(e) || isNotFound(e)) {
-        console.warn(`OpenCode model ${model} failed (${e?.status}), trying next…`);
-        continue;
-      }
-      throw e;
-    }
-  }
-
-  throw new Error('All OpenCode models exhausted');
+  return { ...parseJson(r.text), _meta: { provider: 'opencode', model: r.model, ms: r.ms, skipped: r.skipped } };
 }
+
+type Meta = { provider: 'opencode' | 'yandex'; model: string; ms: number; skipped?: string[] };
 
 async function generateWithYandex(
   name: string,
@@ -182,45 +127,63 @@ async function generateWithYandex(
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 
+/**
+ * GET — состояние AI без единого платного запроса: есть ли ключ, какие
+ * модели в очереди, включён ли фолбэк на Yandex. Показывается в админке,
+ * чтобы было видно, что работает, а не угадывать по счёту.
+ */
+export async function GET(req: NextRequest) {
+  if (!isAuthenticated(req)) return unauthorizedResponse();
+  return NextResponse.json({
+    opencode: { keyVar: aiKeyName(), models: AI_MODELS() },
+    yandex:   { configured: Boolean(YANDEX_API_KEY), fallback: yandexFallbackEnabled() },
+  });
+}
+
 export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
 
   const {
     name_ru, name_en, name_ka,
     category, sub_category,
-    provider = 'opencode',   // default → opencode
     mode = 'description',
   } = await req.json();
 
-  const name = name_ru || name_en || name_ka;
-  if (!name) return NextResponse.json({ error: 'Нет названия товара' }, { status: 400 });
+  // Параметр provider от клиента больше не принимаем: форма товара слала
+  // 'yandex' жёстко, и OpenCode не пробовался вообще. Провайдер решает сервер.
 
-  const cat = sub_category
-    ? `${category} / ${sub_category}`
-    : (category || '');
+  const name = name_ru || name_en || name_ka;
+  if (!name) return NextResponse.json({ error: 'Нет названия' }, { status: 400 });
+
+  const cat = sub_category ? `${category} / ${sub_category}` : (category || '');
 
   try {
-    let result: { ru: string; en: string; ka: string };
+    const r = await generateWithOpenCode(name, cat, mode);
+    const { _meta, ...texts } = r;
+    return NextResponse.json({ ...texts, meta: _meta });
+  } catch (e: any) {
+    console.warn('[AI] OpenCode не ответил:', e?.message);
 
-    if (provider === 'yandex') {
-      // Явно выбран Yandex
-      result = await generateWithYandex(name, cat, mode);
-    } else {
-      // opencode (default) → при ошибке fallback на Yandex
+    // Yandex — только если это явно разрешено переменной окружения.
+    // Раньше любая ошибка молча уходила туда, и деньги списывались
+    // без единого следа в интерфейсе.
+    if (yandexFallbackEnabled() && YANDEX_API_KEY) {
       try {
-        result = await generateWithOpenCode(name, cat, mode);
-      } catch (e: any) {
-        console.warn('OpenCode failed, falling back to Yandex:', e?.message);
-        result = await generateWithYandex(name, cat, mode);
+        const started = Date.now();
+        const y = await generateWithYandex(name, cat, mode);
+        return NextResponse.json({
+          ...y,
+          meta: { provider: 'yandex', model: 'yandexgpt-5.1', ms: Date.now() - started,
+                  note: `фолбэк: ${String(e?.message).slice(0, 120)}` },
+        });
+      } catch (ye: any) {
+        return NextResponse.json(
+          { error: `OpenCode: ${e?.message}. Yandex: ${ye?.message}` },
+          { status: 502 }
+        );
       }
     }
 
-    return NextResponse.json(result);
-  } catch (e: any) {
-    console.error('Generate description error:', e?.message || e);
-    return NextResponse.json(
-      { error: e?.message || String(e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: e?.message || String(e) }, { status: 502 });
   }
 }

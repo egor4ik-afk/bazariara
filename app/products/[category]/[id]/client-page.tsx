@@ -12,6 +12,7 @@ import { Pagination } from 'swiper/modules';
 import 'swiper/css';
 import 'swiper/css/pagination';
 import Image from 'next/image';
+import { isVideoUrl } from '@/lib/media';
 
 export type Product = {
   id: string;
@@ -161,27 +162,48 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                 <Swiper modules={[Pagination]} pagination={{ clickable: true }} className="w-full h-[400px] rounded-lg shadow-lg" loop={true}>
                   {uniqueImages.map((url, i) => (
                     <SwiperSlide key={i} className="relative h-full w-full">
-                      <Image
-                        src={url}
-                        alt={`${getTitle()} — фото ${i + 1}`}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 50vw"
-                        className="object-cover"
-                        priority={i === 0}
-                      />
+                      {isVideoUrl(url) ? (
+                        // На странице товара — полноценный плеер с управлением
+                        <video
+                          src={url}
+                          controls
+                          playsInline
+                          preload="metadata"
+                          className="absolute inset-0 w-full h-full object-contain bg-ink-900"
+                        />
+                      ) : (
+                        <Image
+                          src={url}
+                          alt={`${getTitle()} — фото ${i + 1}`}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 50vw"
+                          className="object-cover"
+                          priority={i === 0}
+                        />
+                      )}
                     </SwiperSlide>
                   ))}
                 </Swiper>
               ) : (
                 <div className="relative w-full h-[400px] rounded-lg shadow-lg overflow-hidden">
-                  <Image
-                    src={product.image_url || '/placeholder.png'}
-                    alt={getTitle()}
-                    fill
-                    sizes="(max-width: 768px) 100vw, 50vw"
-                    className="object-cover"
-                    priority
-                  />
+                  {isVideoUrl(product.image_url) ? (
+                    <video
+                      src={product.image_url!}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="absolute inset-0 w-full h-full object-contain bg-ink-900"
+                    />
+                  ) : (
+                    <Image
+                      src={product.image_url || '/placeholder-product.svg'}
+                      alt={getTitle()}
+                      fill
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                      className="object-cover"
+                      priority
+                    />
+                  )}
                 </div>
               )}
 
