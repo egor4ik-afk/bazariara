@@ -92,7 +92,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const producer = await getProducer(slug);
-  if (!producer) return { title: 'Производитель не найден | BAZARI ARA' };
+  if (!producer) return { title: 'Производитель не найден', robots: { index: false, follow: false } };
 
   const hdrs = await headers();
   const locale = getLocale(hdrs);
@@ -100,9 +100,15 @@ export async function generateMetadata(
   const region = pickRegion(producer, locale);
 
   const title = pick(producer, 'seo_title', locale)
-    || `${name} — товары производителя${region ? ` из региона ${region}` : ''} | BAZARI ARA`;
+    || (locale === 'en' ? `${name}: farm products${region ? `, ${region}` : ''}`
+      : locale === 'ka' ? `${name}: მეურნეობის პროდუქცია`
+      : `${name}: продукты хозяйства${region ? `, ${region}` : ''}`);
   const description = pick(producer, 'seo_description', locale)
-    || `Продукты от ${name}${region ? `, ${region}` : ''}. Ассортимент, история хозяйства и доставка по Тбилиси.`;
+    || (locale === 'en'
+      ? `${name}${region ? ` from ${region}` : ''}: the farm story and full range of products. Delivered across Tbilisi in 2 hours.`
+      : locale === 'ka'
+      ? `${name}${region ? `, ${region}` : ''}: მეურნეობის ისტორია და პროდუქცია. მიწოდება თბილისში 2 საათში.`
+      : `${name}${region ? `, ${region}` : ''}: история хозяйства и весь ассортимент продуктов. Доставка по Тбилиси за 2 часа.`);
 
   const url = `https://bazariara.ge/${locale}/farmers/${slug}`;
 

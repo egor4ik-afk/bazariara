@@ -31,7 +31,17 @@ module.exports = {
         'on-brand': v('on-brand'),
       },
       fontFamily: {
-        sans: ['var(--font-sans)', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        // Системный стек без var(). Прежний вариант начинался с
+        // var(--font-sans), которая нигде не определена, — по правилам CSS
+        // это делает недействительным ВСЁ объявление, и браузер падал
+        // на Times. Запасные шрифты после var() не рассматривались вовсе.
+        //
+        // Системные шрифты, а не веб-шрифт: ноль загрузок, лучше LCP, и
+        // грузинский покрыт — в Segoe UI, Roboto и SF есть mkhedruli.
+        sans: [
+          'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto',
+          'Noto Sans', 'Noto Sans Georgian', 'Helvetica Neue', 'Arial', 'sans-serif',
+        ],
       },
       boxShadow: {
         card:      '0 1px 2px rgb(var(--shadow-rgb) / .05), 0 4px 16px rgb(var(--shadow-rgb) / .07)',

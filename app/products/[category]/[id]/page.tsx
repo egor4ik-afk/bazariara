@@ -169,37 +169,98 @@ async function getRelatedProducts(categoryKey: string, excludeId: number) {
   }
 }
 
+/**
+ * Обрезка по границе слова. slice(0, 110) резал посреди слова, и в выдаче
+ * было «…натуральный мёд с пас — доставка по Тбилиси».
+ */
+function clipWords(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).replace(/[,.;:—–-]+$/, '') + '…';
+}
+
+const META_COPY = {
+  ru: { buy: 'купить в Тбилиси',  delivery: 'Доставка по Тбилиси за 2 часа.', price: 'Цена',
+        fallback: (t: string) => `${t} с доставкой по Тбилиси за 2 часа.`, og: 'ru_GE' },
+  en: { buy: 'buy in Tbilisi',    delivery: 'Delivery across Tbilisi in 2 hours.', price: 'Price',
+        fallback: (t: string) => `${t}, delivered across Tbilisi in 2 hours.`, og: 'en_US' },
+  ka: { buy: 'იყიდე თბილისში',     delivery: 'მიწოდება თბილისში 2 საათში.', price: 'ფასი',
+        fallback: (t: string) => `${t} მიწოდებით თბილისში 2 საათში.`, og: 'ka_GE' },
+} as const;
+
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { category, id } = await params;
   const product = await getProduct(category, id);
 
   if (!product) {
+    // Шаблон layout допишет бренд сам; noindex — чтобы 404 не попадали в индекс
     return {
-      title: 'Товар не найден — BAZARI ARA',
-      description: 'Запрошенный товар не существует или был удалён.',
+      title: 'Товар не найден',
+      robots: { index: false, follow: false },
     };
   }
 
-  const title = `${product.title} — купить в Тбилиси с доставкой`;
-  const rawDescription = product.description
-    ? `${product.description.slice(0, 110)} — доставка по Тбилиси. Цена: ${product.price} ₾.`
-    : `Купите ${product.title} за ${product.price} ₾ с доставкой по Тбилиси за 2 часа.`;
-  const description = rawDescription.slice(0, 160);
+  const hdrs = await headers();
+  const lh = hdrs.get('x-locale');
+  const locale: 'ru' | 'en' | 'ka' = lh === 'en' || lh === 'ka' ? lh : 'ru';
+  const c = META_COPY[locale];
+
+  // Название и описание на языке страницы. Раньше /en и /ka получали
+  // русские title и description — Google показывал англоязычному
+  // пользователю сниппет на кириллице.
+  const name =
+    (locale === 'en' && product.title_en) ||
+    (locale === 'ka' && product.title_ka) ||
+    product.title;
+  const body =
+    (locale === 'en' && product.description_en) ||
+    (locale === 'ka' && product.description_ka) ||
+    product.description;
+
+  // «— купить в Тбилиси» вместо «— купить в Тбилиси с доставкой»: вместе
+  // с шаблоном « | BAZARI ARA» длинные названия уходили за 80 символов,
+  // и Google обрезал как раз коммерческий хвост.
+  const title = `${name} — ${c.buy}`;
+
+  // Цена только если она есть. У вина price = NULL, и в сниппет
+  // уезжало «Цена: 0 ₾» — выглядит как ошибка или бесплатная раздача.
+  const priceStr = product.price > 0 ? ` ${c.price}: ${product.price} ₾.` : '';
+  const tail = ` ${c.delivery}${priceStr}`;
+  const description = body
+    ? clipWords(body, 158 - tail.length) + tail
+    : c.fallback(name) + priceStr;
+
   const image = product.image_url || '/default-product.png';
-  const url = `https://bazariara.ge/products/${product.trueCategoryKey}/${product.id}`;
+
+  // Canonical с префиксом локали. Раньше был /products/... без префикса —
+  // а middleware редиректит такой адрес на /ru/products/.... То есть на
+  // КАЖДОЙ карточке товара canonical указывал на адрес-редирект, и Google
+  // мог проигнорировать его целиком.
+  const path = `/products/${product.trueCategoryKey}/${product.id}`;
+  const url = `https://bazariara.ge/${locale}${path}`;
 
   return {
     title,
     description,
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+      languages: {
+        ru: `https://bazariara.ge/ru${path}`,
+        en: `https://bazariara.ge/en${path}`,
+        ka: `https://bazariara.ge/ka${path}`,
+        'x-default': `https://bazariara.ge/ru${path}`,
+      },
+    },
     openGraph: {
-      locale: 'ru_GE',
+      locale: c.og,
       url,
       siteName: 'BAZARI ARA',
       type: 'website',
       title,
       description,
-      images: [{ url: image, width: 1200, height: 630, alt: product.title }],
+      images: [{ url: image, width: 1200, height: 630, alt: name }],
     },
     twitter: {
       card: 'summary_large_image',

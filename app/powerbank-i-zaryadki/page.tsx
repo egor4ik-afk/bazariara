@@ -8,7 +8,7 @@ const PATH = '/powerbank-i-zaryadki';
 
 const COPY = {
   ru: {
-    title: 'Powerbank и зарядки в Тбилиси купить с доставкой | BAZARI ARA',
+    title: 'Powerbank и зарядки в Тбилиси с доставкой',
     description: 'Портативные аккумуляторы (powerbank) и кабели для зарядки в Тбилиси с доставкой за 2 часа. Заряд для смартфона, наушников и других USB-устройств в дороге.',
     h1: 'Powerbank и зарядки в Тбилиси',
     intro: 'Нужен запас энергии в дороге, в горах или просто когда розетки нет рядом? В BAZARI ARA есть портативные аккумуляторы разной ёмкости и кабели для зарядки смартфонов, наушников и других USB-устройств. Доставка по Тбилиси — 2 часа.',
@@ -18,7 +18,7 @@ const COPY = {
     empty: 'Пока нет товаров в этом разделе — загляните в общий каталог ниже.',
   },
   en: {
-    title: 'Power Banks & Chargers in Tbilisi — Buy with Delivery | BAZARI ARA',
+    title: 'Power Banks and Chargers in Tbilisi',
     description: 'Portable power banks and charging cables in Tbilisi with 2-hour delivery. Keep your phone, headphones and other USB devices charged on the go.',
     h1: 'Power Banks & Chargers in Tbilisi',
     intro: 'Need extra power on the road, in the mountains, or when there is no outlet nearby? BAZARI ARA has portable power banks of various capacities and charging cables for smartphones, headphones and other USB devices. Delivery across Tbilisi in 2 hours.',
@@ -28,8 +28,8 @@ const COPY = {
     empty: 'No items in this section yet — check the full catalog below.',
   },
   ka: {
-    title: 'Powerbank და დამტენები თბილისში მიწოდებით | BAZARI ARA',
-    description: 'პორტატული დამტენები (powerbank) და დამტენი კაბელები თბილისში მიწოდებით 2 საათში.',
+    title: 'Powerbank და დამტენები თბილისში',
+    description: 'პორტატული დამტენები (powerbank) და დამტენი კაბელები თბილისში, მიწოდება 2 საათში. დატენეთ ტელეფონი, ყურსასმენები და USB მოწყობილობები გზაში.',
     h1: 'Powerbank და დამტენები თბილისში',
     intro: 'გჭირდებათ დამატებითი ენერგია გზაში ან როცა როზეტი ახლოს არ არის? BAZARI ARA-ში იპოვით სხვადასხვა ტევადობის პორტატულ დამტენებსა და კაბელებს სმარტფონებისთვის, ყურსასმენებისა და სხვა USB მოწყობილობებისთვის. მიწოდება თბილისში — 2 საათში.',
     powerbanks: 'პორტატული დამტენები',

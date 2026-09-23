@@ -6,12 +6,6 @@ import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
 import { useLanguage } from '@/contexts/LanguageContext';
 import ThemeToggle from '@/components/ThemeToggle'; // Импортируем переключатель темы
 
-const CategoryIcon = () => (
-  <svg className="w-5 h-5 mr-3 text-brand-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h7" />
-  </svg>
-);
-
 type SubCategoryInfo = { name: string; name_en: string | null; name_ka?: string | null; key: string; count: number; };
 type CategoryInfo    = { name: string; name_en: string | null; name_ka?: string | null; key: string; total: number; sub_categories: SubCategoryInfo[]; };
 
@@ -88,114 +82,139 @@ export default function SidebarMenu() {
         className="relative w-10 h-10 flex flex-col justify-between items-center p-2 group z-50"
       >
         {['top', 'mid', 'bottom'].map((pos, i) => (
-          <span key={pos} className={`block w-7 h-[3px] bg-brand-500 rounded-sm transition-all duration-300 ease-in-out
-            group-hover:shadow-[0_0_10px_#a3e635]
+          <span key={pos} className={`block w-7 h-[3px] bg-ink-800 rounded-sm transition-all duration-300 ease-in-out
+            
             ${isOpen ? i === 0 ? 'rotate-45 translate-y-[8px]' : i === 1 ? 'opacity-0' : '-rotate-45 -translate-y-[8px]' : ''}`}/>
         ))}
       </button>
 
-      {/* Боковое меню (сделано через flex flex-col для прижатия футера) */}
+      {/*
+        Боковое меню.
+
+        Раньше списку категорий оставалось ~20px на телефоне: над ним стояли
+        строка с крестиком и отдельный заголовок, под ним — блок ссылок и
+        два ряда настроек, всё фиксированной высоты. А сам список в flex-колонке
+        был без min-h-0, поэтому не умел сжиматься и выталкивал всё остальное.
+
+        Теперь: шапка — одна строка (заголовок + крестик), список — всё
+        свободное место, разделы и настройки — одна компактная полоса внизу.
+      */}
       <div
         ref={sidebarRef}
-        className={`fixed top-0 left-0 h-full bg-cream-100 bg-opacity-95 backdrop-blur-sm w-72 shadow-2xl p-6 z-40 transform transition-transform duration-300 ease-in-out flex flex-col
-          ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        className={`fixed top-0 left-0 h-[100dvh] w-[86vw] max-w-[340px] bg-cream-100
+          shadow-2xl z-40 transform transition-transform duration-300 ease-in-out
+          flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
-        <div className="flex justify-end items-center mb-4 border-b border-ink-200 pb-2 mt-2 shrink-0">
-          <button onClick={() => setIsOpen(false)} className="p-2 rounded-full text-ink-600 hover:text-ink-900 hover:bg-ink-100 transition-colors">
-            <XMarkIcon className="h-7 w-7" />
+        {/* Шапка: заголовок и закрытие в одну строку */}
+        <div className="flex items-center justify-between px-4 h-14 border-b border-ink-200 shrink-0">
+          <h2 className="text-base font-bold text-ink-900">{t('common.categories')}</h2>
+          <button
+            onClick={() => setIsOpen(false)}
+            aria-label="Закрыть меню"
+            className="p-1.5 -mr-1.5 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-100 transition-colors"
+          >
+            <XMarkIcon className="h-6 w-6" />
           </button>
         </div>
 
-        <h2 className="text-xl font-bold text-ink-900 mb-4 shrink-0">
-          {t('common.categories')}
-        </h2>
-
-        {/* Скроллируемая область ссылок */}
-        <div className="flex-1 overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-ink-200">
+        {/* Категории — занимают всё свободное место. min-h-0 обязателен:
+            без него элемент с overflow в flex-колонке не сжимается. */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-2">
           {loading ? (
-            <p className="text-ink-500 text-sm">{t('home.loading')}</p>
+            <p className="text-ink-500 text-sm px-3 py-2">{t('home.loading')}</p>
           ) : (
             <nav>
-              <ul>
-                {/* Все товары */}
-                <li className="mb-2">
-                  <div className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-ink-700 hover:bg-brand-600/10 hover:text-brand-600 border border-transparent hover:border-brand-600/30 transition-all duration-200">
-                    <Link href={`/${language}`} onClick={() => setIsOpen(false)} className="flex items-center flex-grow">
-                      <CategoryIcon />
-                      <span>{t('common.all')}</span>
-                    </Link>
-                    <span className="text-sm font-mono bg-brand-600/20 text-brand-600 rounded-full px-2 py-0.5">{totalProducts}</span>
-                  </div>
+              <ul className="space-y-0.5">
+                <li>
+                  <Link
+                    href={`/${language}`}
+                    onClick={() => setIsOpen(false)}
+                    className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg
+                               text-[15px] font-semibold text-ink-900 hover:bg-brand-600/10
+                               hover:text-brand-700 transition-colors"
+                  >
+                    <span className="truncate">{t('common.all')}</span>
+                    <span className="shrink-0 text-xs tabular-nums text-ink-500">{totalProducts}</span>
+                  </Link>
                 </li>
-                
-                {/* Категории */}
-                {categories.map(category => (
-                  <li key={category.key} className="mb-2">
-                    <div className="flex flex-col">
-                      <div
-                        className="flex items-center justify-between px-4 py-3 rounded-lg text-lg text-ink-700 hover:bg-brand-600/10 hover:text-brand-600 border border-transparent hover:border-brand-600/30 transition-all duration-200 cursor-pointer"
-                        onClick={() => category.sub_categories?.length > 0
-                          ? setOpenCategory(openCategory === category.key ? null : category.key)
-                          : setIsOpen(false)
-                        }
-                      >
+
+                {categories.map(category => {
+                  const hasSubs = category.sub_categories?.length > 0;
+                  const open = openCategory === category.key;
+                  return (
+                    <li key={category.key}>
+                      <div className="flex items-center rounded-lg hover:bg-brand-600/10 transition-colors">
                         <Link
                           href={`/${language}/?category=${category.key}`}
-                          onClick={e => { if (category.sub_categories?.length > 0) e.preventDefault(); else setIsOpen(false); }}
-                          className="flex items-center flex-grow"
+                          onClick={() => setIsOpen(false)}
+                          className="flex-1 min-w-0 flex items-center justify-between gap-2
+                                     pl-3 pr-2 py-2.5 text-[15px] text-ink-800 hover:text-brand-700"
                         >
-                          <CategoryIcon />
-                          <span>{getName(category)}</span>
+                          <span className="truncate">{getName(category)}</span>
+                          <span className="shrink-0 text-xs tabular-nums text-ink-500">{category.total}</span>
                         </Link>
-                        <div className="flex items-center">
-                          <span className="text-sm font-mono bg-brand-600/20 text-brand-600 rounded-full px-2 py-0.5">{category.total}</span>
-                          {category.sub_categories?.length > 0 && (
-                            <ChevronDownIcon className={`w-5 h-5 ml-2 transition-transform duration-300 ${openCategory === category.key ? 'rotate-180' : ''}`} />
-                          )}
-                        </div>
+                        {/* Стрелка — отдельная кнопка: раньше клик по названию
+                            категории с подкатегориями только раскрывал список,
+                            и в саму категорию нельзя было попасть */}
+                        {hasSubs && (
+                          <button
+                            onClick={() => setOpenCategory(open ? null : category.key)}
+                            aria-label="Подкатегории"
+                            aria-expanded={open}
+                            className="shrink-0 p-2 mr-1 rounded-md text-ink-500 hover:text-ink-900"
+                          >
+                            <ChevronDownIcon className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+                          </button>
+                        )}
                       </div>
 
-                      {openCategory === category.key && category.sub_categories?.length > 0 && (
-                        <ul className="pl-8 mt-2 space-y-2">
+                      {open && hasSubs && (
+                        <ul className="ml-3 pl-3 border-l border-ink-200 my-0.5">
                           {category.sub_categories.map(sub => (
                             <li key={sub.key}>
                               <Link
                                 href={`/${language}/?category=${category.key}&subcategory=${sub.key}`}
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center justify-between py-2 px-3 rounded-md text-ink-600 hover:bg-ink-100 hover:text-ink-900 transition-colors duration-200"
+                                className="flex items-center justify-between gap-2 px-2 py-2 rounded-md
+                                           text-sm text-ink-600 hover:bg-ink-100 hover:text-ink-900 transition-colors"
                               >
-                                <span>{getName(sub)}</span>
-                                <span className="text-xs font-mono bg-ink-200 text-ink-700 rounded-full px-1.5 py-0.5">{sub.count}</span>
+                                <span className="truncate">{getName(sub)}</span>
+                                <span className="shrink-0 text-xs tabular-nums text-ink-400">{sub.count}</span>
                               </Link>
                             </li>
                           ))}
                         </ul>
                       )}
-                    </div>
-                  </li>
-                ))}
+                    </li>
+                  );
+                })}
               </ul>
             </nav>
           )}
         </div>
 
-        {/* Разделы — внизу, под категориями: меню открывают ради товаров,
-            а не ради ссылок. Две колонки, чтобы на телефоне список
-            не тянулся вниз. */}
-        <div className="shrink-0 mt-4 pt-4 border-t border-ink-200">
-          <div className="grid grid-cols-2 gap-x-3">
+        {/* Разделы сайта — компактная полоса чипов. Фермеры, регионы и
+            путеводитель на широком экране уже есть в шапке сайта, поэтому
+            здесь они скрыты от lg: и выше, чтобы не дублироваться. */}
+        <div className="shrink-0 border-t border-ink-200 py-2.5">
+          {/* Одна строка с прокруткой: при переносе чипы на узком экране
+              ложились в три ряда и отнимали место у категорий. */}
+          <div className="scroll-x flex gap-1.5 px-3">
             {[
-              { href: `/${language}/farmers`,  label: t('footer.farmers') },
-              { href: `/${language}/regions`,  label: t('footer.regions') },
-              { href: `/${language}/blog`,     label: t('footer.blog') },
-              { href: `/${language}/gostintsy-iz-gruzii`, label: t('footer.gifts') },
-              { href: `/${language}/farmers/join`, label: t('footer.becomeFarmer') },
+              { href: `/${language}/farmers`,             label: t('footer.farmers'),      desk: false },
+              { href: `/${language}/regions`,             label: t('footer.regions'),      desk: false },
+              { href: `/${language}/blog`,                label: t('footer.blog'),         desk: false },
+              { href: `/${language}/gostintsy-iz-gruzii`, label: t('footer.gifts'),        desk: true },
+              { href: `/${language}/farmers/join`,        label: t('footer.becomeFarmer'), desk: true },
             ].map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setIsOpen(false)}
-                className="py-2 text-sm font-medium text-ink-600 hover:text-brand-700 transition-colors truncate"
+                className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded-full bg-surface border border-ink-200
+                            text-xs font-medium text-ink-700 hover:border-brand-400
+                            hover:text-brand-700 transition-colors ${item.desk ? '' : 'lg:hidden'}`}
               >
                 {item.label}
               </Link>
@@ -203,30 +222,22 @@ export default function SidebarMenu() {
           </div>
         </div>
 
-        {/* Футер меню: Настройки (Тема и Карусель) */}
-        <div className="shrink-0 mt-auto pt-5 border-t border-ink-200 space-y-4">
-          
-          {/* Тема */}
-          <div className="flex items-center justify-between">
-            <span className="text-ink-700 font-medium text-sm">Тема оформления</span>
-            <ThemeToggle />
-          </div>
-
-          {/* Переключатель карусели */}
-          <div className="flex items-center justify-between">
-            <span className="text-ink-700 font-medium text-sm">Показывать карусель</span>
-            <button
-              onClick={toggleCarousel}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-300 focus:outline-none 
-                ${showCarousel ? 'bg-brand-600' : 'bg-ink-300 dark:bg-ink-600'}`}
-            >
-              <span 
-                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform duration-300 
-                  ${showCarousel ? 'translate-x-6' : 'translate-x-1'}`} 
-              />
-            </button>
-          </div>
-
+        {/* Настройки — одна строка вместо двух */}
+        <div className="shrink-0 flex items-center justify-between gap-3 px-4 py-2.5 border-t border-ink-200">
+          <button
+            onClick={toggleCarousel}
+            className="flex items-center gap-2.5 text-sm text-ink-700"
+            role="switch"
+            aria-checked={showCarousel}
+          >
+            <span className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300
+                ${showCarousel ? 'bg-brand-600' : 'bg-ink-300'}`}>
+              <span className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-300
+                  ${showCarousel ? 'translate-x-[18px]' : 'translate-x-[3px]'}`} />
+            </span>
+            {t('menu.carousel')}
+          </button>
+          <ThemeToggle />
         </div>
       </div>
 

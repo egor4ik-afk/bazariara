@@ -13,8 +13,8 @@ type Locale = 'ru' | 'en' | 'ka';
 
 const COPY = {
   ru: {
-    title: 'Стать нашим фермером — анкета производителя | Bazari Ara',
-    description: 'Небольшое хозяйство в Грузии? Расскажите о себе: мёд, чай, вино, специи, сухофрукты. Мы читаем каждую анкету.',
+    title: 'Стать нашим фермером: анкета производителя',
+    description: 'Небольшое хозяйство в Грузии? Расскажите о себе: мёд, чай, вино, специи или сухофрукты. Своя страница на сайте, каждую анкету читаем лично.',
     back: 'Все фермеры',
     h1: 'Стать нашим фермером',
     points: [
@@ -24,8 +24,8 @@ const COPY = {
     ],
   },
   en: {
-    title: 'Become our farmer — producer application | Bazari Ara',
-    description: 'A small farm in Georgia? Tell us about yourself: honey, tea, wine, spices, dried fruit. We read every application.',
+    title: 'Become Our Farmer: Producer Application',
+    description: 'A small farm in Georgia? Tell us about your honey, tea, wine, spices or dried fruit. Get your own page on the site; we read every application.',
     back: 'All farmers',
     h1: 'Become our farmer',
     points: [
@@ -35,8 +35,8 @@ const COPY = {
     ],
   },
   ka: {
-    title: 'გახდით ჩვენი ფერმერი — მწარმოებლის ანკეტა | Bazari Ara',
-    description: 'მცირე მეურნეობა საქართველოში? მოგვიყევით თქვენ შესახებ.',
+    title: 'გახდით ჩვენი ფერმერი: ანკეტა',
+    description: 'მცირე მეურნეობა საქართველოში? მოგვიყევით თქვენს თაფლზე, ჩაიზე, ღვინოზე ან სანელებლებზე. საკუთარი გვერდი საიტზე, ყველა ანკეტას ვკითხულობთ.',
     back: 'ყველა ფერმერი',
     h1: 'გახდით ჩვენი ფერმერი',
     points: [

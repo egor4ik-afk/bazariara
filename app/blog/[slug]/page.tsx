@@ -45,11 +45,12 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const post = await getPost(slug);
-  if (!post) return { title: 'Статья не найдена | BAZARI ARA' };
+  if (!post) return { title: 'Статья не найдена', robots: { index: false, follow: false } };
 
   const hdrs = await headers();
   const locale = getLocale(hdrs);
-  const title = post.seo_title || pick(post, 'title', locale);
+  const title = (post.seo_title || pick(post, 'title', locale))
+    .replace(/\s*[|—–-]\s*bazari\s*ara\s*$/i, '');
   const description = post.seo_description || pick(post, 'excerpt', locale) || '';
   const url = `https://bazariara.ge/${locale}/blog/${slug}`;
 

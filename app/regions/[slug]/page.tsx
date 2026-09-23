@@ -34,7 +34,7 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params;
   const region = await getRegion(slug);
-  if (!region) return { title: 'Регион не найден | BAZARI ARA' };
+  if (!region) return { title: 'Регион не найден', robots: { index: false, follow: false } };
 
   const hdrs = await headers();
   const locale = getLocale(hdrs);
@@ -42,9 +42,20 @@ export async function generateMetadata(
              : locale === 'ka' ? (region.name_ka || region.name)
              : region.name;
 
-  // Шаблон из таблицы 12 ТЗ.
-  const title = `Товары из ${name} — продукты и производители | Bazari Ara`;
-  const description = `Продукты и товары от производителей ${name}: мёд, чай, специи и другие локальные продукты. Доставка по Тбилиси.`;
+  // Было «Товары из ${name}» → «Товары из Кахетия»: название региона
+  // стоит в именительном, а предлог «из» требует родительного. Склонять
+  // 13 названий по таблице хрупко — формулировка построена так, чтобы
+  // название стояло в именительном падеже на всех трёх языках.
+  const T = {
+    ru: { t: `${name}: продукты и производители региона`,
+          d: `${name} — продукты местных производителей: мёд, чай, специи, вино. Кто их делает и чем отличается вкус региона. Доставка по Тбилиси.` },
+    en: { t: `${name}: Local Products and Producers`,
+          d: `${name} — products from local producers: honey, tea, spices, wine. Who makes them and what sets the region apart. Delivery across Tbilisi.` },
+    ka: { t: `${name}: რეგიონის პროდუქცია`,
+          d: `${name} — ადგილობრივი მწარმოებლების პროდუქცია: თაფლი, ჩაი, სანელებლები, ღვინო. მიწოდება თბილისში.` },
+  }[locale];
+  const title = T.t;
+  const description = T.d;
   const url = `https://bazariara.ge/${locale}/regions/${slug}`;
 
   return {

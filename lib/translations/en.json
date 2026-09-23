@@ -190,5 +190,8 @@
     "producer": "Producer",
     "region": "Region",
     "importedNote": "Imported product. Brand shown, not local origin."
+  },
+  "menu": {
+    "carousel": "Category carousel"
   }
 }

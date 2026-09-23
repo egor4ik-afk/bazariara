@@ -8,7 +8,7 @@ const PATH = '/turisticheskoe-snaryazhenie';
 
 const COPY = {
   ru: {
-    title: 'Где купить туристическое снаряжение в Тбилиси — стулья, палатки, баллоны, горелки, дрова | BAZARI ARA',
+    title: 'Туристическое снаряжение в Тбилиси',
     description: 'Туристическое снаряжение в Тбилиси с доставкой за 2 часа: складные стулья и столы, палатки, газовые баллоны, горелки, дрова и розжиг для похода и отдыха на природе.',
     h1: 'Туристическое снаряжение в Тбилиси',
     intro: 'Собираетесь в поход, на пикник или в горы рядом с Тбилиси? В BAZARI ARA есть всё для активного отдыха: складные туристические стулья и столы, палатки на любой сезон, газовые баллоны и горелки для готовки на природе, дрова и розжиг для костра. Доставка по Тбилиси — 2 часа.',
@@ -20,7 +20,7 @@ const COPY = {
     empty: 'Пока нет товаров в этом разделе — загляните в общий каталог туризма ниже.',
   },
   en: {
-    title: 'Camping & Hiking Gear in Tbilisi — Chairs, Tents, Gas Canisters, Burners, Firewood | BAZARI ARA',
+    title: 'Camping and Hiking Gear in Tbilisi',
     description: 'Camping and hiking gear in Tbilisi with 2-hour delivery: folding chairs and tables, tents, gas canisters, burners, firewood and fire starters.',
     h1: 'Camping & Hiking Gear in Tbilisi',
     intro: 'Heading to the mountains near Tbilisi? BAZARI ARA has everything for outdoor trips: folding camp chairs and tables, tents for any season, gas canisters and burners for cooking outdoors, firewood and fire starters. Delivery across Tbilisi in 2 hours.',
@@ -32,7 +32,7 @@ const COPY = {
     empty: 'No items in this section yet — check the full tourism catalog below.',
   },
   ka: {
-    title: 'ტურისტული აღჭურვილობა თბილისში — სკამები, კარვები, ბალონები, გამათბობლები, შეშა | BAZARI ARA',
+    title: 'ტურისტული აღჭურვილობა თბილისში',
     description: 'ტურისტული აღჭურვილობა თბილისში მიწოდებით 2 საათში: დასაკეცი სკამები და მაგიდები, კარვები, გაზის ბალონები, გამათბობლები, შეშა.',
     h1: 'ტურისტული აღჭურვილობა თბილისში',
     intro: 'მიდიხართ ლაშქრობაში ან პიკნიკზე თბილისის მიმდებარედ? BAZARI ARA-ში იპოვით ყველაფერს: დასაკეც სკამებსა და მაგიდებს, კარვებს, გაზის ბალონებსა და გამათბობლებს, შეშას. მიწოდება თბილისში — 2 საათში.',

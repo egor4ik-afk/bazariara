@@ -10,8 +10,8 @@ type Locale = 'ru' | 'en' | 'ka';
 
 const COPY = {
   ru: {
-    title: 'Товары грузинских производителей — BAZARI ARA',
-    description: 'Продукты и товары небольших грузинских производителей с информацией о регионах и ассортименте.',
+    title: 'Грузинские фермеры и производители',
+    description: 'Мёд, чай, вино и специи от небольших хозяйств Грузии. История каждого фермера, регион и весь ассортимент с доставкой по Тбилиси за 2 часа.',
     h1: 'Наши производители',
     intro: 'Небольшие хозяйства, пасеки, чайные плантации и винодельни Грузии. У каждого — свой регион, своя история и свой ассортимент. Мы знакомимся с производителями лично и отбираем то, что стоит попробовать.',
     products: 'товаров',
@@ -21,8 +21,8 @@ const COPY = {
     ctaButton: 'Стать нашим фермером',
   },
   en: {
-    title: 'Georgian Producers — BAZARI ARA',
-    description: 'Products from small Georgian producers, with details on their regions and ranges.',
+    title: 'Georgian Farmers and Producers',
+    description: 'Honey, tea, wine and spices from small Georgian farms. The story of each farmer, their region and full range, delivered across Tbilisi in 2 hours.',
     h1: 'Our producers',
     intro: 'Small farms, apiaries, tea plantations and wineries across Georgia. Each has its own region, story and range. We meet the producers in person and pick what is worth trying.',
     products: 'products',
@@ -32,8 +32,8 @@ const COPY = {
     ctaButton: 'Become our farmer',
   },
   ka: {
-    title: 'ქართველი მწარმოებლები — BAZARI ARA',
-    description: 'პროდუქცია მცირე ქართველი მწარმოებლებისგან, რეგიონებისა და ასორტიმენტის შესახებ ინფორმაციით.',
+    title: 'ქართველი ფერმერები და მწარმოებლები',
+    description: 'თაფლი, ჩაი, ღვინო და სანელებლები მცირე ქართული მეურნეობებიდან. თითოეული ფერმერის ისტორია, რეგიონი და ასორტიმენტი, მიწოდება თბილისში.',
     h1: 'ჩვენი მწარმოებლები',
     intro: 'მცირე მეურნეობები, საფუტკრეები, ჩაის პლანტაციები და მარნები საქართველოს მასშტაბით. თითოეულს აქვს თავისი რეგიონი, ისტორია და ასორტიმენტი.',
     products: 'პროდუქტი',

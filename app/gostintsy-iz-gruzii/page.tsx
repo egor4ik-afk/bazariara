@@ -9,8 +9,8 @@ const PATH = '/gostintsy-iz-gruzii';
 
 const COPY = {
   ru: {
-    title: 'Гостинцы из Грузии — мёд, чурчхела, чай, специи, открытки | Тбилиси | BAZARI ARA',
-    description: 'Съедобные сувениры из Грузии в Тбилиси с доставкой за 2 часа: мёд из Кахетии и Рачи, чурчхела и пастила, грузинский чай, сванская соль и аджика, открытки с видами страны.',
+    title: 'Гостинцы из Грузии: мёд, чурчхела, чай, специи',
+    description: 'Что привезти из Грузии: мёд из Кахетии и Рачи, чурчхела, пастила, грузинский чай, сванская соль и аджика. Доставка по Тбилиси за 2 часа.',
     h1: 'Гостинцы из Грузии',
     intro: 'Уезжаете из Грузии и не знаете, что привезти? Самый честный сувенир — тот, который можно съесть. Мы собрали продукты из разных регионов страны: мёд с пасек Кахетии, Рачи, Имерети, Джавахети и Тори, чурчхелу и пастилу, чай из Гурии и Аджарии, сванскую соль и мегрельскую аджику. Всё компактно упаковано и спокойно переживает дорогу в чемодане.',
     intro2: 'Каждый продукт связан с конкретным регионом, и это не маркетинг: каштановый мёд из Рачи и акациевый из Имерети отличаются по вкусу так же заметно, как имеретинская чурчхела на кукурузной муке отличается от кахетинской на пшеничной. Доставим по Тбилиси за 2 часа — можно заказать вечером накануне вылета.',
@@ -40,8 +40,8 @@ const COPY = {
     ],
   },
   en: {
-    title: 'Georgian Food Souvenirs — Honey, Churchkhela, Tea, Spices | Tbilisi | BAZARI ARA',
-    description: 'Edible souvenirs from Georgia delivered across Tbilisi in 2 hours: honey from Kakheti and Racha, churchkhela and pastila, Georgian tea, Svan salt and adjika, postcards.',
+    title: 'Georgian Food Souvenirs: Honey, Churchkhela, Tea',
+    description: 'What to bring home from Georgia: honey from Kakheti and Racha, churchkhela, pastila, Georgian tea, Svan salt and adjika. Tbilisi delivery in 2 hours.',
     h1: 'Georgian Food Souvenirs',
     intro: 'Leaving Georgia and not sure what to bring home? The most honest souvenir is one you can eat. We have gathered products from across the country: honey from apiaries in Kakheti, Racha, Imereti, Javakheti and Tori, churchkhela and pastila, tea from Guria and Adjara, Svan salt and Megrelian adjika. Everything packs small and travels well in a suitcase.',
     intro2: 'Each product belongs to a specific region, and that is not marketing: chestnut honey from Racha tastes as distinct from Imeretian acacia honey as Imeretian corn-flour churchkhela does from the Kakhetian wheat-flour version. Delivery across Tbilisi in 2 hours — order the evening before your flight.',
@@ -71,8 +71,8 @@ const COPY = {
     ],
   },
   ka: {
-    title: 'საჩუქრები საქართველოდან — თაფლი, ჩურჩხელა, ჩაი, სანელებლები | თბილისი | BAZARI ARA',
-    description: 'გემრიელი სუვენირები საქართველოდან თბილისში მიწოდებით 2 საათში: თაფლი კახეთიდან და რაჭიდან, ჩურჩხელა და ტყლაპი, ქართული ჩაი, სვანური მარილი და აჯიკა, ღია ბარათები.',
+    title: 'საჩუქრები საქართველოდან: თაფლი, ჩურჩხელა, ჩაი',
+    description: 'რა წავიღოთ საქართველოდან: თაფლი კახეთიდან და რაჭიდან, ჩურჩხელა, ტყლაპი, ქართული ჩაი, სვანური მარილი და აჯიკა. მიწოდება თბილისში 2 საათში.',
     h1: 'საჩუქრები საქართველოდან',
     intro: 'მიემგზავრებით და არ იცით, რა წაიღოთ საქართველოდან? ყველაზე გულწრფელი სუვენირი ის არის, რომლის შეჭმაც შეიძლება. ჩვენ შევკრიბეთ პროდუქტები ქვეყნის სხვადასხვა კუთხიდან: თაფლი კახეთის, რაჭის, იმერეთის, ჯავახეთისა და ტორის საფუტკრეებიდან, ჩურჩხელა და ტყლაპი, ჩაი გურიიდან და აჭარიდან, სვანური მარილი და მეგრული აჯიკა.',
     intro2: 'თითოეული პროდუქტი კონკრეტულ რეგიონს უკავშირდება: რაჭული წაბლის თაფლი ისევე განსხვავდება იმერული აკაციის თაფლისგან, როგორც სიმინდის ფქვილზე დამზადებული იმერული ჩურჩხელა კახურისგან. მიწოდება თბილისში — 2 საათში.',

@@ -34,42 +34,74 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   const loc = lh === 'en' || lh === 'ka' ? lh : 'ru';
   const canonical = `https://bazariara.ge/${loc}${canonicalQuery ? '?' + canonicalQuery : ''}`;
 
-  // ✅ Сайт однояыычный (ru). Hreflang убираем — Google разберётся сам.
-  // Если в будущем добавите грузинскую версию (/ka/...), раскомментируйте и
-  // пропишите реальные URL для каждого языка.
+  // hreflang возвращён: sitemap объявляет три языковые версии, и страница
+  // обязана подтверждать это сама. Раньше здесь стояло «сайт одноязычный,
+  // hreflang убираем», а sitemap при этом отдавал /ru, /en, /ka — Google
+  // видел противоречие.
+  const q = canonicalQuery ? '?' + canonicalQuery : '';
   const alternates = {
     canonical,
-    // languages: {
-    //   'ru': `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`,
-    //   'ka': `https://bazariara.ge/ka/${canonicalQuery ? '?' + canonicalQuery : ''}`,
-    //   'x-default': `https://bazariara.ge/${canonicalQuery ? '?' + canonicalQuery : ''}`,
-    // },
+    languages: {
+      ru: `https://bazariara.ge/ru${q}`,
+      en: `https://bazariara.ge/en${q}`,
+      ka: `https://bazariara.ge/ka${q}`,
+      'x-default': `https://bazariara.ge/ru${q}`,
+    },
   };
 
+  // Главная — единственная страница, где шаблон « | BAZARI ARA» из layout
+  // НЕ применяется (она в том же сегменте, что и layout). Поэтому бренд
+  // здесь пишется руками, а на остальных страницах — нет.
+  const HOME = {
+    ru: { t: 'Грузинские продукты, подарки и туризм — Bazari Ara',
+          d: 'Грузинские продукты от местных производителей: мёд, чай, чурчхела, специи. Подарки из Грузии и товары для путешествий с доставкой по Тбилиси за 2 часа.' },
+    en: { t: 'Georgian Food, Gifts and Travel Gear — Bazari Ara',
+          d: 'Georgian food from local producers: honey, tea, churchkhela, spices. Gifts from Georgia and travel gear delivered across Tbilisi in 2 hours.' },
+    ka: { t: 'ქართული პროდუქტები და საჩუქრები — Bazari Ara',
+          d: 'ქართული პროდუქცია ადგილობრივი მწარმოებლებისგან: თაფლი, ჩაი, ჩურჩხელა, სანელებლები. საჩუქრები და მოგზაურობის ნივთები, მიწოდება თბილისში 2 საათში.' },
+  }[loc];
+
   if (!category || category === 'all') {
-    return {
-      title: 'Грузинские продукты, подарки и товары для туризма в Тбилиси — Bazari Ara',
-      description: 'Грузинские продукты от местных производителей, подарки, сувениры и товары для путешествий. Отбираем сами и доставляем по Тбилиси.',
-      alternates,
-    };
+    return { title: { absolute: HOME.t }, description: HOME.d, alternates };
   }
 
   const categories = await getCategories();
   const cat = categories.find(c => c.key === category);
-  const catName = cat ? cat.name : category;
+  const catName =
+    (loc === 'en' && cat?.name_en) || (loc === 'ka' && cat?.name_ka) || cat?.name || category;
+
+  const pageSuffix = page > 1
+    ? (loc === 'en' ? ` — page ${page}` : loc === 'ka' ? ` — გვერდი ${page}` : ` — страница ${page}`)
+    : '';
+
+  const buy = loc === 'en' ? 'buy in Tbilisi' : loc === 'ka' ? 'იყიდე თბილისში' : 'купить в Тбилиси';
 
   if (subcategory && subcategory !== 'all') {
-    const subName = subcategory.split('-').map((w: string) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    // Название берём из БД, а не из slug. Раньше «лакомство-для-собак»
+    // превращался в «Лакомство Для Собак» — заглавные посреди русской
+    // фразы, и никакого перевода на en/ka.
+    const subs = await getSubCategories(category);
+    const sub = subs.find(x => x.key === subcategory);
+    const subName =
+      (loc === 'en' && sub?.name_en) || (loc === 'ka' && sub?.name_ka) || sub?.name ||
+      subcategory.replace(/-/g, ' ');
+
     return {
-      title: `${subName} — ${catName} | купить в Тбилиси | BAZARI ARA${pageStr}`,
-      description: `${subName} в категории «${catName}». Быстрая доставка по Тбилиси за 2 часа.`,
+      title: { absolute: `${subName} — ${buy}${pageSuffix} | BAZARI ARA` },
+      description:
+        loc === 'en' ? `${subName} in ${catName}: see the range and prices. Delivery across Tbilisi in 2 hours, order online.`
+        : loc === 'ka' ? `${subName} — ${catName}: ასორტიმენტი და ფასები. მიწოდება თბილისში 2 საათში.`
+        : `${subName} в разделе «${catName}»: ассортимент и цены. Доставка по Тбилиси за 2 часа, заказ онлайн без регистрации.`,
       alternates,
     };
   }
 
   return {
-    title: `${catName} — купить в Тбилиси с доставкой за 2 часа | BAZARI ARA${pageStr}`,
-    description: `Большой выбор товаров «${catName}» в Тбилиси. Заказывайте онлайн — доставим за 2 часа.`,
+    title: { absolute: `${catName} — ${buy}${pageSuffix} | BAZARI ARA` },
+    description:
+      loc === 'en' ? `${catName} in Tbilisi: the full range with prices and photos. Delivery across the city in 2 hours, order online.`
+      : loc === 'ka' ? `${catName} თბილისში: სრული ასორტიმენტი ფასებით. მიწოდება ქალაქში 2 საათში.`
+      : `${catName} в Тбилиси: весь ассортимент с ценами и фото. Доставка по городу за 2 часа, заказ онлайн без регистрации.`,
     alternates,
   };
 }
