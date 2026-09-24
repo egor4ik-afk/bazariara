@@ -7,11 +7,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import ThemeToggle from '@/components/ThemeToggle'; // Импортируем переключатель темы
 
 type SubCategoryInfo = { name: string; name_en: string | null; name_ka?: string | null; key: string; count: number; };
-type CategoryInfo    = { name: string; name_en: string | null; name_ka?: string | null; key: string; total: number; sub_categories: SubCategoryInfo[]; };
+type CategoryInfo    = { name: string; name_en: string | null; name_ka?: string | null; key: string; total: number; image_url?: string | null; sub_categories: SubCategoryInfo[]; };
 
 export default function SidebarMenu() {
   const { t, language } = useLanguage();
   const [isOpen, setIsOpen]             = useState(false);
+  // Текущая категория — для подсветки строки. Читаем из адреса в момент
+  // открытия, а не через useSearchParams: хук в шапке, которая есть на
+  // каждой странице, требует Suspense и роняет сборку статических страниц.
+  const [activeCat, setActiveCat] = useState<string | null>(null);
+  useEffect(() => {
+    if (isOpen) setActiveCat(new URLSearchParams(window.location.search).get('category'));
+  }, [isOpen]);
+  const [brokenImg, setBrokenImg] = useState<Record<string, boolean>>({});
   const [categories, setCategories]     = useState<CategoryInfo[]>([]);
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [loading, setLoading]           = useState(false);
@@ -76,16 +84,20 @@ export default function SidebarMenu() {
 
   return (
     <div>
-      {/* Анимированный бургер */}
+      {/* Бургер. Раньше при открытии превращался в крестик и имел z-50
+          при z-40 у меню — то есть висел ПОВЕРХ меню прямо на заголовке
+          «Категории». Закрытие и так есть в шапке меню, второй крестик
+          не нужен: бургер остаётся бургером и уходит под меню. */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative w-10 h-10 flex flex-col justify-between items-center p-2 group z-50"
+        aria-label={t('common.categories')}
+        aria-expanded={isOpen}
+        className="relative w-10 h-10 flex flex-col justify-center gap-[5px] items-center rounded-lg
+                   hover:bg-ink-100 transition-colors"
       >
-        {['top', 'mid', 'bottom'].map((pos, i) => (
-          <span key={pos} className={`block w-7 h-[3px] bg-ink-800 rounded-sm transition-all duration-300 ease-in-out
-            
-            ${isOpen ? i === 0 ? 'rotate-45 translate-y-[8px]' : i === 1 ? 'opacity-0' : '-rotate-45 -translate-y-[8px]' : ''}`}/>
-        ))}
+        <span className="block w-6 h-[2.5px] bg-ink-800 rounded-full" />
+        <span className="block w-6 h-[2.5px] bg-ink-800 rounded-full" />
+        <span className="block w-6 h-[2.5px] bg-ink-800 rounded-full" />
       </button>
 
       {/*
@@ -125,59 +137,96 @@ export default function SidebarMenu() {
             <p className="text-ink-500 text-sm px-3 py-2">{t('home.loading')}</p>
           ) : (
             <nav>
-              <ul className="space-y-0.5">
+              <ul className="space-y-1">
                 <li>
-                  <Link
-                    href={`/${language}`}
-                    onClick={() => setIsOpen(false)}
-                    className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-lg
-                               text-[15px] font-semibold text-ink-900 hover:bg-brand-600/10
-                               hover:text-brand-700 transition-colors"
-                  >
-                    <span className="truncate">{t('common.all')}</span>
-                    <span className="shrink-0 text-xs tabular-nums text-ink-500">{totalProducts}</span>
-                  </Link>
+                  {/* Та же структура, что у категорий: ссылка + колонка под
+                      стрелку. Иначе числа не встают в одну вертикаль. */}
+                  <div className={`flex items-center rounded-xl transition-colors
+                    ${!activeCat ? 'bg-brand-600/10' : 'hover:bg-ink-100'}`}>
+                    <Link
+                      href={`/${language}`}
+                      onClick={() => setIsOpen(false)}
+                      className="flex-1 min-w-0 flex items-center gap-3 px-2 py-2"
+                    >
+                      <span className="grid place-items-center w-9 h-9 rounded-lg bg-brand-600 text-on-brand shrink-0">
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4" aria-hidden="true">
+                          <path d="M3 3h6v6H3V3zm8 0h6v6h-6V3zM3 11h6v6H3v-6zm8 0h6v6h-6v-6z" />
+                        </svg>
+                      </span>
+                      <span className={`flex-1 min-w-0 truncate text-[15px] font-semibold
+                        ${!activeCat ? 'text-brand-700' : 'text-ink-900'}`}>{t('common.all')}</span>
+                      <span className="shrink-0 text-xs tabular-nums text-ink-500">{totalProducts}</span>
+                    </Link>
+                    <span className="shrink-0 w-9 mr-1" aria-hidden="true" />
+                  </div>
                 </li>
 
                 {categories.map(category => {
-                  const hasSubs = category.sub_categories?.length > 0;
+                  // Стрелка — только если подкатегорий больше одной или единственная
+                  // не покрывает всю категорию. Иначе раскрытие ничего не добавляет.
+                  const subs = category.sub_categories || [];
+                  const hasSubs = subs.length > 1 || (subs.length === 1 && subs[0].count < category.total);
                   const open = openCategory === category.key;
+                  const active = activeCat === category.key;
+                  const img = category.image_url && !brokenImg[category.key] ? category.image_url : null;
+
                   return (
                     <li key={category.key}>
-                      <div className="flex items-center rounded-lg hover:bg-brand-600/10 transition-colors">
+                      <div className={`flex items-center rounded-xl transition-colors
+                        ${active ? 'bg-brand-600/10' : 'hover:bg-ink-100'}`}>
                         <Link
                           href={`/${language}/?category=${category.key}`}
                           onClick={() => setIsOpen(false)}
-                          className="flex-1 min-w-0 flex items-center justify-between gap-2
-                                     pl-3 pr-2 py-2.5 text-[15px] text-ink-800 hover:text-brand-700"
+                          className="flex-1 min-w-0 flex items-center gap-3 px-2 py-2"
                         >
-                          <span className="truncate">{getName(category)}</span>
+                          {/* Миниатюра: по картинке категорию узнают быстрее,
+                              чем по названию, особенно на чужом языке */}
+                          {img ? (
+                            <img
+                              src={img}
+                              alt=""
+                              aria-hidden="true"
+                              loading="lazy"
+                              onError={() => setBrokenImg(p => ({ ...p, [category.key]: true }))}
+                              className="w-9 h-9 rounded-lg object-cover bg-cream-200 shrink-0"
+                            />
+                          ) : (
+                            <span className="grid place-items-center w-9 h-9 rounded-lg bg-brand-100 text-brand-700
+                                             text-sm font-bold shrink-0" aria-hidden="true">
+                              {getName(category).charAt(0).toUpperCase()}
+                            </span>
+                          )}
+                          <span className={`flex-1 min-w-0 truncate text-[15px]
+                            ${active ? 'font-semibold text-brand-700' : 'text-ink-800'}`}>
+                            {getName(category)}
+                          </span>
                           <span className="shrink-0 text-xs tabular-nums text-ink-500">{category.total}</span>
                         </Link>
-                        {/* Стрелка — отдельная кнопка: раньше клик по названию
-                            категории с подкатегориями только раскрывал список,
-                            и в саму категорию нельзя было попасть */}
-                        {hasSubs && (
+                        {hasSubs ? (
                           <button
                             onClick={() => setOpenCategory(open ? null : category.key)}
                             aria-label="Подкатегории"
                             aria-expanded={open}
-                            className="shrink-0 p-2 mr-1 rounded-md text-ink-500 hover:text-ink-900"
+                            className="shrink-0 grid place-items-center w-9 h-9 mr-1 rounded-lg
+                                       text-ink-500 hover:text-ink-900 hover:bg-ink-200/60 transition-colors"
                           >
                             <ChevronDownIcon className={`w-4 h-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
                           </button>
+                        ) : (
+                          // Пустое место той же ширины: числа в колонке не пляшут
+                          <span className="shrink-0 w-9 mr-1" aria-hidden="true" />
                         )}
                       </div>
 
                       {open && hasSubs && (
-                        <ul className="ml-3 pl-3 border-l border-ink-200 my-0.5">
-                          {category.sub_categories.map(sub => (
+                        <ul className="ml-[26px] pl-4 border-l-2 border-brand-200 mt-1 mb-2 space-y-0.5">
+                          {subs.map(sub => (
                             <li key={sub.key}>
                               <Link
                                 href={`/${language}/?category=${category.key}&subcategory=${sub.key}`}
                                 onClick={() => setIsOpen(false)}
-                                className="flex items-center justify-between gap-2 px-2 py-2 rounded-md
-                                           text-sm text-ink-600 hover:bg-ink-100 hover:text-ink-900 transition-colors"
+                                className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg
+                                           text-sm text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition-colors"
                               >
                                 <span className="truncate">{getName(sub)}</span>
                                 <span className="shrink-0 text-xs tabular-nums text-ink-400">{sub.count}</span>

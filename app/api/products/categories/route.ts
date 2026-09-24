@@ -10,7 +10,13 @@ export async function GET(_req: NextRequest) {
         c.name                  AS category,
         c.name_en               AS category_en,
         c.name_ka               AS category_ka,
-        c.category_image,
+        COALESCE(
+          NULLIF(c.category_image, ''),
+          (SELECT p.image_url FROM products p
+           WHERE p.category_key = c.category_key AND p.source = 'gorgia'
+             AND p.image_url IS NOT NULL AND p.image_url NOT LIKE '/placeholder%'
+           ORDER BY p.in_stock DESC, p.id LIMIT 1)
+        )                       AS category_image,
         cat_cnt.total           AS category_total,
 
         s.key                   AS sub_key,
@@ -64,7 +70,9 @@ export async function GET(_req: NextRequest) {
         });
       }
       const entry = map.get(key)!;
-      if (row.sub_key) {
+      // Подкатегории без товаров не отдаём: из-за них стрелка раскрытия
+      // стояла почти у каждой категории, а клик вёл на пустую страницу.
+      if (row.sub_key && Number(row.sub_total ?? 0) > 0) {
         entry.sub_categories.push({
           key:       row.sub_key,
           name:      row.sub_name,

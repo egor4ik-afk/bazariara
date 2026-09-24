@@ -6,7 +6,8 @@ import Image from 'next/image';
 import { useCart } from '@/contexts/CartContext';
 import { useOrders } from '@/contexts/OrderContext';
 import { useLanguage, Language } from '@/contexts/LanguageContext';
-import { ShoppingCartIcon, ArchiveBoxIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ShoppingCartIcon, ChevronDownIcon } from '@heroicons/react/24/solid';
+import { ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import SidebarMenu from './SidebarMenu';
 
 const LANGUAGES: { code: Language; label: string; flag: string }[] = [
@@ -76,6 +77,23 @@ export default function Header() {
         {isClient && (
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
 
+            {/* Мои заказы — слева от языка и в виде списка, а не коробки:
+                коробка рядом с тележкой читалась как вторая корзина */}
+            <Link
+              href={`/${language}/orders`}
+              aria-label={t('nav.orders')}
+              title={t('nav.orders')}
+              className="relative flex items-center p-1 text-ink-600 hover:text-brand-700 transition-colors duration-300"
+            >
+              <ClipboardDocumentListIcon className="h-6 w-6 sm:h-7 sm:w-7" />
+              {orderCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-ink-700 text-cream-100 rounded-full h-4 min-w-4 px-1
+                                 flex items-center justify-center text-[10px] font-bold leading-none">
+                  {orderCount}
+                </span>
+              )}
+            </Link>
+
             {/* Дропдаун языка */}
             <div ref={dropdownRef} className="relative">
               <button
@@ -115,16 +133,6 @@ export default function Header() {
                 </div>
               )}
             </div>
-
-            {/* Заказы */}
-            <Link href={`/${language}/orders`} className="relative flex items-center text-ink-900 hover:text-brand-700 transition-colors duration-300">
-              <ArchiveBoxIcon className="h-7 w-7 sm:h-8 sm:w-8" />
-              {orderCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-brand-600 text-on-brand rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center text-[10px] sm:text-xs font-bold">
-                  {orderCount}
-                </span>
-              )}
-            </Link>
 
             {/* Корзина */}
             <Link href={`/${language}/cart`} className="relative flex items-center text-ink-900 hover:text-brand-700 transition-colors duration-300">
