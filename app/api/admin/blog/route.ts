@@ -69,6 +69,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    // Языковые SEO-поля. Дешёвая страховка на случай, если код выкатили
+    // раньше, чем запустили fix-blog-db.ts: без неё сохранение упало бы
+    // на «column seo_title_en does not exist».
+    await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS seo_title_en text`;
+    await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS seo_title_ka text`;
+    await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS seo_description_en text`;
+    await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS seo_description_ka text`;
+
     // published_at ставится один раз, при первой публикации: если обновлять
     // его при каждом сохранении, статьи будут прыгать в начало ленты
     // после любой правки опечатки.
@@ -78,6 +86,7 @@ export async function POST(req: NextRequest) {
         excerpt, excerpt_en, excerpt_ka,
         body, body_en, body_ka,
         cover_url, status, seo_title, seo_description, author_name,
+        seo_title_en, seo_title_ka, seo_description_en, seo_description_ka,
         published_at
       ) VALUES (
         ${slug}, ${body.title}, ${body.title_en || null}, ${body.title_ka || null},
@@ -86,6 +95,8 @@ export async function POST(req: NextRequest) {
         ${body.cover_url || null}, ${body.status || 'draft'},
         ${body.seo_title || null}, ${body.seo_description || null},
         ${body.author_name || 'BAZARI ARA'},
+        ${body.seo_title_en || null}, ${body.seo_title_ka || null},
+        ${body.seo_description_en || null}, ${body.seo_description_ka || null},
         ${body.status === 'published' ? new Date().toISOString() : null}
       )
       ON CONFLICT (slug) DO UPDATE SET
@@ -95,6 +106,8 @@ export async function POST(req: NextRequest) {
         cover_url = EXCLUDED.cover_url, status = EXCLUDED.status,
         seo_title = EXCLUDED.seo_title, seo_description = EXCLUDED.seo_description,
         author_name = EXCLUDED.author_name,
+        seo_title_en = EXCLUDED.seo_title_en, seo_title_ka = EXCLUDED.seo_title_ka,
+        seo_description_en = EXCLUDED.seo_description_en, seo_description_ka = EXCLUDED.seo_description_ka,
         published_at = COALESCE(posts.published_at, EXCLUDED.published_at),
         updated_at = NOW()
       RETURNING id, slug
@@ -125,7 +138,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, post });
   } catch (e: any) {
-    return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });
+    const msg = String(e?.message || e);
+    if (/null value in column "id"/.test(msg)) {
+      return NextResponse.json({
+        error: 'В таблице posts сломан автоинкремент id. Запустите в корне проекта: npx tsx fix-blog-db.ts',
+      }, { status: 500 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 

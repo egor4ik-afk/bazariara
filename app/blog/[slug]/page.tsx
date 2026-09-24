@@ -49,9 +49,9 @@ export async function generateMetadata(
 
   const hdrs = await headers();
   const locale = getLocale(hdrs);
-  const title = (post.seo_title || pick(post, 'title', locale))
+  const title = (pick(post, 'seo_title', locale) || pick(post, 'title', locale))
     .replace(/\s*[|—–-]\s*bazari\s*ara\s*$/i, '');
-  const description = post.seo_description || pick(post, 'excerpt', locale) || '';
+  const description = pick(post, 'seo_description', locale) || pick(post, 'excerpt', locale) || '';
   const url = `https://bazariara.ge/${locale}/blog/${slug}`;
 
   return {

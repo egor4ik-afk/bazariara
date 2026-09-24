@@ -10,6 +10,8 @@ type Post = {
   title_en?: string | null; title_ka?: string | null;
   excerpt_en?: string | null; excerpt_ka?: string | null;
   body_en?: string | null; body_ka?: string | null;
+  seo_title_en?: string | null; seo_title_ka?: string | null;
+  seo_description_en?: string | null; seo_description_ka?: string | null;
 };
 
 type Links = { regions: number[]; producers: number[]; products: number[]; tags: number[] };
@@ -195,7 +197,7 @@ export default function BlogAdmin() {
   };
 
   const suffix = lang === 'ru' ? '' : `_${lang}`;
-  const field = (base: 'title' | 'excerpt' | 'body') => (base + suffix) as keyof Post;
+  const field = (base: 'title' | 'excerpt' | 'body' | 'seo_title' | 'seo_description') => (base + suffix) as keyof Post;
 
   return (
     <div style={{ padding: 24, color: 'rgb(var(--ink-900))', maxWidth: 1100, margin: '0 auto' }}>
@@ -219,8 +221,9 @@ export default function BlogAdmin() {
             {(['ru', 'en', 'ka'] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)}
                 style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                         border: '1px solid rgb(var(--ink-200))', background: lang === l ? 'rgb(var(--brand-600))' : 'transparent', color: 'rgb(var(--ink-900))' }}>
-                {l.toUpperCase()}
+                         border: '1px solid rgb(var(--ink-200))', background: lang === l ? 'rgb(var(--brand-600))' : 'transparent',
+                         color: lang === l ? 'rgb(var(--on-brand))' : 'rgb(var(--ink-700))' }}>
+                {l.toUpperCase()}{l !== 'ru' && editing[`title_${l}` as keyof Post] ? ' ✓' : ''}
               </button>
             ))}
             <span style={{ fontSize: 11, color: 'rgb(var(--ink-500))', alignSelf: 'center', marginLeft: 6 }}>
@@ -275,7 +278,28 @@ export default function BlogAdmin() {
                 value={(editing[field('body')] as string) || ''} onChange={set(field('body'))} />
             </Field>
 
-            {lang === 'ru' && (
+            {/* SEO — отдельно для каждого языка. Раньше поля были только
+                русские и жили в блоке, который прятался на EN и KA, —
+                поэтому казалось, что язык внизу не переключается. */}
+            <Field label={`SEO Title (${lang.toUpperCase()}) — если пусто, берётся заголовок`}>
+              <input style={box} value={(editing[field('seo_title')] as string) || ''} onChange={set(field('seo_title'))} />
+              <SeoCounter value={(editing[field('seo_title')] as string) || (editing[field('title')] as string) || ''} max={47} />
+            </Field>
+            <Field label={`SEO Description (${lang.toUpperCase()})`}>
+              <textarea style={{ ...box, minHeight: 50, fontFamily: 'inherit' }}
+                value={(editing[field('seo_description')] as string) || ''} onChange={set(field('seo_description'))} />
+              <SeoCounter value={(editing[field('seo_description')] as string) || ''} min={120} max={160} />
+            </Field>
+
+            {/* Общее для всех языков — видно всегда. Раньше блок был обёрнут
+                в lang === 'ru' и исчезал на EN/KA вместе с обложкой и статусом. */}
+            <div style={{ marginTop: 6, paddingTop: 14, borderTop: '1px dashed rgb(var(--ink-200))' }}>
+              <p style={{ fontSize: 11, fontWeight: 700, letterSpacing: '.04em', textTransform: 'uppercase',
+                          color: 'rgb(var(--ink-500))', marginBottom: 10 }}>
+                Общее для всех языков
+              </p>
+            </div>
+            {(
               <>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
                   <Field label="Обложка">
@@ -300,13 +324,6 @@ export default function BlogAdmin() {
                   </Field>
                 </div>
 
-                <Field label="SEO Title (если пусто — берётся заголовок)">
-                  <input style={box} value={editing.seo_title || ''} onChange={set('seo_title')} />
-                </Field>
-                <Field label="SEO Description">
-                  <textarea style={{ ...box, minHeight: 50, fontFamily: 'inherit' }}
-                    value={editing.seo_description || ''} onChange={set('seo_description')} />
-                </Field>
 
                 <Picker title="Регионы" items={refs.regions} selected={links.regions} onToggle={(id) => toggle('regions', id)} />
                 <Picker title="Производители" items={refs.producers} selected={links.producers} onToggle={(id) => toggle('producers', id)} />
@@ -368,6 +385,19 @@ export default function BlogAdmin() {
         </div>
       )}
     </div>
+  );
+}
+
+/** Подсказка по длине: Title с учётом « | BAZARI ARA» (13 символов)
+ *  укладывается в 60, Description — 120–160. */
+function SeoCounter({ value, min = 0, max }: { value: string; min?: number; max: number }) {
+  const n = value.trim().length;
+  const bad = n > max || (min > 0 && n > 0 && n < min);
+  return (
+    <p style={{ fontSize: 11, marginTop: 4, color: bad ? 'rgb(var(--clay))' : 'rgb(var(--ink-500))' }}>
+      {n} / {min ? `${min}–` : 'до '}{max}
+      {n > max ? ' — обрежется в выдаче' : bad ? ' — коротковато' : ''}
+    </p>
   );
 }
 
