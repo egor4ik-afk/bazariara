@@ -129,11 +129,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let postEntries: MetadataRoute.Sitemap = [];
   try {
     const posts = await sql`
-      SELECT slug, updated_at FROM posts WHERE status = 'published'
+      SELECT slug, updated_at,
+             COALESCE(title_en, '') <> '' AS has_en,
+             COALESCE(title_ka, '') <> '' AS has_ka
+      FROM posts WHERE status = 'published'
     `;
-    postEntries = posts.flatMap((p: any) =>
-      localizedEntries(`/blog/${p.slug}`, p.updated_at ? new Date(p.updated_at) : new Date(), 'monthly', 0.7)
-    );
+    // Непереведённая статья на /en и /ka отдаёт noindex — такие адреса
+    // в sitemap не кладём, и в hreflang тоже: объявлять версию, которую
+    // сами же закрыли от индекса, — противоречие для Google.
+    postEntries = posts.flatMap((p: any) => {
+      const langs = ['ru', ...(p.has_en ? ['en'] : []), ...(p.has_ka ? ['ka'] : [])];
+      const path = `/blog/${p.slug}`;
+      const languages: Record<string, string> = {};
+      for (const l of langs) languages[l] = escapeXml(`${SITE_URL}/${l}${path}`);
+      languages['x-default'] = escapeXml(`${SITE_URL}/ru${path}`);
+      return langs.map((l) => ({
+        url: escapeXml(`${SITE_URL}/${l}${path}`),
+        lastModified: p.updated_at ? new Date(p.updated_at) : new Date(),
+        changeFrequency: 'monthly' as const,
+        priority: 0.7,
+        alternates: { languages },
+      }));
+    });
   } catch (e) {
     console.error('Sitemap posts error:', e);
   }

@@ -51,13 +51,36 @@ export async function generateMetadata(
   const locale = getLocale(hdrs);
   const title = (pick(post, 'seo_title', locale) || pick(post, 'title', locale))
     .replace(/\s*[|—–-]\s*bazari\s*ara\s*$/i, '');
-  const description = pick(post, 'seo_description', locale) || pick(post, 'excerpt', locale) || '';
+  // Статья без перевода на язык страницы. Показываем её (посетителю лучше
+  // русский текст, чем 404), но в индекс не пускаем: иначе русская страница
+  // висит в выдаче под грузинским адресом как дубль русской.
+  const translated = locale === 'ru' || Boolean(String(post[`title_${locale}`] || '').trim());
+
+  let description = pick(post, 'seo_description', locale) || pick(post, 'excerpt', locale) || '';
+  // Короткий excerpt («Кратко о главном») — добиваем началом текста
+  if (description.length < 110) {
+    // Только текст на ТОМ ЖЕ языке. pick() откатывается на русский, и
+    // в английское описание уезжал русский кусок статьи — поймано обходом.
+    const sameLangBody = locale === 'ru' ? post.body : post[`body_${locale}`];
+    const plain = String(sameLangBody || '')
+      .replace(/!\[[^\]]*\]\([^)]*\)|@video\[[^\]]*\]/g, ' ')
+      .replace(/[#*>_`\[\]()-]/g, ' ')
+      .replace(/\s+/g, ' ').trim();
+    if (plain) {
+      const room = 158 - description.length - 1;
+      const cut = plain.slice(0, room);
+      const clip = plain.length > room ? cut.slice(0, cut.lastIndexOf(' ')) + '…' : cut;
+      description = (description ? description + ' ' : '') + clip;
+    }
+  }
   const url = `https://bazariara.ge/${locale}/blog/${slug}`;
 
   return {
     title, description,
     // Черновик не должен попасть в индекс, даже если ссылку кому-то дали.
-    robots: post.status === 'published' ? undefined : { index: false, follow: false },
+    robots: post.status !== 'published'
+      ? { index: false, follow: false }
+      : translated ? undefined : { index: false, follow: true },
     alternates: { canonical: url },
     openGraph: {
       title, description, url, type: 'article',

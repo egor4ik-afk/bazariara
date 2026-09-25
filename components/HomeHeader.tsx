@@ -38,6 +38,11 @@ export default function HomeHeader({ categoryNames, currentPage }: HomeHeaderPro
           {title}{pageLabel}
         </h1>
         <p className="text-lg font-semibold text-brand-700">{t('home.delivery')}</p>
+        {/* Карточки товаров — H3. На главной над ними стоит H2 «Все товары»,
+            а на странице категории его не было, и шёл прыжок H1 → H3.
+            Визуально второй заголовок здесь не нужен — H1 уже называет
+            раздел, поэтому H2 только для структуры и скринридеров. */}
+        <h2 className="sr-only">{t('home.allProducts')}</h2>
       </div>
     );
   }

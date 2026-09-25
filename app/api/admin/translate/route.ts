@@ -62,7 +62,9 @@ export async function POST(req: NextRequest) {
 
   try {
     // Грузинский в токенах в 3–4 раза длиннее русского — запас по лимиту
-    const maxTokens = Math.min(8000, Math.ceil(text.length * (to === 'ka' ? 3 : 1.5)) + 300);
+    // Нижнюю границу держит lib/ai (6000): у рассуждающих моделей даже
+    // короткий перевод начинается с размышлений.
+    const maxTokens = Math.min(16000, Math.ceil(text.length * (to === 'ka' ? 4 : 2)) + 2000);
     const r = await aiChat({ system, user: text, temperature: 0.2, maxTokens });
 
     let out = r.text.trim();

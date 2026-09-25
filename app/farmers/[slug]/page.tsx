@@ -105,10 +105,10 @@ export async function generateMetadata(
       : `${name}: продукты хозяйства${region ? `, ${region}` : ''}`);
   const description = pick(producer, 'seo_description', locale)
     || (locale === 'en'
-      ? `${name}${region ? ` from ${region}` : ''}: the farm story and full range of products. Delivered across Tbilisi in 2 hours.`
+      ? `${name}${region ? ` from ${region}` : ''}: the story of the farm, how the products are made and the full range. Delivered across Tbilisi in 2 hours.`
       : locale === 'ka'
-      ? `${name}${region ? `, ${region}` : ''}: მეურნეობის ისტორია და პროდუქცია. მიწოდება თბილისში 2 საათში.`
-      : `${name}${region ? `, ${region}` : ''}: история хозяйства и весь ассортимент продуктов. Доставка по Тбилиси за 2 часа.`);
+      ? `${name}${region ? `, ${region}` : ''}: მეურნეობის ისტორია, როგორ მზადდება პროდუქცია და სრული ასორტიმენტი. მიწოდება თბილისში 2 საათში.`
+      : `${name}${region ? `, ${region}` : ''}: история хозяйства, как делают продукты и весь ассортимент. Доставка по Тбилиси за 2 часа.`);
 
   const url = `https://bazariara.ge/${locale}/farmers/${slug}`;
 

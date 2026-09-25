@@ -15,8 +15,9 @@ const YANDEX_API_KEY = process.env.YANDEX_API_KEY || '';
 function parseJson(text: string): { ru: string; en: string; ka: string } {
   let clean = text.replace(/```json\s*|\s*```/g, '').trim();
   const match = clean.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error('No JSON found in response');
-  clean = match[0]
+  // Нет закрывающей скобки — ответ оборван. Не сдаёмся сразу: ниже
+  // поля достаются по одному регуляркой, и уцелевшие языки сохранятся.
+  clean = (match ? match[0] : clean.slice(Math.max(0, clean.indexOf('{'))))
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
     .replace(/\n/g, ' ').replace(/\r/g, '').replace(/\t/g, ' ');
 
@@ -32,11 +33,14 @@ function parseJson(text: string): { ru: string; en: string; ka: string } {
       const m = clean.match(new RegExp(`"${key}"\\s*:\\s*"((?:[^"\\\\]|\\\\.)*)"`));
       return m ? m[1] : '';
     };
-    return {
+    const out = {
       ru: get('ru').slice(0, 2000),
       en: get('en').slice(0, 2000),
       ka: get('ka').slice(0, 2000),
     };
+    // Три пустых поля в интерфейсе выглядели бы как успешная генерация
+    if (!out.ru && !out.en && !out.ka) throw new Error('В ответе модели нет ни одного перевода');
+    return out;
   }
 }
 
@@ -71,7 +75,8 @@ async function generateWithOpenCode(
     system: 'You are a product copywriter. Return only valid JSON. No markdown, no extra text.',
     user: mode === 'description' ? buildDescriptionPrompt(name, cat) : buildNamePrompt(name),
     temperature: 0.3,
-    maxTokens: mode === 'description' ? 2500 : 400,
+    // Три языка, грузинский в токенах в 3–4 раза длиннее русского
+    maxTokens: mode === 'description' ? 10000 : 6000,
   });
   return { ...parseJson(r.text), _meta: { provider: 'opencode', model: r.model, ms: r.ms, skipped: r.skipped } };
 }

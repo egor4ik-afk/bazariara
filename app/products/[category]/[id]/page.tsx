@@ -183,11 +183,14 @@ function clipWords(text: string, max: number): string {
 
 const META_COPY = {
   ru: { buy: 'купить в Тбилиси',  delivery: 'Доставка по Тбилиси за 2 часа.', price: 'Цена',
-        fallback: (t: string) => `${t} с доставкой по Тбилиси за 2 часа.`, og: 'ru_GE' },
+        fallback: (t: string) => `${t} с доставкой по Тбилиси за 2 часа.`, og: 'ru_GE',
+        extra: 'Заказ онлайн без регистрации, оплата при получении.' },
   en: { buy: 'buy in Tbilisi',    delivery: 'Delivery across Tbilisi in 2 hours.', price: 'Price',
-        fallback: (t: string) => `${t}, delivered across Tbilisi in 2 hours.`, og: 'en_US' },
+        fallback: (t: string) => `${t}, delivered across Tbilisi in 2 hours.`, og: 'en_US',
+        extra: 'Order online, no sign-up needed, pay on delivery.' },
   ka: { buy: 'იყიდე თბილისში',     delivery: 'მიწოდება თბილისში 2 საათში.', price: 'ფასი',
-        fallback: (t: string) => `${t} მიწოდებით თბილისში 2 საათში.`, og: 'ka_GE' },
+        fallback: (t: string) => `${t} მიწოდებით თბილისში 2 საათში.`, og: 'ka_GE',
+        extra: 'შეუკვეთეთ ონლაინ, გადახდა მიღებისას.' },
 } as const;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
@@ -228,9 +231,16 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   // уезжало «Цена: 0 ₾» — выглядит как ошибка или бесплатная раздача.
   const priceStr = product.price > 0 ? ` ${c.price}: ${product.price} ₾.` : '';
   const tail = ` ${c.delivery}${priceStr}`;
-  const description = body
+  // Короткое описание («Янтарное вино.») давало сниппет в 45 символов —
+  // Google такое заменяет случайным куском страницы. Добиваем фразой про
+  // заказ, пока не наберётся хотя бы 110 символов.
+  let description = body
     ? clipWords(body, 158 - tail.length) + tail
     : c.fallback(name) + priceStr;
+  if (description.length < 110) {
+    const extra = ` ${c.extra}`;
+    description = (description + extra).length <= 160 ? description + extra : description;
+  }
 
   const image = product.image_url || '/default-product.png';
 

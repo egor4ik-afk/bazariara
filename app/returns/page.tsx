@@ -8,7 +8,7 @@ const ReturnRuleCard = ({ icon, title, text }: { icon: React.ReactNode; title: s
     <div className="p-4 bg-brand-600/10 rounded-full mb-4">
       {icon}
     </div>
-    <h3 className="text-xl font-bold text-brand-700 mb-2">{title}</h3>
+    <h2 className="text-xl font-bold text-brand-700 mb-2">{title}</h2>
     <p className="text-ink-700">{text}</p>
   </div>
 );
@@ -47,10 +47,10 @@ export default function ReturnsPage() {
 
         <div className="bg-clay/10 border border-clay/40 text-ink-800 rounded-2xl p-8 flex items-center gap-6 max-w-4xl mx-auto">
           <div className="flex-shrink-0">
-             <ExclamationTriangleIcon className="w-16 h-16 text-yellow-500" />
+             <ExclamationTriangleIcon className="w-16 h-16 text-clay" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-yellow-400 mb-2">{t('returns.importantNote')}</h2>
+            <h2 className="text-2xl font-bold text-ink-900 mb-2">{t('returns.importantNote')}</h2>
             <p className="text-lg">
               {t('returns.importantNoteText')}
             </p>

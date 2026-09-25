@@ -53,7 +53,7 @@ export async function generateMetadata(
     en: { t: `${name}: Local Products and Producers`,
           d: `${name} — products from local producers: honey, tea, spices, wine. Who makes them and what sets the region apart. Delivery across Tbilisi.` },
     ka: { t: `${name}: რეგიონის პროდუქცია`,
-          d: `${name} — ადგილობრივი მწარმოებლების პროდუქცია: თაფლი, ჩაი, სანელებლები, ღვინო. მიწოდება თბილისში.` },
+          d: `${name} — ადგილობრივი მწარმოებლების პროდუქცია: თაფლი, ჩაი, სანელებლები, ღვინო. ვინ აწარმოებს და რით გამოირჩევა რეგიონი. მიწოდება თბილისში.` },
   }[locale];
   const title = T.t;
   const description = T.d;

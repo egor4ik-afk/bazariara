@@ -88,8 +88,8 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
     return {
       title: { absolute: `${subName} — ${buy}${pageSuffix} | BAZARI ARA` },
       description:
-        loc === 'en' ? `${subName} in ${catName}: see the range and prices. Delivery across Tbilisi in 2 hours, order online.`
-        : loc === 'ka' ? `${subName} — ${catName}: ასორტიმენტი და ფასები. მიწოდება თბილისში 2 საათში.`
+        loc === 'en' ? `${subName} in ${catName}: the full range with prices and photos. Delivery across Tbilisi in 2 hours, order online.`
+        : loc === 'ka' ? `${subName} — ${catName}: სრული ასორტიმენტი ფასებითა და ფოტოებით. მიწოდება თბილისში 2 საათში, შეკვეთა ონლაინ.`
         : `${subName} в разделе «${catName}»: ассортимент и цены. Доставка по Тбилиси за 2 часа, заказ онлайн без регистрации.`,
       alternates,
     };
@@ -98,9 +98,9 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   return {
     title: { absolute: `${catName} — ${buy}${pageSuffix} | BAZARI ARA` },
     description:
-      loc === 'en' ? `${catName} in Tbilisi: the full range with prices and photos. Delivery across the city in 2 hours, order online.`
-      : loc === 'ka' ? `${catName} თბილისში: სრული ასორტიმენტი ფასებით. მიწოდება ქალაქში 2 საათში.`
-      : `${catName} в Тбилиси: весь ассортимент с ценами и фото. Доставка по городу за 2 часа, заказ онлайн без регистрации.`,
+      loc === 'en' ? `${catName} in Tbilisi: the full range with prices and photos. Delivery across the city in 2 hours, order online with no sign-up.`
+      : loc === 'ka' ? `${catName} თბილისში: სრული ასორტიმენტი ფასებითა და ფოტოებით. მიწოდება ქალაქში 2 საათში, შეკვეთა ონლაინ რეგისტრაციის გარეშე.`
+      : `${catName} в Тбилиси: весь ассортимент с ценами и фото. Доставка по городу за 2 часа, заказ онлайн без регистрации и оплата при получении.`,
     alternates,
   };
 }
@@ -220,6 +220,12 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         <HomeHeader
           categoryNames={selectedCategory !== 'all'
             ? (() => {
+                // На подкатегории H1 — её название, как и в title. Раньше
+                // была категория: title «Лакомство для собак», а H1
+                // «Товары для животных» — поисковик видел расхождение.
+                const sub = selectedSubCategory !== 'all'
+                  ? subCategoriesList.find(x => x.key === selectedSubCategory) : undefined;
+                if (sub) return { ru: sub.name, en: sub.name_en, ka: sub.name_ka };
                 const cat = categoriesList.find(c => c.key === selectedCategory);
                 return cat ? { ru: cat.name, en: cat.name_en, ka: cat.name_ka } : undefined;
               })()

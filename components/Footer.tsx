@@ -63,23 +63,23 @@ const Footer = () => {
           </div>
 
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wide text-ink-500 mb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-ink-500 mb-2">
               {t('footer.sectionsTitle')}
-            </h3>
+            </h2>
             {sections.map((l) => <Link key={l.href} href={l.href} className={linkClass}>{l.label}</Link>)}
           </div>
 
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wide text-ink-500 mb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-ink-500 mb-2">
               {t('footer.catalogTitle')}
-            </h3>
+            </h2>
             {catalog.map((l) => <Link key={l.href} href={l.href} className={linkClass}>{l.label}</Link>)}
           </div>
 
           <div>
-            <h3 className="text-xs font-bold uppercase tracking-wide text-ink-500 mb-2">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-ink-500 mb-2">
               {t('footer.contactsTitle')}
-            </h3>
+            </h2>
             <a href={CONTACT_LINKS.tel} className="block py-1.5 text-sm font-semibold text-ink-900 hover:text-brand-700 transition-colors">
               {CONTACTS.phoneDisplay}
             </a>

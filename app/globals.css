@@ -111,6 +111,32 @@ body {
 
 ::selection { background: rgb(var(--brand-100)); color: rgb(var(--ink-900)); }
 
+/*
+  Тонкая лаймовая полоса прокрутки — ровно та, что была до светлой темы
+  (#a3e635, 8px с прозрачной рамкой 2px, видимая часть ~4px). Пропала,
+  когда globals.css переписывался под две темы.
+*/
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background-color: #a3e635;
+  border-radius: 10px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: #82c029; }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/*
+  Firefox не знает ::-webkit-scrollbar — ему стандартные свойства.
+  Только внутри @supports: если задать scrollbar-color всем, Chrome 121+
+  переключится на стандарт и проигнорирует оформление выше вместе с
+  прозрачной рамкой, и полоса станет толще.
+*/
+@supports (-moz-appearance: none) {
+  * { scrollbar-width: thin; scrollbar-color: #a3e635 transparent; }
+}
+
 .scroll-x {
   overflow-x: auto;
   scroll-behavior: smooth;
