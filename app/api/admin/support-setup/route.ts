@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
   const cfg = supportConfig();
   const out: Record<string, any> = {
     env: {
-      TELEGRAM_BOT_TOKEN: Boolean(cfg.token),
+      TELEGRAM_SUPPORT_BOT_TOKEN: Boolean(cfg.token),
       TELEGRAM_SUPPORT_CHAT_ID: Boolean(cfg.chatId),
     },
     expectedWebhook: siteUrl(req) + WEBHOOK_PATH,
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
   const cfg = supportConfig();
   if (!cfg.token) {
-    return NextResponse.json({ error: 'Нужен TELEGRAM_BOT_TOKEN' }, { status: 400 });
+    return NextResponse.json({ error: 'Нужен TELEGRAM_SUPPORT_BOT_TOKEN' }, { status: 400 });
   }
   const { force } = await req.json().catch(() => ({}));
   const url = siteUrl(req) + WEBHOOK_PATH;
@@ -73,8 +73,9 @@ export async function POST(req: NextRequest) {
     const wh = await tg('getWebhookInfo', {});
     if (wh.url && wh.url !== url && !force) {
       return NextResponse.json({
-        error: `У бота уже стоит вебхук на ${wh.url}. Если это другой проект с тем же ботом, ` +
-               'перезапись отключит его там. Лучше завести для поддержки отдельного бота.',
+        error: `У этого бота уже стоит вебхук на ${wh.url} — значит, бот используется ` +
+               'в другом проекте, и перезапись отключит его там. Для поддержки нужен ' +
+               'отдельный бот: создайте его в @BotFather и пропишите в TELEGRAM_SUPPORT_BOT_TOKEN.',
         existing: wh.url,
       }, { status: 409 });
     }

@@ -85,8 +85,14 @@ function webhookSecret(token: string): string {
   return createHash('sha256').update(`bazariara-support-webhook:${token}`).digest('hex').slice(0, 48);
 }
 
+/**
+ * У поддержки СВОЙ бот. Один бот держит только один вебхук: общий с
+ * другим проектом (RelaxDev) бот означал бы, что установка вебхука здесь
+ * отключает чат там — так однажды и случилось. Заказы по-прежнему шлёт
+ * бот из TELEGRAM_BOT_TOKEN, с поддержкой они не пересекаются.
+ */
 export function supportConfig() {
-  const token = process.env.TELEGRAM_BOT_TOKEN || '';
+  const token = process.env.TELEGRAM_SUPPORT_BOT_TOKEN || '';
   const chatId = process.env.TELEGRAM_SUPPORT_CHAT_ID || '';
   const secret = webhookSecret(token);
   return { token, chatId, secret, ready: Boolean(token && chatId) };
@@ -95,7 +101,7 @@ export function supportConfig() {
 /** Вызов Bot API. Ошибка Telegram — это исключение с его текстом. */
 export async function tg<T = any>(method: string, params: Record<string, unknown>): Promise<T> {
   const { token } = supportConfig();
-  if (!token) throw new Error('Не задан TELEGRAM_BOT_TOKEN');
+  if (!token) throw new Error('Не задан TELEGRAM_SUPPORT_BOT_TOKEN');
   const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

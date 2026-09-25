@@ -53,7 +53,7 @@ export default function SupportAdmin() {
   if (!s) return <p style={{ padding: 24 }}>Загрузка…</p>;
 
   const webhookOk = s.webhook?.url === s.expectedWebhook;
-  const allOk = s.env.TELEGRAM_BOT_TOKEN && s.env.TELEGRAM_SUPPORT_CHAT_ID
+  const allOk = s.env.TELEGRAM_SUPPORT_BOT_TOKEN && s.env.TELEGRAM_SUPPORT_CHAT_ID
     && s.chat?.isForum && s.botRights?.canManageTopics && webhookOk;
 
   const card = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: 18, marginBottom: 16 } as const;
@@ -66,7 +66,8 @@ export default function SupportAdmin() {
       </p>
 
       <div style={card}>
-        {row(s.env.TELEGRAM_BOT_TOKEN, 'TELEGRAM_BOT_TOKEN', 'Токен бота — тот же, что для заказов, или отдельный')}
+        {row(s.env.TELEGRAM_SUPPORT_BOT_TOKEN, 'TELEGRAM_SUPPORT_BOT_TOKEN',
+             'Отдельный бот только для поддержки — создайте в @BotFather. Не бот заказов и не бот другого проекта')}
         {row(s.env.TELEGRAM_SUPPORT_CHAT_ID, 'TELEGRAM_SUPPORT_CHAT_ID',
              'ID группы поддержки (начинается с -100). Отдельная группа, не чат заказов')}
         {s.bot && row(true, `Бот: ${s.bot}`)}
@@ -83,7 +84,7 @@ export default function SupportAdmin() {
         )}
         {s.error && <p style={{ fontSize: 12, color: 'rgb(var(--clay))', marginTop: 6 }}>{s.error}</p>}
 
-        <button onClick={() => install()} disabled={busy || !s.env.TELEGRAM_BOT_TOKEN}
+        <button onClick={() => install()} disabled={busy || !s.env.TELEGRAM_SUPPORT_BOT_TOKEN}
           style={{ marginTop: 12, padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
                    background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700 }}>
           {busy ? 'Устанавливаем…' : webhookOk ? 'Переустановить вебхук' : 'Установить вебхук'}

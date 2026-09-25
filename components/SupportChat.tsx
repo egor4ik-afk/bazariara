@@ -54,6 +54,25 @@ const COPY = {
 const SEEN_KEY = 'support_seen';
 
 /**
+ * Разбор ответа сервера. Если вместо JSON пришла HTML-страница (Vercel
+ * так отвечает, когда функция упала или не уложилась во время), раньше
+ * посетитель видел «Unexpected token '<'…» — непонятно ни ему, ни вам.
+ * Теперь — код ответа, по которому причину видно сразу.
+ */
+async function readJson(r: Response): Promise<any> {
+  const raw = await r.text();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    const what = r.status === 504 ? 'сервер не успел ответить'
+      : r.status === 404 ? 'адрес не найден'
+      : r.status === 413 ? 'файл слишком большой'
+      : 'ошибка сервера';
+    return { error: `${what} (HTTP ${r.status})` };
+  }
+}
+
+/**
  * Окно чата поддержки. Ответы оператора приходят из Telegram.
  *
  * Новые сообщения забираются опросом: раз в 4 секунды, пока окно
@@ -91,7 +110,7 @@ export default function SupportChat() {
     try {
       const r = await fetch(`/api/support?after=${lastId.current}`, { cache: 'no-store' });
       if (!r.ok) return;
-      const d = await r.json();
+      const d = await readJson(r);
       setStatus(d.status);
       if (d.messages?.length) {
         lastId.current = d.messages[d.messages.length - 1].id;
@@ -153,7 +172,7 @@ export default function SupportChat() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ contentType: file.type, size: file.size }),
       });
-      const d = await r.json();
+      const d = await readJson(r);
       if (!r.ok) throw new Error(d.error || c.error);
       const put = await fetch(d.uploadUrl, {
         method: 'PUT',
@@ -212,7 +231,7 @@ export default function SupportChat() {
           locale: language, page: window.location.pathname + window.location.search,
         }),
       });
-      const d = await r.json();
+      const d = await readJson(r);
       if (!r.ok) throw new Error(d.error || c.error);
       setStatus('open');
       lastId.current = Math.max(lastId.current, d.message.id);

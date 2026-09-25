@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import sql from '@/lib/db';
 import { ensureSupportTables, supportConfig, tg, SUPPORT_COOKIE, MAX_TEXT } from '@/lib/support';
@@ -16,6 +16,10 @@ import { isOwnAttachment, isImageUrl } from '@/lib/support-storage';
  */
 
 export const runtime = 'nodejs';
+// Раньше лимит не был задан, и отправка картинки в Telegram не укладывалась
+// в короткий лимит по умолчанию — Vercel отдавал HTML-страницу ошибки, и
+// окно чата падало на разборе ответа: «Unexpected token '<'».
+export const maxDuration = 30;
 
 const LIMIT_PER_MINUTE = 8;
 const LIMIT_PER_DAY = 150;
@@ -139,23 +143,9 @@ export async function POST(req: NextRequest) {
 
     // Текст отправляем без parse_mode: разметку из сообщения посетителя
     // Telegram иначе попытается интерпретировать
-    if (attachment) {
-      // Подпись к фото в Telegram — до 1024 символов; длиннее — отдельным сообщением
-      const caption = text.length <= 1024 ? text : undefined;
-      const base = { chat_id: cfg.chatId, message_thread_id: t.tg_topic_id, caption };
-      if (isImageUrl(attachment)) {
-        // По ссылке Telegram принимает как фото только файлы до 5 МБ.
-        // Крупный скриншот уходит документом — это ограничение Telegram,
-        // а не запасной сценарий: файл доходит в любом случае.
-        await tg('sendPhoto', { ...base, photo: attachment })
-          .catch(() => tg('sendDocument', { ...base, document: attachment }));
-      } else {
-        await tg('sendDocument', { ...base, document: attachment });
-      }
-      if (text && !caption) {
-        await tg('sendMessage', { chat_id: cfg.chatId, message_thread_id: t.tg_topic_id, text });
-      }
-    } else {
+    // Текст — сразу: он уходит быстро, и если Telegram откажет, посетитель
+    // увидит ошибку, а сообщение не сохранится «вникуда»
+    if (!attachment) {
       await tg('sendMessage', { chat_id: cfg.chatId, message_thread_id: t.tg_topic_id, text });
     }
 
@@ -165,6 +155,40 @@ export async function POST(req: NextRequest) {
       RETURNING id, direction, text, attachment_url, created_at
     `;
     await sql`UPDATE support_threads SET last_at = NOW(), status = 'open' WHERE id = ${t.id}`;
+
+    /*
+      Доставка в Telegram — после ответа посетителю (after).
+
+      С картинкой это долго: Telegram сам скачивает файл по ссылке, а если
+      не выходит отправить фото, файл уходит документом — ещё один запрос.
+      Раньше посетитель ждал всё это, и на Vercel функция не укладывалась
+      во время. Теперь сообщение сохранено и сразу видно в окне, а
+      доставка идёт следом. Если Telegram откажет — ошибка будет в логах.
+    */
+    const topicId = t.tg_topic_id;
+    if (attachment) after(async () => {
+      try {
+        if (attachment) {
+          // Подпись к фото в Telegram — до 1024 символов; длиннее — отдельным сообщением
+          const caption = text.length <= 1024 ? text : undefined;
+          const base = { chat_id: cfg.chatId, message_thread_id: topicId, caption };
+          if (isImageUrl(attachment)) {
+            // По ссылке Telegram принимает как фото только файлы до 5 МБ.
+            // Крупный скриншот уходит документом — это ограничение Telegram,
+            // а не запасной сценарий: файл доходит в любом случае.
+            await tg('sendPhoto', { ...base, photo: attachment })
+              .catch(() => tg('sendDocument', { ...base, document: attachment }));
+          } else {
+            await tg('sendDocument', { ...base, document: attachment });
+          }
+          if (text && !caption) {
+            await tg('sendMessage', { chat_id: cfg.chatId, message_thread_id: topicId, text });
+          }
+        }
+      } catch (e: any) {
+        console.error(`support: не доставлено в Telegram (разговор #${t!.id}):`, e?.message);
+      }
+    });
 
     const res = NextResponse.json({ ok: true, message: msg });
     res.cookies.set(SUPPORT_COOKIE, sid!, {
