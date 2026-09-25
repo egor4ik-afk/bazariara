@@ -112,3 +112,21 @@ export async function tg<T = any>(method: string, params: Record<string, unknown
   if (!data?.ok) throw new Error(`Telegram ${method}: ${data?.description || res.status}`);
   return data.result as T;
 }
+
+/** Вызов Bot API с файлом (multipart). Файл уходит байтами, а не ссылкой. */
+export async function tgUpload<T = any>(
+  method: 'sendPhoto' | 'sendDocument',
+  params: Record<string, string | number | undefined>,
+  file: { body: Buffer; contentType: string; name: string },
+): Promise<T> {
+  const { token } = supportConfig();
+  if (!token) throw new Error('Не задан TELEGRAM_SUPPORT_BOT_TOKEN');
+  const form = new FormData();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') form.append(k, String(v));
+  form.append(method === 'sendPhoto' ? 'photo' : 'document',
+              new Blob([new Uint8Array(file.body)], { type: file.contentType }), file.name);
+  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', body: form, cache: 'no-store' });
+  const data = await res.json().catch(() => ({}));
+  if (!data?.ok) throw new Error(`Telegram ${method}: ${data?.description || res.status}`);
+  return data.result as T;
+}

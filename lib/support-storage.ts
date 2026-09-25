@@ -7,7 +7,7 @@
  *  • оператор → Telegram → сервер скачивает и кладёт в бакет (putSupportFile).
  */
 
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { createHash, randomBytes } from 'node:crypto';
 
@@ -84,4 +84,21 @@ export async function putSupportFile(folder: string, body: Buffer, contentType: 
 
 export function isImageUrl(url: string | null | undefined): boolean {
   return !!url && /\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url);
+}
+
+/**
+ * Читает вложение из бакета по его публичной ссылке — напрямую, минуя CDN.
+ * Нужен, чтобы отдать файл в Telegram байтами: по ссылке Telegram качает
+ * сам, и если CDN ему не отвечает, файл до оператора не доходит.
+ */
+export async function getSupportFile(url: string): Promise<{ body: Buffer; contentType: string; name: string }> {
+  if (!url.startsWith(`${SUPPORT_CDN}/`)) throw new Error('не наш файл');
+  const rel = url.slice(SUPPORT_CDN.length + 1);
+  const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: `${PREFIX}/${rel}` }));
+  const bytes = await (res.Body as any).transformToByteArray();
+  return {
+    body: Buffer.from(bytes),
+    contentType: res.ContentType || 'application/octet-stream',
+    name: rel.split('/').pop() || 'file',
+  };
 }

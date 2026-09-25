@@ -2,7 +2,8 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { randomBytes } from 'node:crypto';
 import sql from '@/lib/db';
 import { ensureSupportTables, supportConfig, tg, SUPPORT_COOKIE, MAX_TEXT } from '@/lib/support';
-import { isOwnAttachment, isImageUrl } from '@/lib/support-storage';
+import { isOwnAttachment } from '@/lib/support-storage';
+import { deliverAttachment } from '@/lib/support-deliver';
 
 /**
  * Чат поддержки со стороны посетителя.
@@ -166,29 +167,13 @@ export async function POST(req: NextRequest) {
       доставка идёт следом. Если Telegram откажет — ошибка будет в логах.
     */
     const topicId = t.tg_topic_id;
-    if (attachment) after(async () => {
-      try {
-        if (attachment) {
-          // Подпись к фото в Telegram — до 1024 символов; длиннее — отдельным сообщением
-          const caption = text.length <= 1024 ? text : undefined;
-          const base = { chat_id: cfg.chatId, message_thread_id: topicId, caption };
-          if (isImageUrl(attachment)) {
-            // По ссылке Telegram принимает как фото только файлы до 5 МБ.
-            // Крупный скриншот уходит документом — это ограничение Telegram,
-            // а не запасной сценарий: файл доходит в любом случае.
-            await tg('sendPhoto', { ...base, photo: attachment })
-              .catch(() => tg('sendDocument', { ...base, document: attachment }));
-          } else {
-            await tg('sendDocument', { ...base, document: attachment });
-          }
-          if (text && !caption) {
-            await tg('sendMessage', { chat_id: cfg.chatId, message_thread_id: topicId, text });
-          }
-        }
-      } catch (e: any) {
-        console.error(`support: не доставлено в Telegram (разговор #${t!.id}):`, e?.message);
-      }
-    });
+    // Вложение — после ответа посетителю: чтение из бакета и загрузка
+    // в Telegram занимают время, посетитель ждать не должен
+    if (attachment) {
+      const args = { chatId: cfg.chatId, topicId: t.tg_topic_id!, threadId: t.id, url: attachment, text };
+      after(() => deliverAttachment(args).catch((e) =>
+        console.error(`support: вложение не доставлено (разговор #${args.threadId}):`, e?.message)));
+    }
 
     const res = NextResponse.json({ ok: true, message: msg });
     res.cookies.set(SUPPORT_COOKIE, sid!, {
