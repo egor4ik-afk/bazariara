@@ -7,6 +7,7 @@
 import Link from 'next/link';
 import sql from '@/lib/db';
 import ProducerApplicationForm from '@/components/ProducerApplicationForm';
+import { plural } from '@/lib/plural';
 
 type Locale = 'ru' | 'en' | 'ka';
 
@@ -111,7 +112,11 @@ export async function ProducersSection({ locale }: { locale: Locale }) {
               )}
               {desc(p) && <p className="text-sm text-ink-600 clamp-2">{desc(p)}</p>}
               <p className="text-xs font-semibold text-brand-700 mt-1.5">
-                {p.product_count} {c.products}
+                {/* «0 товаров» у нового фермера выглядело как брошенная
+                    страница — показываем «скоро» */}
+                {p.product_count > 0
+                  ? plural(p.product_count, 'products', locale)
+                  : (locale === 'en' ? 'Coming soon' : locale === 'ka' ? 'მალე' : 'Скоро в продаже')}
               </p>
             </div>
           </Link>
@@ -166,7 +171,7 @@ export async function RegionsSection({ locale }: { locale: Locale }) {
           >
             <span className="font-semibold text-ink-900">{name(r)}</span>
             <span className="text-xs text-ink-500">
-              {r.product_count > 0 ? `${r.product_count} ${c.products}` : `${r.producer_count} ${c.producers}`}
+              {r.product_count > 0 ? plural(r.product_count, 'products', locale) : plural(r.producer_count, 'producers', locale)}
             </span>
           </Link>
         ))}

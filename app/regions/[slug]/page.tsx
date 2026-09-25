@@ -6,6 +6,7 @@ import Link from 'next/link';
 import sql from '@/lib/db';
 import ProductCard from '@/components/ProductCard';
 import { Product } from '@/lib/types';
+import { plural } from '@/lib/plural';
 
 export const revalidate = 600;
 
@@ -171,7 +172,7 @@ export default async function RegionPage(
                     <h3 className="font-bold group-hover:text-brand-700 transition-colors">{pName(p)}</h3>
                     {p.locality && <p className="text-xs text-ink-500">{p.locality}</p>}
                     <p className="text-xs font-semibold text-brand-700 mt-1">
-                      {p.product_count} {L.items}
+                      {plural(p.product_count, 'products', locale)}
                     </p>
                   </div>
                 </Link>

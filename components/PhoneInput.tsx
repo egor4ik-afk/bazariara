@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useRef, useEffect } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 /**
  * Ввод телефона с выбором страны.
@@ -55,6 +56,28 @@ export const COUNTRIES: Country[] = [
 
 export const DEFAULT_COUNTRY = COUNTRIES[0];
 
+/**
+ * Название страны на языке интерфейса. Intl.DisplayNames знает названия
+ * всех стран на всех языках, поэтому таблица переводов не нужна: русское
+ * `name` в COUNTRIES остаётся только запасным вариантом для старых браузеров.
+ */
+function countryName(c: Country, locale: string): string {
+  if (c.code === 'XX') {
+    return locale === 'en' ? 'Other country' : locale === 'ka' ? 'სხვა ქვეყანა' : 'Другая страна';
+  }
+  try {
+    return new Intl.DisplayNames([locale], { type: 'region' }).of(c.code) || c.name;
+  } catch {
+    return c.name;
+  }
+}
+
+const HINT = {
+  ru: { other: 'Введите номер с кодом страны', digits: 'цифр', pick: 'Выбрать страну' },
+  en: { other: 'Enter the number with country code', digits: 'digits', pick: 'Choose country' },
+  ka: { other: 'შეიყვანეთ ნომერი ქვეყნის კოდით', digits: 'ციფრი', pick: 'აირჩიეთ ქვეყანა' },
+} as const;
+
 /** Вернёт E.164 или null, если номер не проходит проверку. */
 export function buildPhone(country: Country, national: string): string | null {
   const digits = national.replace(/\D/g, '');
@@ -88,6 +111,8 @@ export default function PhoneInput({
 }) {
   const [open, setOpen] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+  const { language } = useLanguage();
+  const H = HINT[language as keyof typeof HINT] || HINT.ru;
 
   useEffect(() => {
     if (!open) return;
@@ -99,11 +124,11 @@ export default function PhoneInput({
   }, [open]);
 
   const hint = useMemo(() => {
-    if (country.code === 'XX') return 'Введите номер с кодом страны';
+    if (country.code === 'XX') return H.other;
     return country.min === country.max
-      ? `${country.min} цифр`
-      : `${country.min}–${country.max} цифр`;
-  }, [country]);
+      ? `${country.min} ${H.digits}`
+      : `${country.min}–${country.max} ${H.digits}`;
+  }, [country, H]);
 
   return (
     <div ref={boxRef} className="relative">
@@ -120,7 +145,7 @@ export default function PhoneInput({
           onClick={() => setOpen((v) => !v)}
           className="flex items-center gap-1.5 pl-3 pr-2 py-3 shrink-0 hover:bg-ink-200
                      rounded-l-lg transition-colors"
-          aria-label="Выбрать страну"
+          aria-label={H.pick}
         >
           <span className="text-lg leading-none" aria-hidden="true">{country.flag}</span>
           <span className="text-ink-900 font-medium text-sm">
@@ -162,7 +187,7 @@ export default function PhoneInput({
               }
             >
               <span className="text-lg leading-none" aria-hidden="true">{c.flag}</span>
-              <span className="flex-grow text-ink-900">{c.name}</span>
+              <span className="flex-grow text-ink-900">{countryName(c, language)}</span>
               {c.dial && <span className="text-ink-500">+{c.dial}</span>}
             </button>
           ))}

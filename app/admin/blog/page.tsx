@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { translateFields, type FieldSpec } from '@/lib/translate-client';
 
 type Post = {
   id: number; slug: string; title: string; excerpt: string | null;
@@ -17,6 +18,21 @@ type Post = {
 type Links = { regions: number[]; producers: number[]; products: number[]; tags: number[] };
 
 const box = { background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', padding: '9px 12px', fontSize: 13, outline: 'none', width: '100%' } as const;
+/** Что переводится в статье и как. Обложка, slug и связи — общие, не переводятся. */
+const BLOG_FIELDS: FieldSpec[] = [
+  { from: 'title',           kind: 'title',           label: 'заголовок' },
+  { from: 'excerpt',         kind: 'plain',           label: 'краткое описание' },
+  { from: 'body',            kind: 'markdown',        label: 'текст' },
+  { from: 'seo_title',       kind: 'seo_title',       label: 'SEO Title' },
+  { from: 'seo_description', kind: 'seo_description', label: 'SEO Description' },
+];
+
+const aiBtn = {
+  padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+  border: '1px solid rgb(var(--brand-300))', background: 'rgb(var(--brand-50))',
+  color: 'rgb(var(--brand-700))', whiteSpace: 'nowrap',
+} as const;
+
 const toolBtn = { padding: '5px 10px', borderRadius: 6, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-700))', fontSize: 12, cursor: 'pointer' } as const;
 
 const card = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: 16 } as const;
@@ -31,6 +47,7 @@ export default function BlogAdmin() {
   const [links, setLinks] = useState<Links>(EMPTY_LINKS);
   const [msg, setMsg] = useState<string | null>(null);
   const [lang, setLang] = useState<'ru' | 'en' | 'ka'>('ru');
+  const [translating, setTranslating] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLInputElement>(null);
@@ -196,6 +213,39 @@ export default function BlogAdmin() {
     setEditing({ ...editing!, slug });
   };
 
+  /**
+   * Автоперевод RU → EN и KA. Если перевод уже есть хотя бы в одном поле,
+   * спрашиваем, перезаписывать ли: иначе кнопка затёрла бы ручную правку.
+   * Ничего не сохраняет сам — результат попадает в форму, дальше человек
+   * проверяет и жмёт «Сохранить».
+   */
+  const autoTranslate = async (langs: ('en' | 'ka')[]) => {
+    if (!editing) return;
+    if (!String(editing.title || '').trim()) { setMsg('Сначала заполните русский заголовок'); return; }
+
+    const hasExisting = langs.some((l) =>
+      BLOG_FIELDS.some((f) => String((editing as any)[`${f.from}_${l}`] || '').trim()));
+    const overwrite = hasExisting
+      ? confirm('Часть перевода уже заполнена. Перезаписать её?\n\nОК — перевести всё заново\nОтмена — перевести только пустые поля')
+      : false;
+
+    setMsg(null);
+    setTranslating('Начинаем…');
+    try {
+      const out = await translateFields(editing, BLOG_FIELDS, langs, {
+        overwrite,
+        onProgress: (m) => setTranslating(m),
+      });
+      setEditing((prev) => ({ ...prev!, ...out }));
+      const n = Object.keys(out).length;
+      setMsg(n ? `Переведено полей: ${n}. Проверьте текст и сохраните.` : 'Нечего переводить — всё уже заполнено.');
+    } catch (e: any) {
+      setMsg(`Перевод прервался: ${e.message}. Переведённое до ошибки уже в форме.`);
+    } finally {
+      setTranslating(null);
+    }
+  };
+
   const suffix = lang === 'ru' ? '' : `_${lang}`;
   const field = (base: 'title' | 'excerpt' | 'body' | 'seo_title' | 'seo_description') => (base + suffix) as keyof Post;
 
@@ -217,7 +267,7 @@ export default function BlogAdmin() {
 
       {editing ? (
         <div style={{ ...card }}>
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, alignItems: 'center' }}>
             {(['ru', 'en', 'ka'] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)}
                 style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
@@ -229,6 +279,22 @@ export default function BlogAdmin() {
             <span style={{ fontSize: 11, color: 'rgb(var(--ink-500))', alignSelf: 'center', marginLeft: 6 }}>
               {lang === 'ru' ? 'основной язык' : 'перевод, можно оставить пустым'}
             </span>
+
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 6, alignItems: 'center' }}>
+              {translating ? (
+                <span style={{ fontSize: 12, color: 'rgb(var(--brand-600))', fontWeight: 600 }}>
+                  🌐 {translating}
+                </span>
+              ) : lang === 'ru' ? (
+                <button onClick={() => autoTranslate(['en', 'ka'])} style={aiBtn}>
+                  🌐 Перевести на EN и KA
+                </button>
+              ) : (
+                <button onClick={() => autoTranslate([lang as 'en' | 'ka'])} style={aiBtn}>
+                  🌐 Перевести на {lang.toUpperCase()}
+                </button>
+              )}
+            </div>
           </div>
 
           <div style={{ display: 'grid', gap: 12 }}>
@@ -337,7 +403,7 @@ export default function BlogAdmin() {
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-            <button onClick={save} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={save} disabled={Boolean(translating)} style={{ padding: '10px 22px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, cursor: 'pointer' }}>
               Сохранить
             </button>
             <button onClick={() => { setEditing(null); setLinks(EMPTY_LINKS); }}

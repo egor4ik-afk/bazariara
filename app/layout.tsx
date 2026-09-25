@@ -8,11 +8,15 @@ import { CONTACTS } from '@/lib/contacts'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
+import { headers } from 'next/headers'
 
 const siteName = 'BAZARI ARA'
 const siteUrl = new URL('https://bazariara.ge')
+// Описание по умолчанию — подставляется на страницах без собственного.
+// Было «Товары для дома, сада, туризма и детей… Более 1000 товаров»:
+// ни дома, ни сада, ни тысячи товаров в каталоге давно нет.
 const description =
-  'Товары для дома, сада, туризма и детей в Тбилиси. Доставка за 2 часа по городу. Более 1000 товаров по доступным ценам — заказывайте онлайн!'
+  'Грузинские продукты от местных производителей: мёд, чай, чурчхела, специи. Подарки из Грузии и товары для путешествий с доставкой по Тбилиси за 2 часа.'
 
 export const viewport: Viewport = {
   // Значение по умолчанию для светлой темы; ThemeProvider подменяет его
@@ -21,7 +25,30 @@ export const viewport: Viewport = {
   themeColor: '#F8F9F4',
 }
 
-export const metadata: Metadata = {
+/**
+ * Описание и подпись картинки для соцсетей — на языке страницы.
+ * Раньше это была константа: на /en и /ka любая страница без
+ * собственного description получала русское.
+ */
+const DESCRIPTION = {
+  ru: description,
+  en: 'Georgian food from local producers: honey, tea, churchkhela, spices. Gifts from Georgia and travel gear delivered across Tbilisi in 2 hours.',
+  ka: 'ქართული პროდუქცია ადგილობრივი მწარმოებლებისგან: თაფლი, ჩაი, ჩურჩხელა, სანელებლები. საჩუქრები და მოგზაურობის ნივთები, მიწოდება თბილისში.',
+} as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const lh = (await headers()).get('x-locale');
+  const locale = lh === 'en' || lh === 'ka' ? lh : 'ru';
+  const d = DESCRIPTION[locale];
+  return {
+    ...metadata,
+    description: d,
+    openGraph: { ...(metadata.openGraph || {}), description: d },
+    twitter: { ...(metadata.twitter || {}), description: d },
+  };
+}
+
+const metadata: Metadata = {
   metadataBase: siteUrl,
   title: {
     default: siteName,
@@ -53,7 +80,7 @@ export const metadata: Metadata = {
         url: new URL('/og-image.png', siteUrl).toString(),
         width: 1200,
         height: 630,
-        alt: 'BAZARI ARA — доставка товаров по Тбилиси за 2 часа',
+        alt: 'BAZARI ARA — грузинские продукты и подарки с доставкой по Тбилиси',
       },
     ],
   },

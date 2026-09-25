@@ -174,7 +174,7 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                       ) : (
                         <Image
                           src={url}
-                          alt={`${getTitle()} — фото ${i + 1}`}
+                          alt={`${getTitle()} — ${i + 1}`}
                           fill
                           sizes="(max-width: 768px) 100vw, 50vw"
                           className="object-cover"

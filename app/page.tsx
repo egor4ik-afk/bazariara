@@ -19,7 +19,6 @@ export async function generateMetadata({ searchParams }: { searchParams: SearchP
   const page = parseInt(params.page || '1', 10);
 
   // ✅ ИСПРАВЛЕНО: страница 1 не добавляет page в canonical (избегаем дублей)
-  const pageStr = page > 1 ? ` — страница ${page}` : '';
 
   const canonicalParams = new URLSearchParams();
   if (category && category !== 'all') canonicalParams.set('category', category);
@@ -175,18 +174,27 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
   // ✅ BreadcrumbList для категорийных страниц
   const breadcrumbJsonLd = selectedCategory !== 'all' ? (() => {
     const cat = categoriesList.find(c => c.key === selectedCategory);
-    const catName = cat?.name || selectedCategory;
+    const catName =
+      (locale === 'en' && cat?.name_en) || (locale === 'ka' && cat?.name_ka) || cat?.name || selectedCategory;
+    // Адреса с префиксом языка: без него middleware редиректит, и крошки
+    // указывали бы на редиректы — как было с canonical.
+    const base = `https://bazariara.ge/${locale}`;
     const items: object[] = [
-      { '@type': 'ListItem', position: 1, name: 'Главная', item: 'https://bazariara.ge/' },
-      { '@type': 'ListItem', position: 2, name: catName, item: `https://bazariara.ge/?category=${selectedCategory}` },
+      { '@type': 'ListItem', position: 1,
+        name: locale === 'en' ? 'Home' : locale === 'ka' ? 'მთავარი' : 'Главная', item: base },
+      { '@type': 'ListItem', position: 2, name: catName, item: `${base}?category=${selectedCategory}` },
     ];
     if (selectedSubCategory !== 'all') {
-      const subName = selectedSubCategory.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      // Имя из базы, а не из slug: иначе «Лакомство Для Собак»
+      const sub = subCategoriesList.find(x => x.key === selectedSubCategory);
+      const subName =
+        (locale === 'en' && sub?.name_en) || (locale === 'ka' && sub?.name_ka) || sub?.name ||
+        selectedSubCategory.replace(/-/g, ' ');
       items.push({
         '@type': 'ListItem',
         position: 3,
         name: subName,
-        item: `https://bazariara.ge/?category=${selectedCategory}&subcategory=${selectedSubCategory}`,
+        item: `${base}?category=${selectedCategory}&subcategory=${selectedSubCategory}`,
       });
     }
     return { '@context': 'https://schema.org', '@type': 'BreadcrumbList', itemListElement: items };
@@ -227,7 +235,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         />
 
         {/* ✅ aria-label добавлен для семантики */}
-        <section aria-label="Список товаров">
+        <section aria-label={locale === 'en' ? 'Products' : locale === 'ka' ? 'პროდუქცია' : 'Список товаров'}>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {products.map((product, index) => (
               <ProductCard key={product.id} product={product} index={index} />
@@ -237,18 +245,24 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
           {/* Пустой результат поиска */}
           {products.length === 0 && (
             <div className="text-center py-20 text-ink-600">
-              <p className="text-xl">Товары не найдены</p>
-              <p className="text-sm mt-2">Попробуйте изменить параметры поиска</p>
+              <p className="text-xl">
+                {locale === 'en' ? 'No products found' : locale === 'ka' ? 'პროდუქტი ვერ მოიძებნა' : 'Товары не найдены'}
+              </p>
+              <p className="text-sm mt-2">
+                {locale === 'en' ? 'Try changing your search'
+                  : locale === 'ka' ? 'სცადეთ ძიების პარამეტრების შეცვლა'
+                  : 'Попробуйте изменить параметры поиска'}
+              </p>
             </div>
           )}
         </section>
 
         {totalPages > 1 && (
-          <nav aria-label="Пагинация" className="mt-16 flex justify-center items-center gap-4">
+          <nav aria-label={locale === 'en' ? 'Pagination' : locale === 'ka' ? 'გვერდები' : 'Пагинация'} className="mt-16 flex justify-center items-center gap-4">
             {currentPage > 1 ? (
               <Link
                 href={buildPageUrl(currentPage - 1)}
-                aria-label="Предыдущая страница"
+                aria-label={locale === 'en' ? 'Previous page' : locale === 'ka' ? 'წინა გვერდი' : 'Предыдущая страница'}
                 className="p-3 rounded-full bg-brand-600 text-on-brand font-bold hover:bg-brand-500 transition-all shadow-lg hover:scale-105"
               >
                 <ChevronLeftIcon className="h-6 w-6" />
@@ -264,7 +278,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
             {currentPage < totalPages ? (
               <Link
                 href={buildPageUrl(currentPage + 1)}
-                aria-label="Следующая страница"
+                aria-label={locale === 'en' ? 'Next page' : locale === 'ka' ? 'შემდეგი გვერდი' : 'Следующая страница'}
                 className="p-3 rounded-full bg-brand-600 text-on-brand font-bold hover:bg-brand-500 transition-all shadow-lg hover:scale-105"
               >
                 <ChevronRightIcon className="h-6 w-6" />

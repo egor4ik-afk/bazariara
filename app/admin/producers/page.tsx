@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { translateFields, type FieldSpec } from '@/lib/translate-client';
 
 type Producer = {
   id: number; slug: string; name: string; name_en: string | null; name_ka: string | null;
@@ -24,6 +25,15 @@ type Application = {
 
 type Region = { id: number; slug: string; name: string };
 
+/** Переводимые поля хозяйства. Slug, регион, фото и соцсети — общие. */
+const PRODUCER_FIELDS: FieldSpec[] = [
+  { from: 'name',            kind: 'title',           label: 'название' },
+  { from: 'locality',        kind: 'title',           label: 'населённый пункт' },
+  { from: 'description',     kind: 'plain',           label: 'история' },
+  { from: 'seo_title',       kind: 'seo_title',       label: 'SEO Title' },
+  { from: 'seo_description', kind: 'seo_description', label: 'SEO Description' },
+];
+
 const box = { background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', padding: '8px 11px', fontSize: 13, outline: 'none', width: '100%' } as const;
 const card = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: 16 } as const;
 
@@ -36,6 +46,30 @@ export default function ProducersAdmin() {
   const [msg, setMsg] = useState<string | null>(null);
   const [lang, setLang] = useState<'ru' | 'en' | 'ka'>('ru');
   const [linked, setLinked] = useState<any[]>([]);
+  const [translating, setTranslating] = useState<string | null>(null);
+
+  const autoTranslate = async (langs: ('en' | 'ka')[]) => {
+    if (!editing?.name) { setMsg('Сначала заполните русское название'); return; }
+    const hasExisting = langs.some((l) =>
+      PRODUCER_FIELDS.some((f) => String((editing as any)[`${f.from}_${l}`] || '').trim()));
+    const overwrite = hasExisting
+      ? confirm('Часть перевода уже заполнена. Перезаписать её?\n\nОК — всё заново\nОтмена — только пустые поля')
+      : false;
+    setTranslating('Начинаем…');
+    try {
+      const out = await translateFields(editing, PRODUCER_FIELDS, langs, {
+        overwrite, onProgress: (m) => setTranslating(m),
+      });
+      setEditing((prev) => ({ ...prev!, ...out }));
+      setMsg(Object.keys(out).length
+        ? `Переведено полей: ${Object.keys(out).length}. Проверьте и сохраните.`
+        : 'Нечего переводить — всё уже заполнено.');
+    } catch (e: any) {
+      setMsg(`Перевод прервался: ${e.message}`);
+    } finally {
+      setTranslating(null);
+    }
+  };
 
   const load = useCallback(async () => {
     const [p, a, r] = await Promise.all([
@@ -129,7 +163,7 @@ export default function ProducersAdmin() {
 
           {/* Языки (ТЗ 5.1): каждое переводимое поле заполняется
               независимо. Пустой перевод на сайте падает на русский. */}
-          <div style={{ display: 'flex', gap: 6, marginBottom: 14, alignItems: 'center' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 14, alignItems: 'center' }}>
             {(['ru', 'en', 'ka'] as const).map((l) => (
               <button key={l} onClick={() => setLang(l)}
                 style={{ padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
@@ -142,6 +176,20 @@ export default function ProducersAdmin() {
             <span style={{ fontSize: 11, color: 'rgb(var(--ink-500))', marginLeft: 6 }}>
               {lang === 'ru' ? 'основной язык — обязателен'
                 : 'перевод; если пусто, на сайте будет русский текст'}
+            </span>
+            <span style={{ marginLeft: 'auto' }}>
+              {translating ? (
+                <span style={{ fontSize: 12, color: 'rgb(var(--brand-600))', fontWeight: 600 }}>🌐 {translating}</span>
+              ) : (
+                <button
+                  onClick={() => autoTranslate(lang === 'ru' ? ['en', 'ka'] : [lang as 'en' | 'ka'])}
+                  style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                           border: '1px solid rgb(var(--brand-300))', background: 'rgb(var(--brand-50))',
+                           color: 'rgb(var(--brand-700))', whiteSpace: 'nowrap' }}
+                >
+                  🌐 {lang === 'ru' ? 'Перевести на EN и KA' : `Перевести на ${lang.toUpperCase()}`}
+                </button>
+              )}
             </span>
           </div>
 
@@ -235,7 +283,7 @@ export default function ProducersAdmin() {
           )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-            <button onClick={save} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, cursor: 'pointer' }}>
+            <button onClick={save} disabled={Boolean(translating)} style={{ padding: '9px 20px', borderRadius: 8, border: 'none', background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, cursor: 'pointer' }}>
               Сохранить
             </button>
             <button onClick={() => setEditing(null)} style={{ padding: '9px 20px', borderRadius: 8, border: '1px solid rgb(var(--ink-200))', background: 'transparent', color: 'rgb(var(--ink-600))', cursor: 'pointer' }}>

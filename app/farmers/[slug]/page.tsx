@@ -178,7 +178,7 @@ export default async function ProducerPage(
   const place = [region, locality].filter(Boolean).join(', ');
 
   const socials = [
-    producer.website   && { label: 'Сайт',      href: producer.website },
+    producer.website   && { label: locale === 'en' ? 'Website' : locale === 'ka' ? 'ვებგვერდი' : 'Сайт', href: producer.website },
     producer.instagram && { label: 'Instagram', href: producer.instagram },
     producer.facebook  && { label: 'Facebook',  href: producer.facebook },
   ].filter(Boolean) as { label: string; href: string }[];

@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import sql from '@/lib/db';
+import { plural } from '@/lib/plural';
 
 export const revalidate = 300;
 
@@ -172,7 +173,9 @@ export default async function FarmersPage() {
                   )}
 
                   <span className="mt-auto text-sm font-semibold text-brand-700">
-                    {p.product_count} {c.products} →
+                    {p.product_count > 0
+                      ? plural(p.product_count, 'products', locale)
+                      : (locale === 'en' ? 'Coming soon' : locale === 'ka' ? 'მალე' : 'Скоро в продаже')} →
                   </span>
                 </div>
               </Link>

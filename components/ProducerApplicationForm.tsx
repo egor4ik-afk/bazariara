@@ -17,6 +17,7 @@ const COPY = {
     submit: 'Отправить заявку', sending: 'Отправляем…',
     ok: 'Спасибо! Заявка получена — свяжемся с вами в ближайшие дни.',
     note: 'Заявка не публикуется автоматически: мы читаем каждую и связываемся лично.',
+    productsHint: 'мёд, чай, вино…', error: 'Не удалось отправить. Попробуйте ещё раз.',
   },
   en: {
     title: 'Want your product on Bazari Ara?',
@@ -29,6 +30,7 @@ const COPY = {
     submit: 'Send application', sending: 'Sending…',
     ok: 'Thank you! We have your application and will be in touch shortly.',
     note: 'Applications are not published automatically — we read each one and reply personally.',
+    productsHint: 'honey, tea, wine…', error: 'Could not send. Please try again.',
   },
   ka: {
     title: 'გსურთ თქვენი პროდუქტი Bazari Ara-ზე?',
@@ -41,6 +43,7 @@ const COPY = {
     submit: 'გაგზავნა', sending: 'იგზავნება…',
     ok: 'გმადლობთ! განაცხადი მიღებულია, მალე დაგიკავშირდებით.',
     note: 'განაცხადი ავტომატურად არ ქვეყნდება — თითოეულს ვკითხულობთ პირადად.',
+    productsHint: 'თაფლი, ჩაი, ღვინო…', error: 'ვერ გაიგზავნა. სცადეთ თავიდან.',
   },
 } as const;
 
@@ -75,7 +78,7 @@ export default function ProducerApplicationForm({
     const res = await submitApplication(form);
     setSending(false);
     if (res.success) setDone(true);
-    else setError(res.message || 'Ошибка');
+    else setError(res.message || c.error);
   };
 
   const field = 'w-full px-3 py-2.5 rounded-lg bg-surface border border-ink-200 text-ink-900 text-sm outline-none focus:border-brand-400';
@@ -117,7 +120,7 @@ export default function ProducerApplicationForm({
           </div>
           <div className="sm:col-span-2">
             <label className={label}>{c.products} · {c.required}</label>
-            <input className={field} value={form.products} onChange={set('products')} placeholder="мёд, чай, вино…" />
+            <input className={field} value={form.products} onChange={set('products')} placeholder={c.productsHint} />
           </div>
           <div className="sm:col-span-2">
             <label className={label}>{c.social} · {c.optional}</label>

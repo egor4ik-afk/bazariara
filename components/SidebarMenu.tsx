@@ -123,7 +123,7 @@ export default function SidebarMenu() {
           <h2 className="text-base font-bold text-ink-900">{t('common.categories')}</h2>
           <button
             onClick={() => setIsOpen(false)}
-            aria-label="Закрыть меню"
+            aria-label={language === 'en' ? 'Close menu' : language === 'ka' ? 'მენიუს დახურვა' : 'Закрыть меню'}
             className="p-1.5 -mr-1.5 rounded-lg text-ink-600 hover:text-ink-900 hover:bg-ink-100 transition-colors"
           >
             <XMarkIcon className="h-6 w-6" />
@@ -205,7 +205,7 @@ export default function SidebarMenu() {
                         {hasSubs ? (
                           <button
                             onClick={() => setOpenCategory(open ? null : category.key)}
-                            aria-label="Подкатегории"
+                            aria-label={language === 'en' ? 'Subcategories' : language === 'ka' ? 'ქვეკატეგორიები' : 'Подкатегории'}
                             aria-expanded={open}
                             className="shrink-0 grid place-items-center w-9 h-9 mr-1 rounded-lg
                                        text-ink-500 hover:text-ink-900 hover:bg-ink-200/60 transition-colors"

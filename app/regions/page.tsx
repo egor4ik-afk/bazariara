@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import sql from '@/lib/db';
+import { plural } from '@/lib/plural';
 
 export const revalidate = 600;
 type Locale = 'ru' | 'en' | 'ka';
@@ -94,9 +95,9 @@ export default async function RegionsPage() {
                   {name(r)}
                 </h2>
                 <p className="text-sm text-ink-500">
-                  {r.producer_count > 0 && `${r.producer_count} ${c.producers}`}
+                  {r.producer_count > 0 && plural(r.producer_count, 'producers', locale)}
                   {r.producer_count > 0 && r.product_count > 0 && ' · '}
-                  {r.product_count > 0 && `${r.product_count} ${c.products}`}
+                  {r.product_count > 0 && plural(r.product_count, 'products', locale)}
                 </p>
               </Link>
             ))}
