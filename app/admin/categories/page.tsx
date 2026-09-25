@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import CategoryManager from './CategoryManager';
 import Link from 'next/link';
 
 const GORGIA_CATALOG: { category: string; sub_category: string; url: string }[] = [
@@ -277,6 +278,61 @@ export default function AdminCategoriesPage() {
 
       <div style={{ padding: '28px 32px', maxWidth: 1100, margin: '0 auto' }}>
 
+        {/* Управление категориями сайта — наверху: этим пользуются чаще всего.
+            Парсинг gorgia — служебная часть, уехала вниз. */}
+        <CategoryManager />
+
+        {/* Создать категорию / подкатегорию — реальные канонические таблицы categories/subcategories */}
+        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--brand-100))', borderRadius: 12, padding: '24px', marginTop: 0, marginBottom: 28 }}>
+          <h3 style={{ color: 'rgb(var(--brand-600))', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
+            + Новая подкатегория (или категория вместе с ней)
+          </h3>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
+            <div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Название категории (ru)</div>
+              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Обогреватели"
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }} />
+            </div>
+            <button onClick={createCategory} disabled={createBusy || !newCatName.trim()}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgb(var(--brand-600))', color: 'rgb(var(--cream-100))', fontSize: 13, fontWeight: 600 }}>
+              Создать категорию (EN/KA автоматически)
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>В какую категорию</div>
+              <select value={newSubForCat} onChange={e => setNewSubForCat(e.target.value)}
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }}>
+                <option value="">— выберите —</option>
+                {realCategories.map(c => <option key={c.category_key} value={c.category_key}>{c.name} [{c.category_key}]</option>)}
+              </select>
+            </div>
+            <div>
+              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Название подкатегории (ru)</div>
+              <input value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Вентиляторы"
+                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }} />
+            </div>
+            <button onClick={createSubcategory} disabled={createBusy || !newSubForCat || !newSubName.trim()}
+              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgb(var(--brand-600))', color: 'rgb(var(--ink-900))', fontSize: 13, fontWeight: 600 }}>
+              Создать подкатегорию (EN/KA автоматически)
+            </button>
+          </div>
+
+          {createStatus && (
+            <div style={{ marginTop: 12, fontSize: 12, color: createStatus.startsWith('✓') ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))' }}>
+              {createStatus}
+            </div>
+          )}
+        </div>
+
+
+        <h2 style={{ fontSize: 16, fontWeight: 700, margin: '8px 0 4px' }}>Парсинг gorgia.ge</h2>
+        <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))', margin: '0 0 16px' }}>
+          Загрузка и обновление товаров из внешнего каталога.
+        </p>
+
         {/* Быстрые кнопки */}
         <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '20px 24px', marginBottom: 24, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <RunBtn label="▶ Обновить цены и наличие" url="/api/admin/trigger-update" color="rgb(var(--brand-600))" />
@@ -343,51 +399,6 @@ export default function AdminCategoriesPage() {
             </table></div>
           </div>
         ))}
-
-        {/* Создать категорию / подкатегорию — реальные канонические таблицы categories/subcategories */}
-        <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--brand-100))', borderRadius: 12, padding: '24px', marginTop: 24 }}>
-          <h3 style={{ color: 'rgb(var(--brand-600))', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', margin: '0 0 16px' }}>
-            + Новая категория / подкатегория
-          </h3>
-
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 16 }}>
-            <div>
-              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Название категории (ru)</div>
-              <input value={newCatName} onChange={e => setNewCatName(e.target.value)} placeholder="Обогреватели"
-                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }} />
-            </div>
-            <button onClick={createCategory} disabled={createBusy || !newCatName.trim()}
-              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgb(var(--brand-600))', color: 'rgb(var(--cream-100))', fontSize: 13, fontWeight: 600 }}>
-              Создать категорию (EN/KA автоматически)
-            </button>
-          </div>
-
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>В какую категорию</div>
-              <select value={newSubForCat} onChange={e => setNewSubForCat(e.target.value)}
-                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }}>
-                <option value="">— выберите —</option>
-                {realCategories.map(c => <option key={c.category_key} value={c.category_key}>{c.name} [{c.category_key}]</option>)}
-              </select>
-            </div>
-            <div>
-              <div style={{ color: 'rgb(var(--ink-500))', fontSize: 11, marginBottom: 5 }}>Название подкатегории (ru)</div>
-              <input value={newSubName} onChange={e => setNewSubName(e.target.value)} placeholder="Вентиляторы"
-                style={{ padding: '8px 12px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))', fontSize: 13, width: 240, outline: 'none' }} />
-            </div>
-            <button onClick={createSubcategory} disabled={createBusy || !newSubForCat || !newSubName.trim()}
-              style={{ padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer', background: 'rgb(var(--brand-600))', color: 'rgb(var(--ink-900))', fontSize: 13, fontWeight: 600 }}>
-              Создать подкатегорию (EN/KA автоматически)
-            </button>
-          </div>
-
-          {createStatus && (
-            <div style={{ marginTop: 12, fontSize: 12, color: createStatus.startsWith('✓') ? 'rgb(var(--brand-600))' : 'rgb(var(--clay))' }}>
-              {createStatus}
-            </div>
-          )}
-        </div>
 
         {/* Новая категория вручную */}
         <div style={{ background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: '24px', marginTop: 24 }}>

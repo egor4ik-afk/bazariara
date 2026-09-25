@@ -1,243 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
 import sql from '@/lib/db';
-import OpenAI from 'openai';
+import { aiChat } from '@/lib/ai';
+import { googleTranslate, googleTranslateBoth } from '@/lib/google-translate';
 
-// ─── CONFIG ───────────────────────────────────────────────────────────────────
+/**
+ * Массовое заполнение товаров из списка в админке.
+ *
+ *   description — AI пишет русский текст, Google переводит на EN и KA;
+ *   name_en / name_ka — только Google.
+ *
+ * Раньше сюда слали все выбранные товары одним запросом, и сервер
+ * обрабатывал их по очереди: 50 описаний по несколько секунд каждое —
+ * гарантированный 504. Теперь клиент шлёт маленькие порции, а сервер
+ * на всякий случай режет лишнее: не больше MAX за вызов.
+ */
 
-const YANDEX_FOLDER    = process.env.YANDEX_FOLDER    || 'b1gcr5m4ptniag2qpsqm';
-const YANDEX_API_KEY   = process.env.YANDEX_API_KEY   || '';
-const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || '';
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
-const OPENCODE_BASE_URL = 'https://opencode.ai/zen/go/v1';
-const OPENCODE_MODELS   = ['deepseek-v4-pro', 'deepseek-v4-flash', 'glm-5.1', 'kimi-k2.5'];
+const MAX = { description: 3, name_en: 25, name_ka: 25 } as const;
 
-// ─── TRANSLATOR (Google Translate — free, no key needed) ──────────────────────
-
-async function translateText(text: string, targetLang: string): Promise<string> {
-  if (!text) return '';
-  try {
-    const res = await fetch(
-      `https://translate.googleapis.com/translate_a/single?client=gtx&sl=ru&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`
-    );
-    if (!res.ok) throw new Error(`Translation API ${res.status}`);
-    const data = await res.json();
-    return data[0].map((t: any) => t[0]).join('');
-  } catch (err) {
-    console.error(`Translation to ${targetLang} failed:`, err);
-    return text;
-  }
+function prompt(name: string, cat: string): string {
+  return [
+    'Ты пишешь описания товаров для интернет-магазина BAZARI ARA в Тбилиси.',
+    `Товар: ${name}`,
+    cat ? `Категория: ${cat}` : '',
+    'Напиши описание на русском, 80–140 слов, 2–3 абзаца: что это, чем отличается,',
+    'как использовать. Без выдуманных фактов, восклицаний и штампов.',
+    'Верни только текст, без заголовка, кавычек и Markdown.',
+  ].filter(Boolean).join('\n');
 }
-
-// ─── PROMPTS ──────────────────────────────────────────────────────────────────
-
-function buildDescriptionPrompt(name: string, cat: string): string {
-  return `Ты копирайтер для интернет-магазина в Грузии. Напиши краткое продающее описание товара на русском языке (2-3 предложения, максимум 300 символов).
-Товар: ${name}
-Категория: ${cat}
-
-Верни ТОЛЬКО текст описания, без маркдауна, кавычек и лишних слов.`;
-}
-
-// ─── HELPERS ──────────────────────────────────────────────────────────────────
-
-function is429(e: any): boolean {
-  return (
-    e?.status === 429 ||
-    String(e?.message || '').includes('429') ||
-    String(e?.message || '').includes('rate') ||
-    String(e?.message || '').includes('quota')
-  );
-}
-
-function isNotFound(e: any): boolean {
-  return (
-    e?.status === 404 ||
-    String(e?.message || '').includes('NOT_FOUND') ||
-    String(e?.message || '').includes('not found')
-  );
-}
-
-// ─── OPENCODE PROVIDER ────────────────────────────────────────────────────────
-
-async function generateWithOpenCode(prompt: string): Promise<string> {
-  if (!OPENCODE_API_KEY) throw new Error('OPENCODE_API_KEY not set');
-
-  const client = new OpenAI({
-    apiKey: OPENCODE_API_KEY,
-    baseURL: OPENCODE_BASE_URL,
-  });
-
-  for (const model of OPENCODE_MODELS) {
-    try {
-      const response = await client.chat.completions.create({
-        model,
-        messages: [
-          {
-            role: 'system',
-            content: 'Ты профессиональный копирайтер. Верни только текст ответа без лишних комментариев.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        temperature: 0.3,
-        max_tokens: 600,
-      });
-
-      const text = response.choices?.[0]?.message?.content || '';
-      if (text) return text.trim();
-      throw new Error('Empty response');
-    } catch (e: any) {
-      if (is429(e) || isNotFound(e)) {
-        console.warn(`OpenCode model ${model} failed (${e?.status}), trying next…`);
-        continue;
-      }
-      throw e;
-    }
-  }
-
-  throw new Error('All OpenCode models exhausted');
-}
-
-// ─── YANDEX PROVIDER (fallback) ───────────────────────────────────────────────
-
-async function generateWithYandex(prompt: string): Promise<string> {
-  if (!YANDEX_API_KEY) throw new Error('YANDEX_API_KEY not set');
-
-  const client = new OpenAI({
-    apiKey: YANDEX_API_KEY,
-    baseURL: 'https://ai.api.cloud.yandex.net/v1',
-    defaultHeaders: { 'OpenAI-Project': YANDEX_FOLDER },
-  });
-
-  const response = await (client as any).responses.create({
-    model: `gpt://${YANDEX_FOLDER}/yandexgpt-5.1/latest`,
-    instructions: 'Ты профессиональный копирайтер. Верни только текст ответа без лишних комментариев.',
-    input: prompt,
-    temperature: 0.3,
-    max_output_tokens: 600,
-  });
-
-  return (
-    (response as any).output_text ??
-    (response as any).output?.[0]?.content?.[0]?.text ??
-    ''
-  ).trim();
-}
-
-// ─── MAIN GENERATOR ───────────────────────────────────────────────────────────
-
-async function generate(
-  name: string,
-  cat: string,
-  mode: 'description' | 'name',
-  provider: string
-): Promise<{ ru: string; en: string; ka: string }> {
-
-  // Имена — просто переводим через Google Translate (быстро и бесплатно)
-  if (mode === 'name') {
-    const [en, ka] = await Promise.all([
-      translateText(name, 'en'),
-      translateText(name, 'ka'),
-    ]);
-    return { ru: name, en, ka };
-  }
-
-  // Описание — генерируем через AI, потом переводим
-  const prompt = buildDescriptionPrompt(name, cat);
-  let textRu = '';
-
-  if (provider === 'yandex') {
-    // Явно выбран Yandex
-    textRu = await generateWithYandex(prompt);
-  } else {
-    // opencode → fallback Yandex
-    try {
-      textRu = await generateWithOpenCode(prompt);
-    } catch (e: any) {
-      console.warn('OpenCode failed, falling back to Yandex:', e?.message);
-      textRu = await generateWithYandex(prompt);
-    }
-  }
-
-  const cleanRu = textRu.replace(/```.*?```/gs, '').trim();
-
-  const [en, ka] = await Promise.all([
-    translateText(cleanRu, 'en'),
-    translateText(cleanRu, 'ka'),
-  ]);
-
-  return {
-    ru: cleanRu.slice(0, 500),
-    en: en.slice(0, 500),
-    ka: ka.slice(0, 500),
-  };
-}
-
-// ─── API HANDLER ──────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
 
-  const { ids, field, provider = 'opencode', batch_size = 50 } = await req.json();
-
-  if (!ids || !Array.isArray(ids) || ids.length === 0) {
+  const { ids, field } = await req.json() as { ids: number[]; field: keyof typeof MAX };
+  if (!Array.isArray(ids) || ids.length === 0) {
     return NextResponse.json({ error: 'Нет ids' }, { status: 400 });
   }
+  if (!(field in MAX)) {
+    return NextResponse.json({ error: `Неизвестное поле: ${field}` }, { status: 400 });
+  }
 
-  const results: { id: number; ok: boolean; error?: string }[] = [];
-  const chunk = ids.slice(0, batch_size);
+  const chunk = ids.slice(0, MAX[field]);
+  const results: { id: number; ok: boolean; skipped?: boolean; error?: string }[] = [];
 
   for (const id of chunk) {
     try {
-      const rows = await sql`
+      const [p] = await sql`
         SELECT id, name_ru, name_en, name_ka, category, sub_category,
                description_ru, description_en, description_ka
-        FROM products WHERE id = ${id} AND source = 'gorgia'
+        FROM products WHERE id = ${id}
       `;
-      if (!rows[0]) { results.push({ id, ok: false, error: 'not found' }); continue; }
+      if (!p) { results.push({ id, ok: false, error: 'не найден' }); continue; }
 
-      const p    = rows[0];
-      const name = (p.name_ru || p.name_en || p.name_ka) as string;
-      const cat  = p.sub_category
-        ? `${p.category} / ${p.sub_category}`
-        : (p.category as string || '');
+      const name = String(p.name_ru || p.name_en || p.name_ka || '');
+      if (!name) { results.push({ id, ok: false, error: 'нет названия' }); continue; }
 
       if (field === 'description') {
-        const desc = await generate(name, cat, 'description', provider);
+        // Заполненное руками не перезаписываем
+        if (p.description_ru && p.description_en && p.description_ka) {
+          results.push({ id, ok: true, skipped: true }); continue;
+        }
+        const cat = p.sub_category ? `${p.category} / ${p.sub_category}` : String(p.category || '');
+        const ru = p.description_ru || (await aiChat({
+          system: 'Ты копирайтер интернет-магазина. Пишешь по-русски, по делу.',
+          user: prompt(name, cat), temperature: 0.4, maxTokens: 6000,
+        })).text.trim();
+        const { en, ka } = await googleTranslateBoth(ru);
         await sql`
           UPDATE products SET
-            description_ru = COALESCE(NULLIF(description_ru, ''), ${desc.ru}),
-            description_en = COALESCE(NULLIF(description_en, ''), ${desc.en}),
-            description_ka = COALESCE(NULLIF(description_ka, ''), ${desc.ka}),
+            description_ru = COALESCE(NULLIF(description_ru, ''), ${ru}),
+            description_en = COALESCE(NULLIF(description_en, ''), ${en}),
+            description_ka = COALESCE(NULLIF(description_ka, ''), ${ka}),
             updated_at = NOW()
           WHERE id = ${id}
         `;
-        results.push({ id, ok: true });
-
-      } else if (field === 'name_en') {
-        if (p.name_en) { results.push({ id, ok: true }); continue; }
-        const desc = await generate(name, cat, 'name', provider);
-        await sql`UPDATE products SET name_en = ${desc.en}, updated_at = NOW() WHERE id = ${id}`;
-        results.push({ id, ok: true });
-
-      } else if (field === 'name_ka') {
-        if (p.name_ka) { results.push({ id, ok: true }); continue; }
-        const desc = await generate(name, cat, 'name', provider);
-        await sql`UPDATE products SET name_ka = ${desc.ka}, updated_at = NOW() WHERE id = ${id}`;
-        results.push({ id, ok: true });
-
       } else {
-        results.push({ id, ok: false, error: 'unknown field' });
+        const lang = field === 'name_en' ? 'en' : 'ka';
+        if (p[field]) { results.push({ id, ok: true, skipped: true }); continue; }
+        const tr = await googleTranslate(name, lang);
+        if (field === 'name_en') await sql`UPDATE products SET name_en = ${tr}, updated_at = NOW() WHERE id = ${id}`;
+        else                     await sql`UPDATE products SET name_ka = ${tr}, updated_at = NOW() WHERE id = ${id}`;
       }
-
-      // Небольшая пауза чтобы не флудить API
-      await new Promise(r => setTimeout(r, 150));
-    } catch (e) {
-      results.push({ id, ok: false, error: String(e) });
+      results.push({ id, ok: true });
+    } catch (e: any) {
+      results.push({ id, ok: false, error: e?.message || String(e) });
     }
   }
 
-  const ok  = results.filter(r =>  r.ok).length;
-  const err = results.filter(r => !r.ok).length;
-  return NextResponse.json({ ok, err, results });
+  return NextResponse.json({
+    ok: results.filter((r) => r.ok).length,
+    err: results.filter((r) => !r.ok).length,
+    processed: chunk.length,
+    results,
+  });
 }

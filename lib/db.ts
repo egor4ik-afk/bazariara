@@ -41,6 +41,10 @@ const sql = postgres(getSafeUrl(), {
   connect_timeout: 15,
   idle_timeout: 20,
   max_lifetime: 60 * 5,
+  // Уведомления Postgres вроде «column already exists, skipping» от
+  // ADD COLUMN IF NOT EXISTS — не ошибки. Драйвер по умолчанию печатает
+  // каждое, и логи Vercel засорялись на каждом сохранении статьи.
+  onnotice: () => {},
 });
 
 /**

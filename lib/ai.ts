@@ -1,23 +1,13 @@
 /**
- * lib/ai.ts — единый клиент OpenCode Zen для всего проекта.
+ * lib/ai.ts — единственный клиент AI в проекте: OpenCode Zen.
  *
- * Почему прежняя версия не работала и деньги уходили в Yandex.
- * Причин было четыре, и каждая по отдельности отправляла запрос в фолбэк:
+ * Ключ — только OPENCODE_API_KEY. Никаких альтернативных имён переменных
+ * и никакого запасного провайдера: если OpenCode не ответил, это ошибка,
+ * которую видно, а не тихое переключение на платный сервис.
  *
- * 1. Форма товара явно передавала `provider: 'yandex'` — OpenCode даже
- *    не пробовался. Это главная причина счёта в Yandex.
- * 2. Не было заголовка `x-opencode-session`. Zen требует стабильный ID
- *    разговора и без него отвечает MissingSessionID. SDK `openai` этот
- *    заголовок не шлёт.
- * 3. Ключ читался из OPENCODE_API_KEY, а в вашем рабочем роутере —
- *    OPENCODE_ZEN_API_KEY. Читаем оба.
- * 4. Модели `deepseek-v4-pro`, `glm-5.1`, `kimi-k2.5` — не те, что
- *    работают в рабочем роутере (`deepseek-v4-flash`, `glm-5.2`,
- *    `kimi-k2.7-code`). Вынесены в переменную окружения.
- *
- * И любая ошибка молча падала в Yandex — поэтому снаружи всё «работало»,
- * а по счёту было видно, что нет. Теперь фолбэк на Yandex выключен
- * по умолчанию, и в ответе всегда видно, кто именно ответил.
+ * Переводы делает Google (lib/google-translate.ts) — он быстрее и не
+ * упирается в лимит времени функции. AI пишет тексты и по кнопке
+ * вычитывает перевод.
  */
 
 import { randomUUID } from 'node:crypto';
@@ -45,26 +35,17 @@ export const AI_MODELS = () =>
 const FIXED_TEMPERATURE = () =>
   new Set(envList('ZEN_FIXED_TEMPERATURE_MODELS', ['kimi-k2.7-code']));
 
-export function aiKeyName(): string | null {
-  if (readEnv('OPENCODE_ZEN_API_KEY')) return 'OPENCODE_ZEN_API_KEY';
-  if (readEnv('OPENCODE_API_KEY')) return 'OPENCODE_API_KEY';
-  return null;
-}
-
 function apiKey(): string {
-  const key = readEnv('OPENCODE_ZEN_API_KEY') || readEnv('OPENCODE_API_KEY');
+  const key = readEnv('OPENCODE_API_KEY');
   if (!key) {
     throw Object.assign(
-      new Error('Не задан ключ OpenCode: добавьте OPENCODE_ZEN_API_KEY в Environment Variables на Vercel'),
+      new Error('Не задан OPENCODE_API_KEY в Environment Variables на Vercel'),
       { fatal: true }
     );
   }
   return key;
 }
 
-export function yandexFallbackEnabled(): boolean {
-  return readEnv('AI_ALLOW_YANDEX_FALLBACK') === '1';
-}
 
 export type AIResult = {
   text: string;

@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql from '@/lib/db';
 import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
+import { googleTranslateBoth } from '@/lib/google-translate';
 
 const TRANS: Record<string, string> = {
   а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',к:'k',л:'l',
@@ -25,22 +26,14 @@ function slugifySub(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, '-');
 }
 
-async function autoTranslate(nameRu: string, origin: string): Promise<{ en: string; ka: string }> {
-  try {
-    const res = await fetch(`${origin}/api/admin/generate-description`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name_ru: nameRu, name_en: '', name_ka: '',
-        category_ru: nameRu, provider: 'opencode', mode: 'name',
-      }),
-    });
-    const data = await res.json();
-    return { en: data.en || '', ka: data.ka || '' };
-  } catch (e) {
-    console.error('autoTranslate failed:', e);
-    return { en: '', ka: '' };
-  }
+/**
+ * Перевод названия категории. Раньше функция ходила в соседний роут
+ * /api/admin/generate-description обычным fetch — без куки админки. Тот
+ * отвечал 401, ошибка глоталась, и категория молча создавалась без en/ka.
+ * Теперь Google вызывается напрямую.
+ */
+async function autoTranslate(nameRu: string, _origin?: string): Promise<{ en: string; ka: string }> {
+  return googleTranslateBoth(nameRu);
 }
 
 // ── GET — диагностика: что реально лежит в categories/subcategories,
@@ -189,11 +182,114 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Удалить подкатегорию (для чистки дублей вроде ventilyatory/konditsionery) ──
+    // ── Список категорий сайта с подкатегориями и счётчиками ─────────────
+    if (body.action === 'list_site_categories') {
+      const cats = await sql`
+        SELECT c.category_key, c.name, c.name_en, c.name_ka, c.category_image,
+               (SELECT COUNT(*)::int FROM products p WHERE p.category_key = c.category_key) AS products
+        FROM categories c ORDER BY c.name
+      `;
+      const subs = await sql`
+        SELECT s.category_key, s.key, s.name, s.name_en, s.name_ka,
+               (SELECT COUNT(*)::int FROM products p
+                WHERE p.category_key = s.category_key AND p.sub_category = s.name) AS products
+        FROM subcategories s ORDER BY s.name
+      `;
+      return NextResponse.json({ categories: cats, subcategories: subs });
+    }
+
+    // ── Правка категории: названия на трёх языках и картинка ─────────────
+    // Названия в products денормализованы (category / category_en / _ka),
+    // поэтому обновляем и их — иначе на карточках осталось бы старое имя.
+    if (body.action === 'update_category') {
+      const key = String(body.category_key || '');
+      const name = String(body.name || '').trim();
+      if (!key || !name) return NextResponse.json({ error: 'Ключ и русское название обязательны' }, { status: 400 });
+
+      const updated = await sql`
+        UPDATE categories SET
+          name = ${name}, name_en = ${body.name_en || null}, name_ka = ${body.name_ka || null},
+          category_image = ${body.category_image || null}
+        WHERE category_key = ${key}
+        RETURNING category_key
+      `;
+      if (updated.length === 0) return NextResponse.json({ error: `Категория '${key}' не найдена` }, { status: 404 });
+
+      const moved = await sql`
+        UPDATE products SET category = ${name}, category_en = ${body.name_en || null},
+               category_ka = ${body.name_ka || null}, updated_at = NOW()
+        WHERE category_key = ${key}
+        RETURNING id
+      `;
+      return NextResponse.json({ ok: true, products_updated: moved.length });
+    }
+
+    // ── Удаление категории ────────────────────────────────────────────────
+    // С товарами удалить нельзя: они стали бы сиротами — пропали бы из
+    // каталога, фильтров и sitemap. Либо перенести (move_to), либо отказ.
+    if (body.action === 'delete_category') {
+      const key = String(body.category_key || '');
+      if (!key) return NextResponse.json({ error: 'category_key обязателен' }, { status: 400 });
+
+      const [{ n }] = await sql`SELECT COUNT(*)::int AS n FROM products WHERE category_key = ${key}`;
+      if (n > 0 && !body.move_to) {
+        return NextResponse.json({
+          error: `В категории ${n} товаров. Выберите, куда их перенести, — иначе они пропадут с сайта.`,
+          products: n,
+        }, { status: 409 });
+      }
+
+      if (n > 0) {
+        const [target] = await sql`SELECT name, name_en, name_ka FROM categories WHERE category_key = ${body.move_to}`;
+        if (!target) return NextResponse.json({ error: `Категория '${body.move_to}' не найдена` }, { status: 404 });
+        await sql`
+          UPDATE products SET category_key = ${body.move_to}, category = ${target.name},
+                 category_en = ${target.name_en}, category_ka = ${target.name_ka},
+                 sub_category = NULL, sub_category_en = NULL, sub_category_ka = NULL, updated_at = NOW()
+          WHERE category_key = ${key}
+        `;
+      }
+      await sql`DELETE FROM subcategories WHERE category_key = ${key}`;
+      await sql`DELETE FROM categories WHERE category_key = ${key}`;
+      return NextResponse.json({ ok: true, moved_products: n });
+    }
+
+    // ── Правка подкатегории ───────────────────────────────────────────────
+    if (body.action === 'update_subcategory') {
+      const key = String(body.key || '');
+      const name = String(body.name || '').trim();
+      if (!key || !name) return NextResponse.json({ error: 'Ключ и русское название обязательны' }, { status: 400 });
+
+      const [old] = await sql`SELECT category_key, name FROM subcategories WHERE key = ${key}`;
+      if (!old) return NextResponse.json({ error: 'Подкатегория не найдена' }, { status: 404 });
+
+      await sql`
+        UPDATE subcategories SET name = ${name}, name_en = ${body.name_en || null}, name_ka = ${body.name_ka || null}
+        WHERE key = ${key}
+      `;
+      // В товарах подкатегория записана по имени — переименовываем и там,
+      // иначе товары «выпали» бы из подкатегории.
+      const moved = await sql`
+        UPDATE products SET sub_category = ${name}, sub_category_en = ${body.name_en || null},
+               sub_category_ka = ${body.name_ka || null}, updated_at = NOW()
+        WHERE category_key = ${old.category_key} AND sub_category = ${old.name}
+        RETURNING id
+      `;
+      return NextResponse.json({ ok: true, products_updated: moved.length });
+    }
+
     if (body.action === 'delete_subcategory') {
       const key: string = body.key;
       if (!key) return NextResponse.json({ error: 'key обязателен' }, { status: 400 });
 
-      const deleted = await sql`DELETE FROM subcategories WHERE key = ${key} RETURNING key, name`;
+      const deleted = await sql`DELETE FROM subcategories WHERE key = ${key} RETURNING key, name, category_key`;
+      if (deleted.length) {
+        // Товары остаются в категории, просто без подкатегории
+        await sql`
+          UPDATE products SET sub_category = NULL, sub_category_en = NULL, sub_category_ka = NULL, updated_at = NOW()
+          WHERE category_key = ${deleted[0].category_key} AND sub_category = ${deleted[0].name}
+        `;
+      }
       if (deleted.length === 0) {
         return NextResponse.json({ error: `Подкатегория с ключом '${key}' не найдена` }, { status: 404 });
       }

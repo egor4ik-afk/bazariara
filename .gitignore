@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Файлы патчей — не часть проекта
+*.patch
+*.patch.gz

@@ -77,74 +77,117 @@ export async function POST(req: NextRequest) {
     await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS seo_description_en text`;
     await sql`ALTER TABLE posts ADD COLUMN IF NOT EXISTS seo_description_ka text`;
 
-    // published_at ставится один раз, при первой публикации: если обновлять
-    // его при каждом сохранении, статьи будут прыгать в начало ленты
-    // после любой правки опечатки.
-    const [post] = await sql`
-      INSERT INTO posts (
-        slug, title, title_en, title_ka,
-        excerpt, excerpt_en, excerpt_ka,
-        body, body_en, body_ka,
-        cover_url, status, seo_title, seo_description, author_name,
-        seo_title_en, seo_title_ka, seo_description_en, seo_description_ka,
-        published_at
-      ) VALUES (
-        ${slug}, ${body.title}, ${body.title_en || null}, ${body.title_ka || null},
-        ${body.excerpt || null}, ${body.excerpt_en || null}, ${body.excerpt_ka || null},
-        ${body.body || ''}, ${body.body_en || null}, ${body.body_ka || null},
-        ${body.cover_url || null}, ${body.status || 'draft'},
-        ${body.seo_title || null}, ${body.seo_description || null},
-        ${body.author_name || 'BAZARI ARA'},
-        ${body.seo_title_en || null}, ${body.seo_title_ka || null},
-        ${body.seo_description_en || null}, ${body.seo_description_ka || null},
-        ${body.status === 'published' ? new Date().toISOString() : null}
-      )
-      ON CONFLICT (slug) DO UPDATE SET
-        title = EXCLUDED.title, title_en = EXCLUDED.title_en, title_ka = EXCLUDED.title_ka,
-        excerpt = EXCLUDED.excerpt, excerpt_en = EXCLUDED.excerpt_en, excerpt_ka = EXCLUDED.excerpt_ka,
-        body = EXCLUDED.body, body_en = EXCLUDED.body_en, body_ka = EXCLUDED.body_ka,
-        cover_url = EXCLUDED.cover_url, status = EXCLUDED.status,
-        seo_title = EXCLUDED.seo_title, seo_description = EXCLUDED.seo_description,
-        author_name = EXCLUDED.author_name,
-        seo_title_en = EXCLUDED.seo_title_en, seo_title_ka = EXCLUDED.seo_title_ka,
-        seo_description_en = EXCLUDED.seo_description_en, seo_description_ka = EXCLUDED.seo_description_ka,
-        published_at = COALESCE(posts.published_at, EXCLUDED.published_at),
-        updated_at = NOW()
-      RETURNING id, slug
+    // Адрес не должен совпадать с другой статьёй — проверяем явно,
+    // а не надеемся на ON CONFLICT.
+    const editId = body.id ? Number(body.id) : null;
+    const [clash] = await sql`
+      SELECT id FROM posts WHERE slug = ${slug} ${editId ? sql`AND id <> ${editId}` : sql``} LIMIT 1
     `;
+    if (clash) {
+      return NextResponse.json({ error: `Адрес «${slug}» уже занят другой статьёй` }, { status: 409 });
+    }
 
-    const postId = post.id as number;
+    const f = {
+      slug, title: body.title, title_en: body.title_en || null, title_ka: body.title_ka || null,
+      excerpt: body.excerpt || null, excerpt_en: body.excerpt_en || null, excerpt_ka: body.excerpt_ka || null,
+      body: body.body || '', body_en: body.body_en || null, body_ka: body.body_ka || null,
+      cover_url: body.cover_url || null, status: body.status || 'draft',
+      seo_title: body.seo_title || null, seo_description: body.seo_description || null,
+      author_name: body.author_name || 'BAZARI ARA',
+      seo_title_en: body.seo_title_en || null, seo_title_ka: body.seo_title_ka || null,
+      seo_description_en: body.seo_description_en || null, seo_description_ka: body.seo_description_ka || null,
+    };
+    const publishedNow = f.status === 'published' ? new Date().toISOString() : null;
+
+    /*
+      Редактирование — UPDATE по id, создание — INSERT.
+
+      Раньше и то и другое шло через INSERT ... ON CONFLICT (slug) DO UPDATE.
+      Две беды:
+      1. Postgres собирает вставляемую строку ЦЕЛИКОМ до проверки конфликта
+         и падает на пустом id, если у таблицы нет автоинкремента, — даже
+         когда в итоге просто обновил бы существующую запись.
+      2. Запись искалась по адресу, а не по номеру. Поменял адрес при
+         редактировании — конфликта нет, создаётся вторая статья-дубль.
+    */
+    let post: { id: number; slug: string } | undefined;
+    if (editId) {
+      [post] = await sql`
+        UPDATE posts SET
+          slug = ${f.slug}, title = ${f.title}, title_en = ${f.title_en}, title_ka = ${f.title_ka},
+          excerpt = ${f.excerpt}, excerpt_en = ${f.excerpt_en}, excerpt_ka = ${f.excerpt_ka},
+          body = ${f.body}, body_en = ${f.body_en}, body_ka = ${f.body_ka},
+          cover_url = ${f.cover_url}, status = ${f.status},
+          seo_title = ${f.seo_title}, seo_description = ${f.seo_description}, author_name = ${f.author_name},
+          seo_title_en = ${f.seo_title_en}, seo_title_ka = ${f.seo_title_ka},
+          seo_description_en = ${f.seo_description_en}, seo_description_ka = ${f.seo_description_ka},
+          -- дата публикации ставится один раз: иначе статья прыгала бы
+          -- в начало ленты после каждой правки опечатки
+          published_at = COALESCE(published_at, ${publishedNow}),
+          updated_at = NOW()
+        WHERE id = ${editId}
+        RETURNING id, slug
+      ` as any;
+      if (!post) return NextResponse.json({ error: `Статья #${editId} не найдена` }, { status: 404 });
+    } else {
+      [post] = await sql`
+        INSERT INTO posts (
+          slug, title, title_en, title_ka, excerpt, excerpt_en, excerpt_ka,
+          body, body_en, body_ka, cover_url, status, seo_title, seo_description, author_name,
+          seo_title_en, seo_title_ka, seo_description_en, seo_description_ka, published_at
+        ) VALUES (
+          ${f.slug}, ${f.title}, ${f.title_en}, ${f.title_ka}, ${f.excerpt}, ${f.excerpt_en}, ${f.excerpt_ka},
+          ${f.body}, ${f.body_en}, ${f.body_ka}, ${f.cover_url}, ${f.status}, ${f.seo_title}, ${f.seo_description},
+          ${f.author_name}, ${f.seo_title_en}, ${f.seo_title_ka}, ${f.seo_description_en}, ${f.seo_description_ka},
+          ${publishedNow}
+        )
+        RETURNING id, slug
+      ` as any;
+    }
+
+    const postId = post!.id as number;
     const links = body.links || {};
 
-    // Перезаписываем связи целиком: набор маленький, а точечный diff дал бы
-    // больше кода и больше шансов рассинхронизироваться.
-    await sql`DELETE FROM post_regions   WHERE post_id = ${postId}`;
-    await sql`DELETE FROM post_producers WHERE post_id = ${postId}`;
-    await sql`DELETE FROM post_products  WHERE post_id = ${postId}`;
-    await sql`DELETE FROM post_tag_links WHERE post_id = ${postId}`;
+    // Связи — только разница: что убрали — удаляем, что добавили —
+    // вставляем. Раньше на каждом сохранении связи удалялись и вставлялись
+    // заново, то есть правка опечатки тоже писала в таблицы связей.
+    const LINKS = [
+      { key: 'regions',   table: 'post_regions',   col: 'region_id' },
+      { key: 'producers', table: 'post_producers', col: 'producer_id' },
+      { key: 'products',  table: 'post_products',  col: 'product_id' },
+      { key: 'tags',      table: 'post_tag_links', col: 'tag_id' },
+    ] as const;
 
-    for (const rid of links.regions || []) {
-      await sql`INSERT INTO post_regions (post_id, region_id) VALUES (${postId}, ${Number(rid)}) ON CONFLICT DO NOTHING`;
-    }
-    for (const pid of links.producers || []) {
-      await sql`INSERT INTO post_producers (post_id, producer_id) VALUES (${postId}, ${Number(pid)}) ON CONFLICT DO NOTHING`;
-    }
-    for (const pid of links.products || []) {
-      await sql`INSERT INTO post_products (post_id, product_id) VALUES (${postId}, ${Number(pid)}) ON CONFLICT DO NOTHING`;
-    }
-    for (const tid of links.tags || []) {
-      await sql`INSERT INTO post_tag_links (post_id, tag_id) VALUES (${postId}, ${Number(tid)}) ON CONFLICT DO NOTHING`;
+    for (const L of LINKS) {
+      const wanted = new Set<number>((links[L.key] || []).map(Number).filter(Number.isFinite));
+      const rows = await sql.unsafe(`SELECT ${L.col} AS v FROM ${L.table} WHERE post_id = $1`, [postId]);
+      const current = new Set<number>(rows.map((r: any) => Number(r.v)));
+
+      const toDelete = [...current].filter((v) => !wanted.has(v));
+      const toAdd = [...wanted].filter((v) => !current.has(v));
+
+      if (toDelete.length) {
+        await sql.unsafe(`DELETE FROM ${L.table} WHERE post_id = $1 AND ${L.col} = ANY($2)`, [postId, toDelete]);
+      }
+      for (const v of toAdd) {
+        await sql.unsafe(
+          `INSERT INTO ${L.table} (post_id, ${L.col}) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [postId, v]
+        );
+      }
     }
 
     return NextResponse.json({ ok: true, post });
   } catch (e: any) {
     const msg = String(e?.message || e);
-    if (/null value in column "id"/.test(msg)) {
+    // Раньше любая ошибка «null value in column id» объявлялась поломкой
+    // posts — даже если падала другая таблица. Теперь называем ту,
+    // о которой сообщил Postgres.
+    if (e?.code === '23502' && e?.column_name === 'id') {
       return NextResponse.json({
-        error: 'В таблице posts сломан автоинкремент id. Запустите в корне проекта: npx tsx fix-blog-db.ts',
+        error: `В таблице ${e.table_name} нет автоинкремента id. Откройте /admin/db-health и нажмите «Починить».`,
       }, { status: 500 });
     }
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: msg, table: e?.table_name }, { status: 500 });
   }
 }
 

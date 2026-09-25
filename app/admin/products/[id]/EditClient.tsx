@@ -201,6 +201,50 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
   const [subs, setSubs] = useState<{ key: string; name: string; name_en: string | null; name_ka: string | null }[]>([]);
   const [translatingSub, setTranslatingSub] = useState(false);
+  // Режим ввода новой подкатегории. Раньше его обозначал пробел в самом
+  // поле sub_category — и при сохранении без названия в справочник
+  // попадала подкатегория «пробел» с пустым ключом.
+  const [customSub, setCustomSub] = useState(false);
+
+  // AI-разбор товара из произвольного текста
+  const [parseText, setParseText] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [parseNotes, setParseNotes] = useState<string[]>([]);
+
+  async function parseProduct() {
+    if (parseText.trim().length < 5) return;
+    setParsing(true);
+    setParseNotes([]);
+    try {
+      const res = await fetch('/api/admin/parse-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: parseText }),
+      });
+      const d = await res.json();
+      if (!res.ok) throw new Error(d.error || `HTTP ${res.status}`);
+      const p = d.product;
+      // Непустые поля формы не затираем пустыми из разбора
+      setForm(prev => ({
+        ...prev,
+        name_ru: p.name_ru || prev.name_ru, name_en: p.name_en || prev.name_en, name_ka: p.name_ka || prev.name_ka,
+        description_ru: p.description_ru || prev.description_ru,
+        description_en: p.description_en || prev.description_en,
+        description_ka: p.description_ka || prev.description_ka,
+        price: p.price != null ? String(p.price) : prev.price,
+        sku: p.sku || prev.sku,
+        in_stock: p.in_stock,
+        category_key: p.category_key || prev.category_key,
+        sub_category: p.sub_category || prev.sub_category,
+        producer_id: p.producer_id ?? prev.producer_id,
+      }));
+      setParseNotes(d.notes || []);
+      showToast(`Разобрано · ${d.meta?.model || 'AI'} · проверьте поля и сохраните`, 'ok');
+    } catch (e: any) {
+      showToast(`Не удалось разобрать: ${e.message}`, 'err');
+    }
+    setParsing(false);
+  }
 
   // Подкатегории выбранной категории: перечитываем при смене категории.
   useEffect(() => {
@@ -362,12 +406,17 @@ export default function ProductEditClient({ product }: { product: Product }) {
       }),
     });
 
+    const data = await res.json().catch(() => ({}));
     if (res.ok) {
-      const data = await res.json();
       showToast('Сохранено ✓', 'ok');
       if (isNew && data.id) router.push(`/admin/products/${data.id}`);
+    } else if (res.status === 401) {
+      // Самая частая «ошибка сохранения» — просто истекла сессия админки
+      showToast('Сессия истекла — войдите заново. Изменения не сохранены.', 'err');
     } else {
-      showToast('Ошибка сохранения', 'err');
+      // Раньше тут было безликое «Ошибка сохранения», а причина от сервера
+      // выбрасывалась — понять, что пошло не так, было нельзя.
+      showToast(`Не сохранено: ${data.error || `HTTP ${res.status}`}`, 'err');
     }
     setSaving(false);
   }
@@ -420,6 +469,40 @@ export default function ProductEditClient({ product }: { product: Product }) {
 
         {/* Левая колонка */}
         <div>
+          {/* Разбор из текста — только при создании: у существующего товара
+              поля уже заполнены, и массовая перезапись там скорее вредна */}
+          {isNew && (
+            <Section title="✨ Заполнить из текста">
+              <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))', margin: '0 0 8px' }}>
+                Вставьте сообщение фермера, пост или заметку — AI заполнит название, цену,
+                категорию и описание, Google переведёт на EN и KA. Ничего не сохраняется,
+                пока вы не нажмёте «Сохранить».
+              </p>
+              <textarea
+                value={parseText}
+                onChange={e => setParseText(e.target.value)}
+                placeholder="Ткемали CH’VENTAN 500 мл — 15 лари. Натуральный соус из грузинской сливы с травами…"
+                style={{ width: '100%', minHeight: 90, padding: '9px 12px', background: 'rgb(var(--cream-200))',
+                         border: '1px solid rgb(var(--ink-200))', borderRadius: 8, color: 'rgb(var(--ink-900))',
+                         fontSize: 13, outline: 'none', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+              <button
+                onClick={parseProduct}
+                disabled={parsing || parseText.trim().length < 5}
+                style={{ marginTop: 8, padding: '8px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+                         background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700, fontSize: 13,
+                         opacity: parsing || parseText.trim().length < 5 ? 0.5 : 1 }}
+              >
+                {parsing ? 'Разбираем…' : '✨ Разобрать и заполнить'}
+              </button>
+              {parseNotes.length > 0 && (
+                <ul style={{ margin: '10px 0 0', paddingLeft: 18, fontSize: 12, color: 'rgb(var(--clay))' }}>
+                  {parseNotes.map(n => <li key={n}>{n}</li>)}
+                </ul>
+              )}
+            </Section>
+          )}
+
           <Section title="Название">
             <FieldWrapper label="Русский">
               <InputField value={form.name_ru} onChange={v => setField('name_ru', v)} placeholder="Название на русском" />
@@ -524,10 +607,16 @@ export default function ProductEditClient({ product }: { product: Product }) {
                 для новой, и её можно перевести кнопкой. */}
             <FieldWrapper label="Подкатегория">
               <select
-                value={subs.some(x => x.name === form.sub_category) ? form.sub_category : (form.sub_category ? '__custom' : '')}
+                value={subs.some(x => x.name === form.sub_category) ? form.sub_category
+                  : (customSub || form.sub_category ? '__custom' : '')}
                 onChange={e => {
                   const v = e.target.value;
-                  if (v === '__custom') { setField('sub_category', form.sub_category || ' '); return; }
+                  if (v === '__custom') {
+                    setCustomSub(true);
+                    setForm(prev => ({ ...prev, sub_category: '', sub_category_en: '', sub_category_ka: '' }));
+                    return;
+                  }
+                  setCustomSub(false);
                   const sub = subs.find(x => x.name === v);
                   setForm(prev => ({
                     ...prev,
@@ -550,12 +639,12 @@ export default function ProductEditClient({ product }: { product: Product }) {
               </select>
             </FieldWrapper>
 
-            {form.sub_category && !subs.some(x => x.name === form.sub_category) && (
+            {(customSub || (form.sub_category && !subs.some(x => x.name === form.sub_category))) && (
               <>
                 <FieldWrapper label="Новая подкатегория (ru)">
                   <div style={{ display: 'flex', gap: 6 }}>
                     <div style={{ flexGrow: 1 }}>
-                      <InputField value={form.sub_category.trim()} onChange={v => setField('sub_category', v)} />
+                      <InputField value={form.sub_category} onChange={v => setField('sub_category', v)} placeholder="Название новой подкатегории" />
                     </div>
                     <button
                       type="button"

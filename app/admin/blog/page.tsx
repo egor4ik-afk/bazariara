@@ -219,13 +219,15 @@ export default function BlogAdmin() {
    * Ничего не сохраняет сам — результат попадает в форму, дальше человек
    * проверяет и жмёт «Сохранить».
    */
-  const autoTranslate = async (langs: ('en' | 'ka')[]) => {
+  const autoTranslate = async (langs: ('en' | 'ka')[], engine: 'google' | 'review' = 'google') => {
     if (!editing) return;
     if (!String(editing.title || '').trim()) { setMsg('Сначала заполните русский заголовок'); return; }
 
     const hasExisting = langs.some((l) =>
       BLOG_FIELDS.some((f) => String((editing as any)[`${f.from}_${l}`] || '').trim()));
-    const overwrite = hasExisting
+    // Вычитка работает по уже готовому переводу — спрашивать про
+    // перезапись незачем, она и есть правка.
+    const overwrite = engine === 'google' && hasExisting
       ? confirm('Часть перевода уже заполнена. Перезаписать её?\n\nОК — перевести всё заново\nОтмена — перевести только пустые поля')
       : false;
 
@@ -233,6 +235,7 @@ export default function BlogAdmin() {
     setTranslating('Начинаем…');
     try {
       const out = await translateFields(editing, BLOG_FIELDS, langs, {
+        engine,
         overwrite,
         onProgress: (m) => setTranslating(m),
       });
@@ -285,14 +288,24 @@ export default function BlogAdmin() {
                 <span style={{ fontSize: 12, color: 'rgb(var(--brand-600))', fontWeight: 600 }}>
                   🌐 {translating}
                 </span>
-              ) : lang === 'ru' ? (
-                <button onClick={() => autoTranslate(['en', 'ka'])} style={aiBtn}>
-                  🌐 Перевести на EN и KA
-                </button>
               ) : (
-                <button onClick={() => autoTranslate([lang as 'en' | 'ka'])} style={aiBtn}>
-                  🌐 Перевести на {lang.toUpperCase()}
-                </button>
+                <>
+                  {/* Google — быстрый черновик, AI — вычитка готового перевода */}
+                  <button
+                    onClick={() => autoTranslate(lang === 'ru' ? ['en', 'ka'] : [lang as 'en' | 'ka'], 'google')}
+                    style={aiBtn}
+                    title="Google Translate: быстро, около секунды на поле"
+                  >
+                    🌐 {lang === 'ru' ? 'Перевести на EN и KA' : `Перевести на ${lang.toUpperCase()}`}
+                  </button>
+                  <button
+                    onClick={() => autoTranslate(lang === 'ru' ? ['en', 'ka'] : [lang as 'en' | 'ka'], 'review')}
+                    style={{ ...aiBtn, background: 'transparent' }}
+                    title="AI вычитывает уже готовый перевод и правит ошибки"
+                  >
+                    ✨ Проверить AI
+                  </button>
+                </>
               )}
             </div>
           </div>

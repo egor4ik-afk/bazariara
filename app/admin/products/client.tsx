@@ -57,7 +57,6 @@ export default function AdminProductsClient({
   const router = useRouter();
   const [selected, setSelected]       = useState<Set<number>>(new Set());
   const [batchField, setBatchField]   = useState<'description' | 'name_en' | 'name_ka'>('description');
-  const [provider, setProvider]       = useState<'opencode' | 'yandex'>('opencode');
   const [batchSize, setBatchSize]     = useState(10);
   const [batchStatus, setBatchStatus] = useState<string>('');
   const [batchRunning, setBatchRunning] = useState(false);
@@ -113,27 +112,43 @@ export default function AdminProductsClient({
   };
 
   // ── Batch translate ───────────────────────────────────────────────────────
+  /**
+   * Порции маленькие, прогресс виден. Раньше все выбранные товары уходили
+   * одним запросом и сервер обрабатывал их по очереди — на описаниях это
+   * был гарантированный 504.
+   */
   const runBatch = async () => {
     if (selected.size === 0) { setBatchStatus('Выберите товары'); return; }
     setBatchRunning(true);
-    setBatchStatus(`Обрабатываю ${Math.min(selected.size, batchSize)} товаров…`);
+    const ids = Array.from(selected);
+    const step = batchField === 'description' ? 3 : 25;
+    let ok = 0, err = 0, skipped = 0;
+    const errors: string[] = [];
     try {
-      const res = await fetch('/api/admin/batch-translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ids: Array.from(selected),
-          field: batchField,
-          provider,
-          batch_size: batchSize,
-        }),
-      });
-      const data = await res.json();
-      setBatchStatus(`✓ Готово: ${data.ok} успешно, ${data.err} ошибок`);
+      for (let i = 0; i < ids.length; i += step) {
+        setBatchStatus(`Обрабатываю ${Math.min(i + step, ids.length)} из ${ids.length}…`);
+        const res = await fetch('/api/admin/batch-translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: ids.slice(i, i + step), field: batchField }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        ok += data.ok; err += data.err;
+        for (const r of data.results || []) {
+          if (r.skipped) skipped++;
+          if (!r.ok && r.error && errors.length < 3) errors.push(`#${r.id}: ${r.error}`);
+        }
+      }
+      setBatchStatus(
+        `✓ Готово: ${ok - skipped} заполнено` +
+        (skipped ? `, ${skipped} уже было заполнено` : '') +
+        (err ? `, ${err} с ошибкой — ${errors.join('; ')}` : '')
+      );
       setSelected(new Set());
       startTransition(() => router.refresh());
-    } catch (e) {
-      setBatchStatus(`✕ Ошибка: ${String(e)}`);
+    } catch (e: any) {
+      setBatchStatus(`✕ Остановлено: ${e.message}. Обработано до ошибки: ${ok}`);
     } finally {
       setBatchRunning(false);
     }
@@ -234,7 +249,7 @@ export default function AdminProductsClient({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name_ru: p.name, name_en: p.name_en, name_ka: p.name_ka,
-          category_ru: p.category, provider, mode,
+          category: p.category, mode,
         }),
       });
       const data = await res.json();
@@ -321,12 +336,6 @@ export default function AdminProductsClient({
             <option value="description">Заполнить описание</option>
             <option value="name_en">Заполнить name_en</option>
             <option value="name_ka">Заполнить name_ka</option>
-          </select>
-
-          <select value={provider} onChange={e => setProvider(e.target.value as any)}
-            style={{ padding: '6px 10px', background: 'rgb(var(--cream-200))', border: '1px solid rgb(var(--ink-200))', borderRadius: 7, color: 'rgb(var(--ink-900))', fontSize: 12, outline: 'none' }}>
-            <option value="opencode">OpenCode Go</option>
-            <option value="yandex">YandexGPT (fallback)</option>
           </select>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>

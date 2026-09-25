@@ -20,6 +20,7 @@ const ITEMS = [
   { href: '/admin/categories', label: 'Категории' },
   { href: '/admin/producers',  label: 'Производители', badge: 'applications' },
   { href: '/admin/blog',       label: 'Блог' },
+  { href: '/admin/db-health', label: 'База' },
 ];
 
 export default function AdminNav() {

@@ -1,78 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
 import { aiChat } from '@/lib/ai';
+import { googleTranslate } from '@/lib/google-translate';
 
 /**
- * Перевод одного фрагмента RU → EN или KA через OpenCode.
+ * Перевод для редакторов блога и производителей.
  *
- * Роут переводит ОДИН фрагмент за вызов. Длинные тексты режет на куски
- * клиент (lib/translate-client.ts): целая статья в один запрос не
- * уложилась бы в лимит времени функции, а грузинский вдобавок в 3–4 раза
- * «дороже» по токенам, чем русский, и ответ обрывался бы на середине.
+ *   engine: 'google' (по умолчанию) — перевод Google, около секунды;
+ *   engine: 'review'                 — AI вычитывает готовый перевод.
+ *
+ * Раньше переводил AI, и на длинной статье функция упиралась в лимит
+ * времени Vercel — HTTP 504. Теперь черновик делает Google, а AI по
+ * отдельной кнопке правит уже готовый текст: править короче, чем писать
+ * заново, и это укладывается во время.
  */
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const LANG = {
-  en: 'English',
-  ka: 'Georgian (ქართული, Mkhedruli script)',
-} as const;
+const LANG = { en: 'English', ka: 'Georgian (ქართული)' } as const;
 
 type Kind = 'title' | 'plain' | 'markdown' | 'seo_title' | 'seo_description';
-
-const RULES: Record<Kind, string> = {
-  title:
-    'This is a title. Keep it short and natural. No trailing period.',
-  seo_title:
-    'This is an SEO title for a search results page. Keep it under 47 characters, key phrase first. No brand name, no trailing period.',
-  seo_description:
-    'This is a meta description for search results. Keep it between 120 and 160 characters, natural and specific.',
-  plain:
-    'This is plain prose. Keep paragraph breaks exactly as in the source.',
-  markdown:
-    'This is Markdown. Translate only human-readable text. Keep EXACTLY as is: ' +
-    'markdown syntax (#, **, -, >, numbered lists), link URLs in [text](url) — translate only the text part, ' +
-    'image lines ![...](url), lines like @video[...], blank lines and line breaks.',
-};
 
 export async function POST(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
 
-  const { text, to, kind = 'plain' } = await req.json() as { text: string; to: 'en' | 'ka'; kind?: Kind };
+  const { text, to, kind = 'plain', engine = 'google', source } =
+    await req.json() as { text: string; to: 'en' | 'ka'; kind?: Kind; engine?: 'google' | 'review'; source?: string };
 
   if (!text || !text.trim()) return NextResponse.json({ text: '' });
   if (to !== 'en' && to !== 'ka') {
     return NextResponse.json({ error: 'to должен быть en или ka' }, { status: 400 });
   }
-  if (text.length > 6000) {
-    return NextResponse.json({ error: 'Фрагмент длиннее 6000 символов — режьте на куски' }, { status: 413 });
-  }
 
-  const system = [
-    `You are a professional translator from Russian into ${LANG[to]}.`,
-    'The text is from a Georgian food and travel shop: honey, tea, wine, spices, farms, regions of Georgia.',
-    'Use the established English/Georgian names of Georgian places and dishes',
-    '(Кахетия → Kakheti / კახეთი, чурчхела → churchkhela / ჩურჩხელა, ткемали → tkemali / ტყემალი, Мцхета → Mtskheta / მცხეთა).',
-    'Brand and farm names written in Latin letters stay unchanged (CH’VENTAN, BAZARI ARA).',
-    'Prices, numbers and units stay the same.',
-    RULES[kind],
-    'Output ONLY the translation. No quotes around it, no comments, no explanations, no markdown fences.',
-  ].join(' ');
-
+  const started = Date.now();
   try {
-    // Грузинский в токенах в 3–4 раза длиннее русского — запас по лимиту
-    // Нижнюю границу держит lib/ai (6000): у рассуждающих моделей даже
-    // короткий перевод начинается с размышлений.
-    const maxTokens = Math.min(16000, Math.ceil(text.length * (to === 'ka' ? 4 : 2)) + 2000);
-    const r = await aiChat({ system, user: text, temperature: 0.2, maxTokens });
+    if (engine === 'google') {
+      const out = await googleTranslate(text, to, kind === 'markdown');
+      return NextResponse.json({ text: out, meta: { engine: 'google', ms: Date.now() - started } });
+    }
 
-    let out = r.text.trim();
-    // Модели иногда оборачивают ответ в кавычки или ```-фенсы — снимаем
-    out = out.replace(/^```(?:\w+)?\s*/, '').replace(/\s*```$/, '');
-    if (kind !== 'markdown' && /^["«“].*["»”]$/s.test(out)) out = out.slice(1, -1).trim();
+    // ── AI-вычитка готового перевода ──
+    if (text.length > 3000) {
+      return NextResponse.json({ error: 'Фрагмент длиннее 3000 символов — режьте на куски' }, { status: 413 });
+    }
+    const system = [
+      `You are an editor. You get a Russian original and its machine translation into ${LANG[to]}.`,
+      'Fix mistranslations, unnatural phrasing and wrong terms. Keep the meaning and structure.',
+      'Use the established names of Georgian places and foods',
+      '(Kakheti / კახეთი, churchkhela / ჩურჩხელა, tkemali / ტყემალი, Mtskheta / მცხეთა).',
+      'Keep Markdown, links, image lines and @video[...] lines exactly as they are.',
+      'If the translation is already good, return it unchanged.',
+      'Output ONLY the corrected translation. No comments, no quotes, no fences.',
+    ].join(' ');
+    const user = `RUSSIAN ORIGINAL:\n${source || '(not provided)'}\n\nTRANSLATION TO FIX:\n${text}`;
 
-    return NextResponse.json({ text: out, meta: { model: r.model, ms: r.ms } });
+    const r = await aiChat({ system, user, temperature: 0.1, maxTokens: 6000 });
+    const out = r.text.replace(/^```(?:\w+)?\s*/, '').replace(/\s*```$/, '').trim();
+    return NextResponse.json({ text: out, meta: { engine: 'review', model: r.model, ms: r.ms } });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message || String(e) }, { status: 502 });
   }

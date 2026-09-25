@@ -73,42 +73,63 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `slug «${slug}» зарезервирован, выберите другой` }, { status: 400 });
   }
 
+  const v = {
+    slug, name: body.name, name_en: body.name_en || null, name_ka: body.name_ka || null,
+    region_id: body.region_id ? Number(body.region_id) : null,
+    locality: body.locality || null, locality_en: body.locality_en || null, locality_ka: body.locality_ka || null,
+    description: body.description || null, description_en: body.description_en || null,
+    description_ka: body.description_ka || null, image_url: body.image_url || null,
+    website: body.website || null, instagram: body.instagram || null, facebook: body.facebook || null,
+    status: body.status || 'active',
+    seo_title: body.seo_title || null, seo_title_en: body.seo_title_en || null, seo_title_ka: body.seo_title_ka || null,
+    seo_description: body.seo_description || null, seo_description_en: body.seo_description_en || null,
+    seo_description_ka: body.seo_description_ka || null,
+    sort_order: body.sort_order ?? 100,
+  };
+  const editId = body.id ? Number(body.id) : null;
+
   try {
-    const [row] = await sql`
-      INSERT INTO producers (
-        slug, name, name_en, name_ka, region_id,
-        locality, locality_en, locality_ka,
-        description, description_en, description_ka,
-        image_url, website, instagram, facebook, status,
-        seo_title, seo_title_en, seo_title_ka,
-        seo_description, seo_description_en, seo_description_ka,
-        sort_order
-      ) VALUES (
-        ${slug}, ${body.name}, ${body.name_en || null}, ${body.name_ka || null},
-        ${body.region_id ? Number(body.region_id) : null},
-        ${body.locality || null}, ${body.locality_en || null}, ${body.locality_ka || null},
-        ${body.description || null}, ${body.description_en || null}, ${body.description_ka || null},
-        ${body.image_url || null}, ${body.website || null},
-        ${body.instagram || null}, ${body.facebook || null}, ${body.status || 'active'},
-        ${body.seo_title || null}, ${body.seo_title_en || null}, ${body.seo_title_ka || null},
-        ${body.seo_description || null}, ${body.seo_description_en || null}, ${body.seo_description_ka || null},
-        ${body.sort_order ?? 100}
-      )
-      ON CONFLICT (slug) DO UPDATE SET
-        name = EXCLUDED.name, name_en = EXCLUDED.name_en, name_ka = EXCLUDED.name_ka,
-        region_id = EXCLUDED.region_id,
-        locality = EXCLUDED.locality, locality_en = EXCLUDED.locality_en, locality_ka = EXCLUDED.locality_ka,
-        description = EXCLUDED.description,
-        description_en = EXCLUDED.description_en, description_ka = EXCLUDED.description_ka,
-        image_url = EXCLUDED.image_url, website = EXCLUDED.website,
-        instagram = EXCLUDED.instagram, facebook = EXCLUDED.facebook,
-        status = EXCLUDED.status,
-        seo_title = EXCLUDED.seo_title, seo_title_en = EXCLUDED.seo_title_en, seo_title_ka = EXCLUDED.seo_title_ka,
-        seo_description = EXCLUDED.seo_description,
-        seo_description_en = EXCLUDED.seo_description_en, seo_description_ka = EXCLUDED.seo_description_ka,
-        sort_order = EXCLUDED.sort_order, updated_at = NOW()
-      RETURNING id, slug
+    const [clash] = await sql`
+      SELECT id FROM producers WHERE slug = ${slug} ${editId ? sql`AND id <> ${editId}` : sql``} LIMIT 1
     `;
+    if (clash) return NextResponse.json({ error: `Адрес «${slug}» уже занят другим хозяйством` }, { status: 409 });
+
+    // Правка — UPDATE по id, создание — INSERT. Раньше было
+    // INSERT ... ON CONFLICT (slug): смена адреса при правке создавала
+    // второе хозяйство-дубль, а при сломанном автоинкременте падала даже
+    // обычная правка текста.
+    let row: any;
+    if (editId) {
+      [row] = await sql`
+        UPDATE producers SET
+          slug = ${v.slug}, name = ${v.name}, name_en = ${v.name_en}, name_ka = ${v.name_ka},
+          region_id = ${v.region_id}, locality = ${v.locality}, locality_en = ${v.locality_en}, locality_ka = ${v.locality_ka},
+          description = ${v.description}, description_en = ${v.description_en}, description_ka = ${v.description_ka},
+          image_url = ${v.image_url}, website = ${v.website}, instagram = ${v.instagram}, facebook = ${v.facebook},
+          status = ${v.status},
+          seo_title = ${v.seo_title}, seo_title_en = ${v.seo_title_en}, seo_title_ka = ${v.seo_title_ka},
+          seo_description = ${v.seo_description}, seo_description_en = ${v.seo_description_en},
+          seo_description_ka = ${v.seo_description_ka},
+          sort_order = ${v.sort_order}, updated_at = NOW()
+        WHERE id = ${editId}
+        RETURNING id, slug
+      `;
+      if (!row) return NextResponse.json({ error: `Хозяйство #${editId} не найдено` }, { status: 404 });
+    } else {
+      [row] = await sql`
+        INSERT INTO producers (
+          slug, name, name_en, name_ka, region_id, locality, locality_en, locality_ka,
+          description, description_en, description_ka, image_url, website, instagram, facebook, status,
+          seo_title, seo_title_en, seo_title_ka, seo_description, seo_description_en, seo_description_ka, sort_order
+        ) VALUES (
+          ${v.slug}, ${v.name}, ${v.name_en}, ${v.name_ka}, ${v.region_id}, ${v.locality}, ${v.locality_en}, ${v.locality_ka},
+          ${v.description}, ${v.description_en}, ${v.description_ka}, ${v.image_url}, ${v.website}, ${v.instagram},
+          ${v.facebook}, ${v.status}, ${v.seo_title}, ${v.seo_title_en}, ${v.seo_title_ka},
+          ${v.seo_description}, ${v.seo_description_en}, ${v.seo_description_ka}, ${v.sort_order}
+        )
+        RETURNING id, slug
+      `;
+    }
     return NextResponse.json({ ok: true, producer: row });
   } catch (e: any) {
     return NextResponse.json({ error: String(e?.message || e) }, { status: 500 });

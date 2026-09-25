@@ -48,16 +48,19 @@ export default function ProducersAdmin() {
   const [linked, setLinked] = useState<any[]>([]);
   const [translating, setTranslating] = useState<string | null>(null);
 
-  const autoTranslate = async (langs: ('en' | 'ka')[]) => {
+  const autoTranslate = async (langs: ('en' | 'ka')[], engine: 'google' | 'review' = 'google') => {
     if (!editing?.name) { setMsg('Сначала заполните русское название'); return; }
     const hasExisting = langs.some((l) =>
       PRODUCER_FIELDS.some((f) => String((editing as any)[`${f.from}_${l}`] || '').trim()));
-    const overwrite = hasExisting
+    // Вычитка работает по уже готовому переводу — спрашивать про
+    // перезапись незачем, она и есть правка.
+    const overwrite = engine === 'google' && hasExisting
       ? confirm('Часть перевода уже заполнена. Перезаписать её?\n\nОК — всё заново\nОтмена — только пустые поля')
       : false;
     setTranslating('Начинаем…');
     try {
       const out = await translateFields(editing, PRODUCER_FIELDS, langs, {
+        engine,
         overwrite, onProgress: (m) => setTranslating(m),
       });
       setEditing((prev) => ({ ...prev!, ...out }));
@@ -181,14 +184,22 @@ export default function ProducersAdmin() {
               {translating ? (
                 <span style={{ fontSize: 12, color: 'rgb(var(--brand-600))', fontWeight: 600 }}>🌐 {translating}</span>
               ) : (
-                <button
-                  onClick={() => autoTranslate(lang === 'ru' ? ['en', 'ka'] : [lang as 'en' | 'ka'])}
-                  style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                           border: '1px solid rgb(var(--brand-300))', background: 'rgb(var(--brand-50))',
-                           color: 'rgb(var(--brand-700))', whiteSpace: 'nowrap' }}
-                >
-                  🌐 {lang === 'ru' ? 'Перевести на EN и KA' : `Перевести на ${lang.toUpperCase()}`}
-                </button>
+                <span style={{ display: 'inline-flex', gap: 6 }}>
+                  {(['google', 'review'] as const).map((eng) => (
+                    <button
+                      key={eng}
+                      onClick={() => autoTranslate(lang === 'ru' ? ['en', 'ka'] : [lang as 'en' | 'ka'], eng)}
+                      style={{ padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                               border: '1px solid rgb(var(--brand-300))',
+                               background: eng === 'google' ? 'rgb(var(--brand-50))' : 'transparent',
+                               color: 'rgb(var(--brand-700))', whiteSpace: 'nowrap' }}
+                    >
+                      {eng === 'google'
+                        ? `🌐 ${lang === 'ru' ? 'Перевести на EN и KA' : `Перевести на ${lang.toUpperCase()}`}`
+                        : '✨ Проверить AI'}
+                    </button>
+                  ))}
+                </span>
               )}
             </span>
           </div>
