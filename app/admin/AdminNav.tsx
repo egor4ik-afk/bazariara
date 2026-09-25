@@ -20,6 +20,7 @@ const ITEMS = [
   { href: '/admin/categories', label: 'Категории' },
   { href: '/admin/producers',  label: 'Производители', badge: 'applications' },
   { href: '/admin/blog',       label: 'Блог' },
+  { href: '/admin/support',   label: 'Поддержка' },
   { href: '/admin/db-health', label: 'База' },
 ];
 

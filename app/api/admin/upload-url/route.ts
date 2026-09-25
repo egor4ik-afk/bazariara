@@ -85,7 +85,9 @@ export async function POST(req: NextRequest) {
         ContentType: contentType,
         ACL: 'public-read',
       }),
-      { expiresIn: 900 }   // 15 минут: хватит на закачку, но ссылка не живёт вечно
+      // 15 минут на закачку; тип файла — в подписи, чтобы по ссылке нельзя
+      // было залить файл другого типа
+      { expiresIn: 900, signableHeaders: new Set(['content-type']) }
     );
 
     return NextResponse.json({

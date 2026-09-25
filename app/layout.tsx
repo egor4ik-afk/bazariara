@@ -6,6 +6,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ThemeProvider, themeInitScript } from '@/contexts/ThemeContext'
 import { CONTACTS } from '@/lib/contacts'
 import Header from '@/components/Header'
+import SupportChat from '@/components/SupportChat'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
 import { headers } from 'next/headers'
@@ -184,6 +185,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Header />
               <main className="flex-grow">{children}</main>
               <Footer />
+              <SupportChat />
             </CartProvider>
           </OrderProvider>
         </LanguageProvider>

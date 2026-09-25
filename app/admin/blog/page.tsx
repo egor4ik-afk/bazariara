@@ -183,7 +183,8 @@ export default function BlogAdmin() {
 
       const put = await fetch(sign.uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': sign.contentType, 'x-amz-acl': 'public-read' },
+        // ACL зашит в подписанную ссылку; неподписанный x-amz-acl хранилище вправе отвергнуть
+        headers: { 'Content-Type': sign.contentType },
         body: file,
       });
       if (!put.ok) throw new Error(`Бакет ответил ${put.status}`);
