@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useRef, ReactNode } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { translations } from '@/lib/translations';
 
@@ -33,6 +33,26 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document.documentElement.lang = language;
     document.cookie = `language=${language}; path=/; max-age=31536000`;
   }, [language]);
+
+  /**
+   * Перерисовка серверной части после смены языка.
+   *
+   * /ru/blog, /en/blog и /ka/blog внутри — один и тот же маршрут /blog:
+   * middleware переписывает адрес и передаёт язык заголовком x-locale.
+   * После router.replace клиентские компоненты (шапка, меню) сразу берут
+   * язык из нового адреса, а серверная часть страницы перезапрашивалась
+   * не всегда. Получалась шапка на грузинском и весь блог на русском.
+   *
+   * refresh() заново запрашивает серверные компоненты для текущего адреса,
+   * middleware ставит правильный x-locale, страница приходит на нужном языке.
+   * На первом рендере не срабатывает: prev совпадает с текущим языком.
+   */
+  const prevLanguage = useRef(language);
+  useEffect(() => {
+    if (prevLanguage.current === language) return;
+    prevLanguage.current = language;
+    router.refresh();
+  }, [language, router]);
 
   /**
    * Смена языка (ТЗ v1.0, раздел 6).

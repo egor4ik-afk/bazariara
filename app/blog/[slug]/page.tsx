@@ -75,16 +75,42 @@ export async function generateMetadata(
   }
   const url = `https://bazariara.ge/${locale}/blog/${slug}`;
 
+  // Даты из Postgres приходят объектом Date. Отданный как есть объект
+  // превращается в строку «[object Object]» — именно она и стояла
+  // в article:published_time на всех статьях. Google такую дату не читает,
+  // и статья остаётся в выдаче без даты публикации.
+  const iso = (v: unknown) => {
+    if (!v) return undefined;
+    const d = new Date(v as any);
+    return Number.isNaN(d.getTime()) ? undefined : d.toISOString();
+  };
+
   return {
     title, description,
     // Черновик не должен попасть в индекс, даже если ссылку кому-то дали.
     robots: post.status !== 'published'
       ? { index: false, follow: false }
       : translated ? undefined : { index: false, follow: true },
-    alternates: { canonical: url },
+    alternates: {
+      canonical: url,
+      // hreflang стоял на индексе блога и на категориях, а на самих статьях
+      // отсутствовал: три языковые версии страницы не были связаны между собой.
+      languages: {
+        ru: `https://bazariara.ge/ru/blog/${slug}`,
+        en: `https://bazariara.ge/en/blog/${slug}`,
+        ka: `https://bazariara.ge/ka/blog/${slug}`,
+      },
+    },
     openGraph: {
       title, description, url, type: 'article',
-      publishedTime: post.published_at || undefined,
+      publishedTime: iso(post.published_at),
+      modifiedTime: iso(post.updated_at),
+      images: post.cover_url ? [post.cover_url] : undefined,
+    },
+    // Без явного twitter Next берёт описание из корневого layout, и в превью
+    // любой статьи уходило общее описание магазина вместо её собственного.
+    twitter: {
+      card: 'summary_large_image', title, description,
       images: post.cover_url ? [post.cover_url] : undefined,
     },
   };
@@ -236,7 +262,7 @@ export default async function PostPage(
           JOIN products p ON p.id = pp.product_id
           WHERE pp.post_id = ${post.id} AND p.image_url IS NOT NULL
           LIMIT 8`,
-      sql`SELECT t.id, t.name, t.slug FROM post_tag_links tl
+      sql`SELECT t.id, t.name, t.name_en, t.name_ka, t.slug FROM post_tag_links tl
           JOIN post_tags t ON t.id = tl.tag_id WHERE tl.post_id = ${post.id}`,
     ]);
   } catch (e) {
@@ -259,8 +285,8 @@ export default async function PostPage(
     headline: title,
     description: pick(post, 'excerpt', locale),
     image: post.cover_url || undefined,
-    datePublished: post.published_at || undefined,
-    dateModified: post.updated_at || undefined,
+    datePublished: post.published_at ? new Date(post.published_at).toISOString() : undefined,
+    dateModified: post.updated_at ? new Date(post.updated_at).toISOString() : undefined,
     author: { '@type': 'Organization', name: post.author_name },
     publisher: {
       '@type': 'Organization', name: 'BAZARI ARA',
@@ -299,7 +325,7 @@ export default async function PostPage(
           <h1 className="text-3xl md:text-4xl font-extrabold mb-4 leading-tight">{title}</h1>
 
           {post.published_at && (
-            <time className="block text-sm text-ink-500 mb-6" dateTime={post.published_at}>
+            <time className="block text-sm text-ink-500 mb-6" dateTime={new Date(post.published_at).toISOString()}>
               {new Date(post.published_at).toLocaleDateString(
                 locale === 'ru' ? 'ru-RU' : locale === 'ka' ? 'ka-GE' : 'en-GB',
                 { day: 'numeric', month: 'long', year: 'numeric' }
@@ -316,7 +342,7 @@ export default async function PostPage(
                   className="px-2.5 py-1 rounded-full bg-brand-50 border border-brand-200
                              text-xs font-semibold text-brand-700 hover:bg-brand-100 transition-colors"
                 >
-                  #{t.name}
+                  #{rName(t)}
                 </Link>
               ))}
             </div>

@@ -82,14 +82,17 @@ export default async function BlogIndex() {
     if (posts.length > 0) {
       const slugs = posts.map((p) => p.slug);
       const rows = await sql`
-        SELECT p.slug AS post_slug, t.name, t.slug
+        SELECT p.slug AS post_slug, t.name, t.name_en, t.name_ka, t.slug
         FROM posts p
         JOIN post_tag_links tl ON tl.post_id = p.id
         JOIN post_tags t ON t.id = tl.tag_id
         WHERE p.slug = ANY(${slugs})
       `;
       for (const r of rows as any[]) {
-        (tagsByPost[r.post_slug] ||= []).push({ name: r.name, slug: r.slug });
+        // name_en и name_ka в таблице есть, но раньше выбирался только name —
+        // на /en и /ka теги висели по-русски.
+        const name = locale === 'en' ? (r.name_en || r.name) : locale === 'ka' ? (r.name_ka || r.name) : r.name;
+        (tagsByPost[r.post_slug] ||= []).push({ name, slug: r.slug });
       }
     }
   } catch (e) {
@@ -149,7 +152,7 @@ export default async function BlogIndex() {
                     </div>
                   )}
                   {p.published_at && (
-                    <time className="mt-auto pt-4 text-xs text-ink-500" dateTime={p.published_at}>
+                    <time className="mt-auto pt-4 text-xs text-ink-500" dateTime={new Date(p.published_at).toISOString()}>
                       {new Date(p.published_at).toLocaleDateString(
                         locale === 'ru' ? 'ru-RU' : locale === 'ka' ? 'ka-GE' : 'en-GB',
                         { day: 'numeric', month: 'long', year: 'numeric' }
