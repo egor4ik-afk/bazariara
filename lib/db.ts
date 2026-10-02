@@ -1,26 +1,7 @@
-
-import { PrismaClient } from '@prisma/client';
 import postgres from 'postgres';
 
-// --- Prisma Client (used by most of the app) ---
-
-// PrismaClient is attached to the `global` object in development to prevent
-// exhausting your database connection limit.
-//
-// Learn more: https://pris.ly/d/help/next-js-best-practices
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
-
-export const db =
-  globalForPrisma.prisma ||
-  new PrismaClient({
-    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
-
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = db;
-}
-
-// --- postgres.js Client (used for specific cases like migrations or raw queries) ---
+// Вся работа с базой идёт через postgres.js (sql): Prisma в коде не использовался
+// ни в одном месте, поэтому её клиент отсюда убран — меньше памяти и быстрее старт.
 
 function getSafeUrl() {
   const url = process.env.DATABASE_URL;
@@ -40,13 +21,31 @@ function getSafeUrl() {
   return url;
 }
 
-const sql = postgres(getSafeUrl(), {
-  ssl: 'require',
-  max: 1,
-  prepare: false,
-  connect_timeout: 15,
-  idle_timeout: 20,
-  max_lifetime: 60 * 5,
+/**
+ * SSL — только там, где он есть. Neon и другие облака требуют SSL,
+ * база на платформе relaxdev работает без него, и 'require' там ломает подключение.
+ * Явный sslmode в строке подключения главнее.
+ */
+function sslFor(url: string): 'require' | false {
+  try {
+    const u = new URL(url);
+    const mode = u.searchParams.get('sslmode');
+    if (mode === 'disable') return false;
+    if (mode && mode !== 'prefer' && mode !== 'allow') return 'require';
+    return /(^|\.)(neon\.tech|supabase\.co|supabase\.com|amazonaws\.com)$/.test(u.hostname) ? 'require' : false;
+  } catch {
+    return false;
+  }
+}
+
+const DB_URL = getSafeUrl();
+
+// relaxdev: приложение — один долгоживущий процесс, поэтому настройки по умолчанию:
+// пул до 10 соединений (параллельные запросы в Promise.all идут одновременно, а не
+// друг за другом), соединения не закрываются по простою, подготовленные запросы включены.
+// Ограничения max: 1 / prepare: false были нужны только для Vercel и пулера Neon.
+const sql = postgres(DB_URL, {
+  ssl: sslFor(DB_URL),
   onnotice: () => {},
 });
 
