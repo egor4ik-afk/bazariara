@@ -3,9 +3,14 @@ const nextConfig = {
   // Ключ eslint убран: Next 16 его не поддерживает (линт при сборке и так не идёт).
 
   experimental: {
-    // CSS (Tailwind, ~50 КБ) встраивается прямо в HTML вместо двух отдельных
-    // файлов: браузер не ждёт их перед первой отрисовкой (−0,4 с по Lighthouse).
-    inlineCss: true,
+    // Встраивание CSS в HTML выключено (было true).
+    // Next вписывал стили (~41 КБ) в каждую страницу трижды: в <style> и
+    // дважды в данные React — второй раз для страницы ошибки. HTML главной
+    // весил 185 КБ (42 КБ в gzip), без встраивания — 64 КБ (18 КБ в gzip).
+    // Файл стилей (12 КБ в gzip) скачивается один раз и дальше берётся из кэша.
+    // Цена: при самом первом заходе браузер ждёт этот файл перед отрисовкой —
+    // PageSpeed может снять балл-два. Вернуть: inlineCss: true.
+    inlineCss: false,
   },
 
   // undici — HTTP-клиент для запросов к Telegram через прокси (lib/telegram.ts).
@@ -65,6 +70,26 @@ const nextConfig = {
       { protocol: 'https', hostname: 'cdn.relaxdev.ru' },
       { protocol: 'https', hostname: 'storage.yandexcloud.net' },
     ],
+  },
+
+  // Заголовки безопасности для всех ответов. На Vercel часть из них ставил
+  // vercel.json, при переезде на relaxdev они пропали.
+  async headers() {
+    return [{
+      source: '/:path*',
+      headers: [
+        // Только HTTPS в течение года, в том числе на поддоменах. preload не ставим:
+        // попадание в список браузеров потом очень трудно отменить.
+        { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+        // Чужая вкладка, открытая с сайта, не получит доступ к нашему окну и наоборот.
+        { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), browsing-topics=()' },
+        // Запрет показа сайта в чужом iframe (X-Frame-Options / frame-ancestors) не
+        // включён: в истории репозитория сайт встраивали в другие проекты.
+      ],
+    }];
   },
 
   async redirects() {

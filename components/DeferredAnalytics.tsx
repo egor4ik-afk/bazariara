@@ -19,6 +19,16 @@ const YM_ID = 107711719;
 const FALLBACK_MS = 5000;
 const EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'scroll', 'wheel'] as const;
 
+// Роботы и автоматические проверки (Lighthouse/PageSpeed, поисковики, headless-
+// браузеры) в статистику не нужны: это не посетители. Заодно Метрика не сыпет
+// в их консоль ошибками своего WebSocket (wss://mc.yandex.com/solid.ws), из-за
+// которых PageSpeed снимал баллы в «Рекомендациях».
+function isBot(): boolean {
+  if ((navigator as any).webdriver) return true;
+  return /Chrome-Lighthouse|HeadlessChrome|PageSpeed|bot\b|crawler|spider|Yandex(Bot|Metrika)|Googlebot/i
+    .test(navigator.userAgent);
+}
+
 function addScript(src: string) {
   if (document.querySelector(`script[src="${src}"]`)) return;
   const s = document.createElement('script');
@@ -72,6 +82,7 @@ function startAnalytics(pixelId: string) {
 
 export default function DeferredAnalytics({ pixelId = '' }: { pixelId?: string }) {
   useEffect(() => {
+    if (isBot()) return;
     let started = false;
     let timer = 0;
 
