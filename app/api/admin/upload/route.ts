@@ -84,11 +84,12 @@ export async function POST(req: NextRequest) {
     }
 
     // .rotate() без аргументов применяет EXIF-ориентацию — иначе фото с айфона
-    // лежат боком. Заодно ужимаем: в бакет уедет 300–600 КБ вместо трёх мегабайт.
+    // лежат боком. Сохраняем в WebP: при том же качестве он на треть-половину
+    // легче JPEG, а его понимают все современные браузеры, Google и соцсети.
     const output = await sharp(input)
       .rotate()
       .resize({ width: 2000, height: 2000, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 88, mozjpeg: true })
+      .webp({ quality: 82, effort: 4 })
       .toBuffer();
 
     const timestamp = Date.now();
@@ -96,18 +97,18 @@ export async function POST(req: NextRequest) {
       .replace(/\.[^.]+$/, '')
       .replace(/[^a-zA-Z0-9._-]/g, '_')
       .slice(0, 60);
-    const key = `${S3_PREFIX}/admin/${timestamp}_${safeName}.jpg`;
+    const key = `${S3_PREFIX}/admin/${timestamp}_${safeName}.webp`;
 
     await s3.send(new PutObjectCommand({
       Bucket:      BUCKET,
       Key:         key,
       Body:        output,
-      ContentType: 'image/jpeg',
+      ContentType: 'image/webp',
       ACL:         'public-read',
     }));
 
     return NextResponse.json({
-      url:  `${CDN_URL}/admin/${timestamp}_${safeName}.jpg`,
+      url:  `${CDN_URL}/admin/${timestamp}_${safeName}.webp`,
       size: output.byteLength,
     });
   } catch (e: any) {

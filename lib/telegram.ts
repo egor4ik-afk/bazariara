@@ -14,14 +14,28 @@
 // Только для серверного кода (server actions, route handlers на nodejs).
 
 import { ProxyAgent, fetch as undiciFetch, type Dispatcher } from 'undici';
+import { runtimeEnv } from '@/lib/env';
 
-const API_BASE = (process.env.TG_API_BASE || 'https://api.telegram.org').replace(/\/+$/, '');
+const DEFAULT_API = 'https://api.telegram.org';
+
+/** TG_API_BASE — только для тестов (свой сервер Bot API); всё, что не похоже на адрес, игнорируем. */
+function apiBase(): string {
+  const v = runtimeEnv('TG_API_BASE');
+  return /^https?:\/\/[^\s/]+/.test(v) ? v.replace(/\/+$/, '') : DEFAULT_API;
+}
+
+function proxyUrl(): string {
+  return runtimeEnv('TG_PROXY_URL');
+}
 
 let agent: { url: string; dispatcher: Dispatcher } | null = null;
 
 function proxyDispatcher(): Dispatcher | undefined {
-  const url = (process.env.TG_PROXY_URL || '').trim();
+  const url = proxyUrl();
   if (!url) return undefined;
+  if (!/^https?:\/\/[^\s]+$/.test(url)) {
+    throw new Error(`TG_PROXY_URL должен быть вида http://host:port, а сейчас «${url}»`);
+  }
   if (agent?.url !== url) agent = { url, dispatcher: new ProxyAgent(url) };
   return agent.dispatcher;
 }
@@ -30,6 +44,7 @@ function proxyDispatcher(): Dispatcher | undefined {
 function why(e: unknown): string {
   const err = e as { name?: string; message?: string; cause?: { code?: string; message?: string } };
   if (err?.name === 'TimeoutError' || err?.name === 'AbortError') return 'нет ответа (таймаут)';
+  if (err?.message?.startsWith('TG_PROXY_URL')) return err.message;
   const c = err?.cause;
   return [c?.code, c?.message || err?.message].filter(Boolean).join(' ') || 'неизвестная ошибка';
 }
@@ -63,7 +78,7 @@ export async function tgFetch(path: string, init: TgInit = {}) {
   }
 
   try {
-    return await undiciFetch(`${API_BASE}/${path.replace(/^\/+/, '')}`, {
+    return await undiciFetch(`${apiBase()}/${path.replace(/^\/+/, '')}`, {
       method: body === undefined ? 'GET' : 'POST',
       headers,
       body,
@@ -72,7 +87,7 @@ export async function tgFetch(path: string, init: TgInit = {}) {
       signal: AbortSignal.timeout(init.timeoutMs ?? 10_000),
     });
   } catch (e) {
-    const via = process.env.TG_PROXY_URL ? ` через прокси ${process.env.TG_PROXY_URL}` : ' напрямую';
+    const via = proxyUrl() ? ` через прокси ${proxyUrl()}` : ' напрямую';
     throw new Error(`Telegram недоступен${via}: ${why(e)}`);
   }
 }

@@ -19,6 +19,7 @@
 
 import { createHash } from 'node:crypto';
 import { tgCall, tgCallUpload } from '@/lib/telegram';
+import { runtimeEnv } from '@/lib/env';
 import sql from '@/lib/db';
 
 export const SUPPORT_COOKIE = 'support_sid';
@@ -93,11 +94,11 @@ function webhookSecret(token: string): string {
  * бот из TELEGRAM_BOT_TOKEN, с поддержкой они не пересекаются.
  */
 export function supportConfig() {
-  const token = process.env.TELEGRAM_SUPPORT_BOT_TOKEN || '';
-  const chatId = process.env.TELEGRAM_SUPPORT_CHAT_ID || '';
+  const token = runtimeEnv('TELEGRAM_SUPPORT_BOT_TOKEN');
+  const chatId = runtimeEnv('TELEGRAM_SUPPORT_CHAT_ID');
   // Вебхук ставится в панели relaxdev с секретом из WEBHOOK_SECRET — сверяем с ним.
   // Если переменной нет, секрет по-прежнему выводится из токена (кнопка в админке).
-  const secret = (process.env.WEBHOOK_SECRET || '').trim() || webhookSecret(token);
+  const secret = runtimeEnv('WEBHOOK_SECRET') || webhookSecret(token);
   return { token, chatId, secret, ready: Boolean(token && chatId) };
 }
 

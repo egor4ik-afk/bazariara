@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { saveOrderSource, REFERRAL_SOURCES } from './actions';
+import { saveOrderSource } from './actions';
+import { REFERRAL_SOURCES } from './sources';
 
 const STORAGE_KEY = 'lastOrderId';
 

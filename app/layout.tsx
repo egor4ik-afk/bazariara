@@ -10,6 +10,7 @@ import SupportChat from '@/components/SupportChat'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
 import { headers } from 'next/headers'
+import { runtimeEnv } from '@/lib/env'
 
 const siteName = 'BAZARI ARA'
 const siteUrl = new URL('https://bazariara.ge')
@@ -165,7 +166,18 @@ const websiteJsonLd = {
   ],
 }
 
+// ID пикселя Meta читается при каждом запросе (страницы и так рендерятся на
+// сервере). Через process.env.NEXT_PUBLIC_FB_PIXEL_ID он вшивался при сборке,
+// а при сборке вместо него стоит заглушка — пиксель получал ID
+// «auto-generated-stub-for-build» и не работал. Нет корректного ID — пиксель
+// не ставим вовсе, чтобы не сыпать ошибками в консоль.
+function fbPixelId(): string {
+  const id = runtimeEnv('NEXT_PUBLIC_FB_PIXEL_ID') || runtimeEnv('FB_PIXEL_ID');
+  return /^\d{6,20}$/.test(id) ? id : '';
+}
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const pixelId = fbPixelId();
   return (
     <html lang="ru" suppressHydrationWarning>
       <head>
@@ -234,6 +246,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             alt=""
           />
         </noscript>
+        {pixelId && (
+        <>
         {/* Facebook Pixel Script */}
         <Script id="fb-pixel-base" strategy="lazyOnload">
           {`
@@ -245,7 +259,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${process.env.NEXT_PUBLIC_FB_PIXEL_ID}');
+            fbq('init', '${pixelId}');
             fbq('track', 'PageView');
           `}
         </Script>
@@ -254,10 +268,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             height="1"
             width="1"
             style={{ display: 'none' }}
-            src={"https://www.facebook.com/tr?id=" + process.env.NEXT_PUBLIC_FB_PIXEL_ID + "&ev=PageView&noscript=1"}
+            src={"https://www.facebook.com/tr?id=" + pixelId + "&ev=PageView&noscript=1"}
             alt=""
           />
         </noscript>
+        </>
+        )}
 
       </body>
     </html>

@@ -3,25 +3,7 @@
 import sql from '@/lib/db';
 import { tgCall } from '@/lib/telegram';
 
-/**
- * Источники, из которых пришёл клиент.
- *
- * Список закрытый и хранится здесь, а не свободным текстом: иначе в отчёте
- * получится «инстаграм», «Instagram», «инста» и «insta» как четыре разных
- * канала, и посчитать что-либо будет нельзя. Свободный ввод оставлен только
- * для варианта «другое» — и он пишется в отдельную колонку.
- */
-export const REFERRAL_SOURCES = [
-  'instagram',
-  'facebook',
-  'google',
-  'friend',
-  'telegram',
-  'passing_by',
-  'other',
-] as const;
-
-export type ReferralSource = (typeof REFERRAL_SOURCES)[number];
+import { REFERRAL_SOURCES, type ReferralSource } from './sources';
 
 export async function saveOrderSource(
   orderId: number,
