@@ -83,7 +83,8 @@ if (!DRY && !YES) {
   }
 }
 
-const sql = postgres(db.url, { ssl: sslFor(db.url), max: 1, onnotice: () => {} });
+// Сообщения RAISE NOTICE из SQL печатаем: так файл сам показывает, что он сделает.
+const sql = postgres(db.url, { ssl: sslFor(db.url), max: 1, onnotice: (n) => console.log(`  ${n.message}`) });
 
 // Сводка «было → стало»: число товаров по категориям, категорий, подкатегорий
 // и статей. Считается внутри той же транзакции, поэтому работает и в пробном прогоне.

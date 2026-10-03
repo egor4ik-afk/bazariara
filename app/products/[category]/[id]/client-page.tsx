@@ -218,11 +218,18 @@ export default function ProductDetailClient({ product }: { product: Product }) {
                       <button onClick={handleIncrease} className="p-3 rounded-full bg-ink-100 hover:bg-ink-200 transition-colors"><PlusIcon className="h-5 w-5" /></button>
                     </div>
                   </div>
-                ) : (
+                ) : product.in_stock && product.price > 0 ? (
                   <button onClick={handleAddToCart} className="w-full flex items-center justify-center px-4 py-4 font-bold rounded-lg bg-brand-600 text-on-brand hover:bg-brand-500 transition-all duration-300 transform hover:scale-105 shadow-lg shadow-brand-600/30">
                     <ShoppingCartIcon className="h-6 w-6 mr-3" />
                     {t('product.addToCart')}
                   </button>
+                ) : (
+                  // Раньше кнопка была всегда: товар «нет в наличии» или без цены
+                  // (тогда price = 0) можно было положить в корзину и заказать за 0 ₾.
+                  // В карточке каталога это уже было закрыто, здесь — нет.
+                  <p className="w-full text-center px-4 py-4 font-bold rounded-lg bg-ink-100 text-ink-600">
+                    {product.in_stock ? t('product.priceOnRequest') : t('product.outOfStock')}
+                  </p>
                 )}
               </div>
             </div>
@@ -234,7 +241,9 @@ export default function ProductDetailClient({ product }: { product: Product }) {
               </p>
               <h1 className="text-4xl lg:text-5xl font-extrabold mb-4 text-ink-900">{getTitle()}</h1>
               <div className="flex justify-between items-center mb-6">
-                <p className="text-4xl font-bold text-brand-700">{product.price} ₾</p>
+                <p className="text-4xl font-bold text-brand-700">
+                  {product.price > 0 ? `${product.price} ₾` : t('product.priceOnRequest')}
+                </p>
                 {product.in_stock && (
                   <span className="text-sm font-semibold text-brand-700 bg-brand-100 rounded-full px-3 py-1">{t('product.inStock')}</span>
                 )}
