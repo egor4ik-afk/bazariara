@@ -104,7 +104,10 @@ const GROUPS: Group[] = [
   },
 ];
 
-// Сезонная группа: «Новый год» стоит первой, пока в категории есть товары с фото.
+// Новогодний блок. Показывается, только если в категории есть товары с фото.
+// В сезон (см. isNewYearSeason) — первым на странице, в остальное время — внизу,
+// после основных разделов: ссылки на категорию с главной остаются, и Google
+// успевает её проиндексировать до декабря, но покупателю в октябре она не мешает.
 const SEASON: Group = {
   id: 'season',
   title: { ru: 'К Новому году', en: 'For New Year', ka: 'ახალი წლისთვის' },
@@ -115,6 +118,15 @@ const SEASON: Group = {
   },
   tiles: [{ kind: 'sub', category: 'newyear' }],
 };
+
+// С 15 ноября по 10 января. Прошлый сезон: первый заказ пришёл 6 декабря,
+// последний — 1 января. Главная рендерится на каждый запрос, так что блок
+// переедет наверх сам, без деплоя.
+function isNewYearSeason(now = new Date()): boolean {
+  const m = now.getUTCMonth() + 1;
+  const d = now.getUTCDate();
+  return (m === 11 && d >= 15) || m === 12 || (m === 1 && d <= 10);
+}
 
 // Категории, которых нет в группах выше (новые или «Для животных»), не теряются,
 // а попадают сюда.
@@ -347,9 +359,13 @@ export default async function Welcome({ locale }: { locale: Locale }) {
   const groups = await resolveGroups(locale);
 
   // Широкие блоки — сезон и еда (много плиток), остальные по два в ряд.
-  const WIDE = new Set(['season', 'food']);
-  const wide = groups.filter((g) => WIDE.has(g.id));
-  const halves = groups.filter((g) => !WIDE.has(g.id));
+  // Новогодний блок наверху только в сезон, иначе — последним.
+  const inSeason = isNewYearSeason();
+  const season = groups.find((g) => g.id === 'season');
+  const food = groups.find((g) => g.id === 'food');
+  const halves = groups.filter((g) => g.id !== 'season' && g.id !== 'food');
+  const top = [inSeason ? season : undefined, food].filter(Boolean) as ResolvedGroup[];
+  const bottom = !inSeason && season ? [season] : [];
 
   return (
     <div className="bg-cream-100 min-h-screen text-ink-900">
@@ -394,13 +410,15 @@ export default async function Welcome({ locale }: { locale: Locale }) {
         </section>
 
         <div className="space-y-14">
-          {wide.map((g) => <GroupBlock key={g.id} g={g} half={false} subcatsLabel={c.subcats} />)}
+          {top.map((g) => <GroupBlock key={g.id} g={g} half={false} subcatsLabel={c.subcats} />)}
 
           {halves.length > 0 && (
             <div className="grid md:grid-cols-2 gap-x-8 gap-y-14">
               {halves.map((g) => <GroupBlock key={g.id} g={g} half subcatsLabel={c.subcats} />)}
             </div>
           )}
+
+          {bottom.map((g) => <GroupBlock key={g.id} g={g} half={false} subcatsLabel={c.subcats} />)}
         </div>
 
         <ProducersSection locale={locale} />

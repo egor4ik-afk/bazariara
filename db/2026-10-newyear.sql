@@ -185,7 +185,8 @@ COMMIT;
 -- SELECT sub_category, count(*), min(price), max(price) FROM products
 --   WHERE category_key = 'newyear' GROUP BY 1;
 
--- Старт сезона (в начале ноября): поднять новогодние товары наверх общего каталога,
--- сохранив порядок хитов:
+-- Не обязательно. Порядок в общем каталоге (/ru/catalog) — по дате обновления,
+-- поэтому сейчас новогодние товары стоят в конце. Если в сезон захотите их наверху
+-- общего списка, запустите (порядок хитов сохранится):
 -- UPDATE products SET updated_at = now() - (TIMESTAMPTZ '2025-12-01 03:00+04' - updated_at)
 --   WHERE category_key = 'newyear';
