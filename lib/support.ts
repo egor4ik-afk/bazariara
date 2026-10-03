@@ -18,6 +18,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { tgCall, tgCallUpload } from '@/lib/telegram';
 import sql from '@/lib/db';
 
 export const SUPPORT_COOKIE = 'support_sid';
@@ -94,23 +95,17 @@ function webhookSecret(token: string): string {
 export function supportConfig() {
   const token = process.env.TELEGRAM_SUPPORT_BOT_TOKEN || '';
   const chatId = process.env.TELEGRAM_SUPPORT_CHAT_ID || '';
-  const secret = webhookSecret(token);
+  // Вебхук ставится в панели relaxdev с секретом из WEBHOOK_SECRET — сверяем с ним.
+  // Если переменной нет, секрет по-прежнему выводится из токена (кнопка в админке).
+  const secret = (process.env.WEBHOOK_SECRET || '').trim() || webhookSecret(token);
   return { token, chatId, secret, ready: Boolean(token && chatId) };
 }
 
-/** Вызов Bot API. Ошибка Telegram — это исключение с его текстом. */
+/** Вызов Bot API. Ошибка Telegram — это исключение с его текстом. Через прокси, см. lib/telegram.ts. */
 export async function tg<T = any>(method: string, params: Record<string, unknown>): Promise<T> {
   const { token } = supportConfig();
   if (!token) throw new Error('Не задан TELEGRAM_SUPPORT_BOT_TOKEN');
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(params),
-    cache: 'no-store',
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!data?.ok) throw new Error(`Telegram ${method}: ${data?.description || res.status}`);
-  return data.result as T;
+  return tgCall<T>(token, method, params);
 }
 
 /** Вызов Bot API с файлом (multipart). Файл уходит байтами, а не ссылкой. */
@@ -125,8 +120,5 @@ export async function tgUpload<T = any>(
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') form.append(k, String(v));
   form.append(method === 'sendPhoto' ? 'photo' : 'document',
               new Blob([new Uint8Array(file.body)], { type: file.contentType }), file.name);
-  const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, { method: 'POST', body: form, cache: 'no-store' });
-  const data = await res.json().catch(() => ({}));
-  if (!data?.ok) throw new Error(`Telegram ${method}: ${data?.description || res.status}`);
-  return data.result as T;
+  return tgCallUpload<T>(token, method, form);
 }

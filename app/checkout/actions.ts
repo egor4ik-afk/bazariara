@@ -1,6 +1,7 @@
 'use server';
 
 import sql from '@/lib/db';
+import { tgCall } from '@/lib/telegram';
 
 interface OrderItem {
   product: {
@@ -83,15 +84,11 @@ async function sendTelegramNotification(
   ].filter(s => s !== undefined).join('\n').trim();
 
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: CHAT_ID,
-        text: message,
-        parse_mode: 'Markdown',
-        disable_web_page_preview: true,
-      }),
+    await tgCall(BOT_TOKEN, 'sendMessage', {
+      chat_id: CHAT_ID,
+      text: message,
+      parse_mode: 'Markdown',
+      disable_web_page_preview: true,
     });
   } catch (err) {
     console.error('Telegram error:', err);

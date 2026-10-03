@@ -1,6 +1,7 @@
 'use server';
 
 import sql from '@/lib/db';
+import { tgCall } from '@/lib/telegram';
 
 export type ApplicationInput = {
   contactName: string;
@@ -117,12 +118,8 @@ async function notify(
   ].filter(Boolean).join('\n');
 
   try {
-    await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: CHAT_ID, text, parse_mode: 'Markdown', disable_web_page_preview: true,
-      }),
+    await tgCall(BOT_TOKEN, 'sendMessage', {
+      chat_id: CHAT_ID, text, parse_mode: 'Markdown', disable_web_page_preview: true,
     });
   } catch (err) {
     console.error('Telegram error:', err);

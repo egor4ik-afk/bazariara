@@ -2,6 +2,10 @@
 const nextConfig = {
   // Ключ eslint убран: Next 16 его не поддерживает (линт при сборке и так не идёт).
 
+  // undici — HTTP-клиент для запросов к Telegram через прокси (lib/telegram.ts).
+  // Не бандлим: берётся из node_modules как есть.
+  serverExternalPackages: ['undici'],
+
   // sharp для оптимизатора картинок: трассировка standalone не видит его нативную
   // libvips (подгружается через dlopen) — без этих файлов /_next/image падает.
   outputFileTracingIncludes: {

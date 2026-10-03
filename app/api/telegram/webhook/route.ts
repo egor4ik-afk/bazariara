@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { timingSafeEqual } from 'node:crypto';
 import sql from '@/lib/db';
 import { ensureSupportTables, supportConfig, tg, MAX_TEXT } from '@/lib/support';
+import { tgDownload } from '@/lib/telegram';
 import { folderFor, putSupportFile } from '@/lib/support-storage';
 
 const MIME_EXT: Record<string, string> = {
@@ -17,9 +18,7 @@ const MIME_EXT: Record<string, string> = {
  */
 async function mirrorFile(fileId: string, mime: string, sid: string): Promise<string> {
   const f = await tg<{ file_path: string; file_size?: number }>('getFile', { file_id: fileId });
-  const res = await fetch(`https://api.telegram.org/file/bot${supportConfig().token}/${f.file_path}`);
-  if (!res.ok) throw new Error(`не удалось скачать файл из Telegram: ${res.status}`);
-  const body = Buffer.from(await res.arrayBuffer());
+  const body = await tgDownload(supportConfig().token, f.file_path);
   return putSupportFile(folderFor(sid), body, mime, MIME_EXT[mime] || 'bin');
 }
 
