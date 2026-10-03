@@ -58,6 +58,7 @@ export default function Header() {
             дублировать их в шапке значит выдавить корзину за край. */}
         <nav className="hidden lg:flex items-center gap-1 mx-2">
           {[
+            { href: `/${language}/catalog`, label: t('footer.catalogTitle') },
             { href: `/${language}/farmers`, label: t('footer.farmers') },
             { href: `/${language}/regions`, label: t('footer.regions') },
             { href: `/${language}/blog`,    label: t('footer.blog') },

@@ -1,6 +1,13 @@
 import { MetadataRoute } from 'next';
 import sql from '@/lib/db';
 
+// Строим sitemap на каждый запрос, а не один раз при сборке. Раньше он
+// собирался в `next build`: если база в этот момент недоступна, в sitemap
+// оставались только статичные страницы (товары и категории ловили ошибку
+// и пропадали) — до следующей сборки. Новые товары тоже ждали пересборки.
+// Робот берёт sitemap несколько раз в день, запросы к базе тут копеечные.
+export const dynamic = 'force-dynamic';
+
 const SITE_URL = 'https://bazariara.ge';
 const LOCALES = ['ru', 'en', 'ka'] as const;
 
@@ -26,12 +33,16 @@ function localizedEntries(
   changeFrequency: NonNullable<MetadataRoute.Sitemap[number]['changeFrequency']>,
   priority: number,
 ): MetadataRoute.Sitemap {
+  // '/' и '/?category=…' пишем без слэша после языка: canonical у главной и
+  // категорий — /ru и /ru?category=…, а /ru/… отвечает редиректом. Sitemap
+  // из редиректов Google считает ошибкой и доверяет ему меньше.
+  const p = path === '/' ? '' : path.startsWith('/?') ? path.slice(1) : path;
   const languages: Record<string, string> = {};
-  for (const l of LOCALES) languages[l] = escapeXml(`${SITE_URL}/${l}${path}`);
-  languages['x-default'] = escapeXml(`${SITE_URL}/ru${path}`);
+  for (const l of LOCALES) languages[l] = escapeXml(`${SITE_URL}/${l}${p}`);
+  languages['x-default'] = escapeXml(`${SITE_URL}/ru${p}`);
 
   return LOCALES.map((l) => ({
-    url: escapeXml(`${SITE_URL}/${l}${path}`),
+    url: escapeXml(`${SITE_URL}/${l}${p}`),
     lastModified,
     changeFrequency,
     priority,
@@ -157,6 +168,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...localizedEntries('/', new Date(), 'daily', 1),
+    ...localizedEntries('/catalog', new Date(), 'daily', 0.8),
     ...localizedEntries('/privacy-policy', new Date(), 'yearly', 0.3),
     ...localizedEntries('/returns', new Date(), 'yearly', 0.4),
     ...localizedEntries('/turisticheskoe-snaryazhenie', new Date(), 'monthly', 0.6),

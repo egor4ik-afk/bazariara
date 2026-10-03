@@ -2,7 +2,7 @@ import sql from '@/lib/db';
 import ProductDetailClient from './client-page';
 import ProductCard from '@/components/ProductCard'; // <-- ДОБАВЛЕН ИМПОРТ
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { CONTACTS } from '@/lib/contacts';
 import { toCardProduct } from '@/lib/types';
@@ -121,6 +121,27 @@ async function getProduct(category: string, id: string) {
     return toClientProduct(rows[0] as unknown as NeonProduct, category, id);
   } catch (err) {
     console.error('Ошибка при получении товара из БД:', err);
+    return null;
+  }
+}
+
+/**
+ * Адреса прошлых версий сайта: /products/newyear/35, где 35 — номер товара
+ * в старой выгрузке, а не id в базе. Этот номер хранится в external_id
+ * как `${category}_${id}`. Если по адресу ничего нет или лежит товар другой
+ * категории, ищем по external_id и отправляем на настоящий адрес 301-м —
+ * так ссылки и позиции старых страниц переходят на новые.
+ */
+async function findLegacyProduct(category: string, id: string) {
+  if (!/^[a-z]+$/.test(category) || !/^\d+$/.test(id)) return null;
+  try {
+    const rows = await sql`
+      SELECT id, category_key FROM products
+      WHERE external_id = ${`${category}_${id}`} AND source = 'gorgia'
+      LIMIT 1
+    `;
+    return rows[0] ? { id: String(rows[0].id), category_key: String(rows[0].category_key || category) } : null;
+  } catch {
     return null;
   }
 }
@@ -289,6 +310,12 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const locale = localeHeader === 'en' || localeHeader === 'ka' ? localeHeader : 'ru';
   const product = await getProduct(category, id);
 
+  if (!product || product.trueCategoryKey !== category) {
+    const legacy = await findLegacyProduct(category, id);
+    if (legacy && !(legacy.id === id && legacy.category_key === category)) {
+      permanentRedirect(`/${locale}/products/${legacy.category_key}/${legacy.id}`);
+    }
+  }
   if (!product) notFound();
 
   // ВЫЗЫВАЕМ ПОХОЖИЕ ТОВАРЫ

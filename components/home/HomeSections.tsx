@@ -5,7 +5,9 @@
 // напрямую, без клиентского фетча.
 
 import Link from 'next/link';
+import { unstable_cache } from 'next/cache';
 import sql from '@/lib/db';
+import CdnImg from '@/components/CdnImg';
 import ProducerApplicationForm from '@/components/ProducerApplicationForm';
 import { plural } from '@/lib/plural';
 
@@ -41,6 +43,55 @@ const COPY = {
   },
 } as const;
 
+/* ──────────────────────── Данные (кэш 10 минут) ────────────────────────
+ * Раньше каждый заход на главную делал три запроса в базу. Производители,
+ * регионы и статьи меняются раз в дни, поэтому берём их из кэша Next, как
+ * категории и товары в app/actions.ts.
+ */
+const getHomeProducers = unstable_cache(
+  async (): Promise<any[]> => [...(await sql`
+    SELECT p.slug, p.name, p.name_en, p.name_ka, p.image_url, p.locality,
+           p.description, p.description_en, p.description_ka,
+           r.name AS region_name, r.name_en AS region_name_en, r.name_ka AS region_name_ka,
+           (SELECT COUNT(*)::int FROM products x
+            WHERE x.producer_id = p.id AND x.source = 'gorgia') AS product_count
+    FROM producers p
+    LEFT JOIN regions r ON r.id = p.region_id
+    WHERE p.status = 'active'
+    ORDER BY p.sort_order, p.name
+    LIMIT 6
+  `)],
+  ['home-producers'],
+  { revalidate: 600 },
+);
+
+const getHomeRegions = unstable_cache(
+  async (): Promise<any[]> => [...(await sql`
+    SELECT r.slug, r.name, r.name_en, r.name_ka, r.image_url,
+           (SELECT COUNT(*)::int FROM producers p
+            WHERE p.region_id = r.id AND p.status = 'active') AS producer_count,
+           (SELECT COUNT(*)::int FROM products x
+            WHERE x.region_id = r.id AND x.source = 'gorgia') AS product_count
+    FROM regions r
+    WHERE r.is_active
+    ORDER BY r.sort_order
+  `)],
+  ['home-regions'],
+  { revalidate: 600 },
+);
+
+const getHomePosts = unstable_cache(
+  async (): Promise<any[]> => [...(await sql`
+    SELECT slug, title, title_en, title_ka, excerpt, excerpt_en, excerpt_ka,
+           cover_url, published_at
+    FROM posts WHERE status = 'published'
+    ORDER BY published_at DESC NULLS LAST, id DESC
+    LIMIT 3
+  `)],
+  ['home-posts'],
+  { revalidate: 600 },
+);
+
 /* ─────────────────────────── Производители ─────────────────────────── */
 
 export async function ProducersSection({ locale }: { locale: Locale }) {
@@ -48,18 +99,7 @@ export async function ProducersSection({ locale }: { locale: Locale }) {
 
   let rows: any[] = [];
   try {
-    rows = await sql`
-      SELECT p.slug, p.name, p.name_en, p.name_ka, p.image_url, p.locality,
-             p.description, p.description_en, p.description_ka,
-             r.name AS region_name, r.name_en AS region_name_en, r.name_ka AS region_name_ka,
-             (SELECT COUNT(*)::int FROM products x
-              WHERE x.producer_id = p.id AND x.source = 'gorgia') AS product_count
-      FROM producers p
-      LEFT JOIN regions r ON r.id = p.region_id
-      WHERE p.status = 'active'
-      ORDER BY p.sort_order, p.name
-      LIMIT 6
-    `;
+    rows = await getHomeProducers();
   } catch (e) {
     console.error('ProducersSection:', e);
   }
@@ -98,7 +138,7 @@ export async function ProducersSection({ locale }: { locale: Locale }) {
           >
             <div className="w-20 h-20 rounded-xl bg-cream-200 overflow-hidden shrink-0">
               {p.image_url
-                ? <img src={p.image_url} alt={name(p)} className="w-full h-full object-cover" loading="lazy" />
+                ? <CdnImg src={p.image_url} alt={name(p)} width={256} className="w-full h-full object-cover" />
                 : <div className="w-full h-full flex items-center justify-center text-2xl" aria-hidden="true">🌿</div>}
             </div>
             <div className="min-w-0">
@@ -135,16 +175,7 @@ export async function RegionsSection({ locale }: { locale: Locale }) {
   try {
     // Показываем только те регионы, где реально что-то есть: пустая плитка
     // ведёт на пустую страницу и портит впечатление и поведенческие.
-    rows = await sql`
-      SELECT r.slug, r.name, r.name_en, r.name_ka, r.image_url,
-             (SELECT COUNT(*)::int FROM producers p
-              WHERE p.region_id = r.id AND p.status = 'active') AS producer_count,
-             (SELECT COUNT(*)::int FROM products x
-              WHERE x.region_id = r.id AND x.source = 'gorgia') AS product_count
-      FROM regions r
-      WHERE r.is_active
-      ORDER BY r.sort_order
-    `;
+    rows = await getHomeRegions();
     rows = rows.filter((r) => r.producer_count > 0 || r.product_count > 0);
   } catch (e) {
     console.error('RegionsSection:', e);
@@ -194,13 +225,7 @@ export async function BlogSection({ locale }: { locale: Locale }) {
 
   let posts: any[] = [];
   try {
-    posts = await sql`
-      SELECT slug, title, title_en, title_ka, excerpt, excerpt_en, excerpt_ka,
-             cover_url, published_at
-      FROM posts WHERE status = 'published'
-      ORDER BY published_at DESC NULLS LAST, id DESC
-      LIMIT 3
-    `;
+    posts = await getHomePosts();
   } catch (e) {
     console.error('BlogSection:', e);
   }
@@ -232,7 +257,8 @@ export async function BlogSection({ locale }: { locale: Locale }) {
           >
             {p.cover_url && (
               <div className="aspect-[16/9] bg-cream-200 overflow-hidden">
-                <img src={p.cover_url} alt="" loading="lazy"
+                <CdnImg src={p.cover_url} alt="" width={640} srcSetWidths={[640, 1080]}
+                     sizes="(min-width: 640px) 33vw, 100vw"
                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
               </div>
             )}

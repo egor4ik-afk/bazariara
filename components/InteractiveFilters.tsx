@@ -44,17 +44,20 @@ export default function InteractiveFilters({
     }, 500); 
   };
 
+  // Категории живут на главном адресе (/?category=X), общий список — на /catalog.
+  // Адреса без языка: middleware сам допишет его по cookie.
   const handleCategoryChange = (categoryKey: string) => {
     const params = new URLSearchParams(searchParams.toString());
+    params.delete('subcategory');
+    params.delete('page');
     if (selectedCategory === categoryKey) {
         params.delete('category');
-        params.delete('subcategory');
+        const qs = params.toString();
+        router.push(`/catalog${qs ? '?' + qs : ''}`, { scroll: false });
     } else {
         params.set('category', categoryKey);
-        params.delete('subcategory');
+        router.push(`/?${params.toString()}`, { scroll: false });
     }
-    params.set('page', '1');
-    router.push(`${pathname}?${params.toString()}`, { scroll: false });
   }
 
   const handleSubCategoryChange = (subCategoryKey: string) => {
@@ -88,7 +91,7 @@ export default function InteractiveFilters({
             onSelectCategory={handleCategoryChange}
             buildHref={(key) =>
                 key === selectedCategory
-                ? '/'               // снятие фильтра — идём на главную
+                ? '/catalog'        // снятие фильтра — ко всем товарам
                 : `/?category=${key}`
             }
         />

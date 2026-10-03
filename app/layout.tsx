@@ -110,7 +110,7 @@ const websiteJsonLd = {
         '@type': 'SearchAction',
         target: {
           '@type': 'EntryPoint',
-          urlTemplate: 'https://bazariara.ge/?search={search_term_string}',
+          urlTemplate: 'https://bazariara.ge/ru/catalog?search={search_term_string}',
         },
         'query-input': 'required name=search_term_string',
       },

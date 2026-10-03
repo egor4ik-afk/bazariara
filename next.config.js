@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // Ключ eslint убран: Next 16 его не поддерживает (линт при сборке и так не идёт).
 
   // sharp для оптимизатора картинок: трассировка standalone не видит его нативную
   // libvips (подгружается через dlopen) — без этих файлов /_next/image падает.
@@ -68,6 +66,7 @@ const nextConfig = {
       // для ЖИВЫХ категорий.
       { source: '/hiking/:id', destination: '/products/hiking/:id', permanent: true },
       { source: '/power/:id',  destination: '/products/power/:id',  permanent: true },
+      { source: '/newyear/:id', destination: '/products/newyear/:id', permanent: true },
     ];
   },
 };

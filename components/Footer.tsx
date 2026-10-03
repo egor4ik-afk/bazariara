@@ -26,6 +26,7 @@ const Footer = () => {
   ];
 
   const catalog = [
+    { href: L('/catalog'),                  label: t('home.allProducts') },
     { href: L('/gostintsy-iz-gruzii'),      label: t('footer.gifts') },
     { href: L('/turisticheskoe-snaryazhenie'), label: t('footer.tourism') },
     { href: L('/powerbank-i-zaryadki'),     label: t('footer.powerbanks') },

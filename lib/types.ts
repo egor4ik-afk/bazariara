@@ -15,6 +15,8 @@ export interface Product {
   source: string;
   source_url: string | null;
   gorgia_url: string | null;
+  // Ключ категории для адреса товара (/products/{category_key}/{id})
+  category_key?: string | null;
 
   // Основное поле (ru → en → ka)
   name: string;
@@ -110,10 +112,18 @@ export function getAllImages(p: Product): string[] {
 export function toCardProduct(p: any): Product {
   const cut = (s: string | null | undefined) =>
     s && s.length > 160 ? s.slice(0, 160).trimEnd() + '…' : (s ?? null);
-  return {
+  // Явный тип вместо `as Product`: если в Product появится новое обязательное
+  // поле, сборка скажет об этом здесь, а не упадёт в карточке.
+  const card: Product = {
     id: p.id,
     external_id: p.external_id,
-    category_key: p.category_key,
+    category_key: p.category_key ?? null,
+    // Карточке не нужны: источник, ссылки на поставщика и даты.
+    source: p.source ?? '',
+    source_url: null,
+    gorgia_url: null,
+    created_at: '',
+    updated_at: '',
     name: p.name,
     name_ru: p.name_ru ?? null,
     name_en: p.name_en ?? null,
@@ -125,6 +135,7 @@ export function toCardProduct(p: any): Product {
     price: p.price ?? null,
     currency: p.currency,
     in_stock: p.in_stock,
+    availability: p.availability ?? null,
     category: p.category ?? null,
     category_en: p.category_en ?? null,
     category_ka: p.category_ka ?? null,
@@ -135,5 +146,6 @@ export function toCardProduct(p: any): Product {
     farmer_name: p.farmer_name ?? null,
     image_url: p.image_url ?? null,
     images: getAllImages(p),
-  } as Product;
+  };
+  return card;
 }

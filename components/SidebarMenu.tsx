@@ -144,7 +144,7 @@ export default function SidebarMenu() {
                   <div className={`flex items-center rounded-xl transition-colors
                     ${!activeCat ? 'bg-brand-600/10' : 'hover:bg-ink-100'}`}>
                     <Link
-                      href={`/${language}`}
+                      href={`/${language}/catalog`}
                       onClick={() => setIsOpen(false)}
                       className="flex-1 min-w-0 flex items-center gap-3 px-2 py-2"
                     >
@@ -175,7 +175,7 @@ export default function SidebarMenu() {
                       <div className={`flex items-center rounded-xl transition-colors
                         ${active ? 'bg-brand-600/10' : 'hover:bg-ink-100'}`}>
                         <Link
-                          href={`/${language}/?category=${category.key}`}
+                          href={`/${language}?category=${category.key}`}
                           onClick={() => setIsOpen(false)}
                           className="flex-1 min-w-0 flex items-center gap-3 px-2 py-2"
                         >
@@ -223,7 +223,7 @@ export default function SidebarMenu() {
                           {subs.map(sub => (
                             <li key={sub.key}>
                               <Link
-                                href={`/${language}/?category=${category.key}&subcategory=${sub.key}`}
+                                href={`/${language}?category=${category.key}&subcategory=${sub.key}`}
                                 onClick={() => setIsOpen(false)}
                                 className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-lg
                                            text-sm text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition-colors"

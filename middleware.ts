@@ -20,13 +20,16 @@ const GONE_CATEGORY_KEYS = new Set([
   'plumbing', 'toys', 'warehouse', 'ikea', 'top',
   // ключи из прошлых версий структуры URL
   'klimaticheskoeoborudovanie', 'mebel', 'sad', 'santehnika',
-  'osveschenie', 'newyear', 'deti', 'kids', 'gorgia',
+  'osveschenie', 'deti', 'kids', 'gorgia',
+  // newyear вернули в октябре 2026: категория снова живая, её старые
+  // адреса из выдачи открываются (см. поиск по external_id в карточке товара).
 ]);
 
 const LIVE_CATEGORY_KEYS = new Set([
   'hiking', 'power', 'animals',
   'med', 'spetsii', 'churchhelaipastila', 'chay', 'otkrytki',
   'vino', 'bakalea',
+  'newyear', 'rynok',
 ]);
 
 function isLocale(value: string | undefined): value is Locale {
@@ -114,6 +117,35 @@ export function middleware(req: NextRequest) {
 
   if (isLocale(first)) {
     const rest = '/' + seg.slice(1).join('/');
+
+    // ── Главная стала приветственной, общий список товаров — /{locale}/catalog ──
+    // Категории остаются на прежних адресах /{locale}?category=X: Google их
+    // знает, переносить их — ещё одна миграция и риск потерять позиции.
+    // Переезжают только «все товары», поиск и пагинация общего списка.
+    if (rest === '/') {
+      const cat = searchParams.get('category');
+      const toCatalog = cat === 'all' || (!cat && (searchParams.has('search') || searchParams.has('page')));
+      if (toCatalog) {
+        const url = req.nextUrl.clone();
+        url.pathname = `/${first}/catalog`;
+        url.searchParams.delete('category');
+        url.searchParams.delete('subcategory');
+        if (url.searchParams.get('page') === '1') url.searchParams.delete('page');
+        return NextResponse.redirect(url, 301);
+      }
+    }
+    // Категория, выбранная в каталоге, открывается на своём старом адресе,
+    // чтобы у одной категории не было двух URL.
+    if (rest === '/catalog') {
+      const cat = searchParams.get('category');
+      if (cat && cat !== 'all') {
+        const url = req.nextUrl.clone();
+        url.pathname = `/${first}`;
+        if (url.searchParams.get('page') === '1') url.searchParams.delete('page');
+        return NextResponse.redirect(url, 301);
+      }
+    }
+
     const url = req.nextUrl.clone();
     url.pathname = rest === '/' ? '/' : rest;
 
