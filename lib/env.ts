@@ -12,7 +12,7 @@ export const BUILD_STUB = /build-stub-domain\.com|auto-generated-stub-for-build/
 /** Значение переменной на сервере во время работы; заглушка считается пустотой. */
 export function runtimeEnv(name: string): string {
   // Имя переменной приходит параметром: Next не может подставить значение
-  // на этапе сборки, как делает с process.env.NEXT_PUBLIC_*.
+  // на этапе сборки, как делает с переменными NEXT_PUBLIC_*.
   const v = (process.env[name] ?? '').trim();
   return BUILD_STUB.test(v) ? '' : v;
 }

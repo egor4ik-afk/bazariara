@@ -17,7 +17,6 @@
  * ними не смешивается.
  */
 
-import { createHash } from 'node:crypto';
 import { tgCall, tgCallUpload } from '@/lib/telegram';
 import { runtimeEnv } from '@/lib/env';
 import sql from '@/lib/db';
@@ -70,42 +69,29 @@ export async function ensureSupportTables() {
 }
 
 /**
- * Секрет вебхука выводится из токена бота — отдельную переменную
- * задавать не нужно.
+ * Вебхук ставит панель relaxdev через свой приёмник (hook.relaxweb.ru): Telegram
+ * надёжнее доставляет на зарубежный адрес, а приёмник пересылает запрос сюда.
+ * Панель берёт токен из TELEGRAM_BOT_TOKEN и секрет из TELEGRAM_WEBHOOK_SECRET,
+ * поэтому чат поддержки работает от того же бота и сверяет тот же секрет.
+ * Ответы операторов придут только боту, на котором стоит вебхук, — второй
+ * бот для поддержки здесь не нужен.
  *
- * Сам секрет обязателен: Telegram присылает его в каждом запросе, и так
- * мы отличаем настоящий Telegram от подделки. Без проверки любой, кто
- * знает адрес /api/telegram/webhook, мог бы подсунуть посетителю
- * «ответ поддержки» со ссылкой на оплату.
- *
- * Токен и так секретный, а хеш от него не угадать и не обратить.
- * Сменили токен бота — секрет сменится сам, достаточно переустановить
- * вебхук кнопкой в админке.
- */
-function webhookSecret(token: string): string {
-  if (!token) return '';
-  return createHash('sha256').update(`bazariara-support-webhook:${token}`).digest('hex').slice(0, 48);
-}
-
-/**
- * У поддержки СВОЙ бот. Один бот держит только один вебхук: общий с
- * другим проектом (RelaxDev) бот означал бы, что установка вебхука здесь
- * отключает чат там — так однажды и случилось. Заказы по-прежнему шлёт
- * бот из TELEGRAM_BOT_TOKEN, с поддержкой они не пересекаются.
+ * Секрет обязателен: Telegram присылает его в каждом запросе, и так мы
+ * отличаем настоящий Telegram от подделки. Без проверки любой, кто знает
+ * адрес /api/telegram/webhook, мог бы подсунуть посетителю «ответ поддержки»
+ * со ссылкой на оплату. Нет секрета — вебхук не принимает ничего.
  */
 export function supportConfig() {
-  const token = runtimeEnv('TELEGRAM_SUPPORT_BOT_TOKEN');
+  const token = runtimeEnv('TELEGRAM_BOT_TOKEN');
   const chatId = runtimeEnv('TELEGRAM_SUPPORT_CHAT_ID');
-  // Вебхук ставится в панели relaxdev с секретом из WEBHOOK_SECRET — сверяем с ним.
-  // Если переменной нет, секрет по-прежнему выводится из токена (кнопка в админке).
-  const secret = runtimeEnv('WEBHOOK_SECRET') || webhookSecret(token);
+  const secret = runtimeEnv('TELEGRAM_WEBHOOK_SECRET');
   return { token, chatId, secret, ready: Boolean(token && chatId) };
 }
 
 /** Вызов Bot API. Ошибка Telegram — это исключение с его текстом. Через прокси, см. lib/telegram.ts. */
 export async function tg<T = any>(method: string, params: Record<string, unknown>): Promise<T> {
   const { token } = supportConfig();
-  if (!token) throw new Error('Не задан TELEGRAM_SUPPORT_BOT_TOKEN');
+  if (!token) throw new Error('Не задан TELEGRAM_BOT_TOKEN');
   return tgCall<T>(token, method, params);
 }
 
@@ -116,7 +102,7 @@ export async function tgUpload<T = any>(
   file: { body: Buffer; contentType: string; name: string },
 ): Promise<T> {
   const { token } = supportConfig();
-  if (!token) throw new Error('Не задан TELEGRAM_SUPPORT_BOT_TOKEN');
+  if (!token) throw new Error('Не задан TELEGRAM_BOT_TOKEN');
   const form = new FormData();
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== '') form.append(k, String(v));
   form.append(method === 'sendPhoto' ? 'photo' : 'document',

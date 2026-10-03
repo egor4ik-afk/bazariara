@@ -4,31 +4,24 @@ import { isAuthenticated, unauthorizedResponse } from '@/lib/admin-auth';
 import { ensureSupportTables, supportConfig, tg } from '@/lib/support';
 
 /**
- * Настройка и состояние чата поддержки.
+ * Состояние чата поддержки: переменные, группа, темы, права бота, вебхук.
  *
- * GET  — что настроено и что нет: переменные, группа, темы, права бота, вебхук.
- * POST — установить вебхук. Если у бота уже стоит вебхук на ДРУГОЙ адрес,
- *        откажет: у бота может быть только один вебхук, и перезапись
- *        молча отключит его в другом проекте (например, в orders, если
- *        токен общий). Перезаписать можно только с { force: true }.
+ * Вебхук отсюда больше не ставится: его ставит панель relaxdev через свой
+ * приёмник (hook.relaxweb.ru). Прямой адрес сайта Telegram доставлял хуже,
+ * а установка отсюда перезаписывала вебхук приёмника.
  */
 
-const WEBHOOK_PATH = '/api/telegram/webhook';
-
-function siteUrl(req: NextRequest): string {
-  const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'bazariara.ge';
-  return `https://${host}`;
-}
+const RELAY_PREFIX = 'https://hook.relaxweb.ru/';
 
 export async function GET(req: NextRequest) {
   if (!isAuthenticated(req)) return unauthorizedResponse();
   const cfg = supportConfig();
   const out: Record<string, any> = {
     env: {
-      TELEGRAM_SUPPORT_BOT_TOKEN: Boolean(cfg.token),
+      TELEGRAM_BOT_TOKEN: Boolean(cfg.token),
       TELEGRAM_SUPPORT_CHAT_ID: Boolean(cfg.chatId),
+      TELEGRAM_WEBHOOK_SECRET: Boolean(cfg.secret),
     },
-    expectedWebhook: siteUrl(req) + WEBHOOK_PATH,
   };
   if (!cfg.token) return NextResponse.json(out);
 
@@ -36,7 +29,12 @@ export async function GET(req: NextRequest) {
     const me = await tg('getMe', {});
     out.bot = `@${me.username}`;
     const wh = await tg('getWebhookInfo', {});
-    out.webhook = { url: wh.url || null, pending: wh.pending_update_count, lastError: wh.last_error_message || null };
+    out.webhook = {
+      url: wh.url || null,
+      viaRelay: Boolean(wh.url?.startsWith(RELAY_PREFIX)),
+      pending: wh.pending_update_count,
+      lastError: wh.last_error_message || null,
+    };
 
     if (cfg.chatId) {
       const chat = await tg('getChat', { chat_id: cfg.chatId });
@@ -58,32 +56,4 @@ export async function GET(req: NextRequest) {
     out.error = e?.message || String(e);
   }
   return NextResponse.json(out);
-}
-
-export async function POST(req: NextRequest) {
-  if (!isAuthenticated(req)) return unauthorizedResponse();
-  const cfg = supportConfig();
-  if (!cfg.token) {
-    return NextResponse.json({ error: 'Нужен TELEGRAM_SUPPORT_BOT_TOKEN' }, { status: 400 });
-  }
-  const { force } = await req.json().catch(() => ({}));
-  const url = siteUrl(req) + WEBHOOK_PATH;
-
-  try {
-    const wh = await tg('getWebhookInfo', {});
-    if (wh.url && wh.url !== url && !force) {
-      return NextResponse.json({
-        error: `У этого бота уже стоит вебхук на ${wh.url} — значит, бот используется ` +
-               'в другом проекте, и перезапись отключит его там. Для поддержки нужен ' +
-               'отдельный бот: создайте его в @BotFather и пропишите в TELEGRAM_SUPPORT_BOT_TOKEN.',
-        existing: wh.url,
-      }, { status: 409 });
-    }
-    await tg('setWebhook', {
-      url, secret_token: cfg.secret, allowed_updates: ['message'], drop_pending_updates: true,
-    });
-    return NextResponse.json({ ok: true, url });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || String(e) }, { status: 502 });
-  }
 }

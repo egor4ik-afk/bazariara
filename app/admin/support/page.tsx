@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react';
 
 type Status = {
   env: Record<string, boolean>;
-  expectedWebhook: string;
   bot?: string;
-  webhook?: { url: string | null; pending: number; lastError: string | null };
+  webhook?: { url: string | null; viaRelay: boolean; pending: number; lastError: string | null };
   chat?: { title: string; isForum: boolean };
   botRights?: { admin: boolean; canManageTopics: boolean };
   threads?: { id: number; visitor_name: string | null; contact: string | null; locale: string;
@@ -26,8 +25,6 @@ const row = (ok: boolean | undefined, label: string, hint?: string) => (
 
 export default function SupportAdmin() {
   const [s, setS] = useState<Status | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
 
   const load = async () => {
     const r = await fetch('/api/admin/support-setup');
@@ -35,25 +32,10 @@ export default function SupportAdmin() {
   };
   useEffect(() => { load(); }, []);
 
-  const install = async (force = false) => {
-    setBusy(true); setMsg(null);
-    const r = await fetch('/api/admin/support-setup', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ force }),
-    });
-    const d = await r.json();
-    setBusy(false);
-    if (r.status === 409) {
-      if (confirm(`${d.error}\n\nВсё равно перезаписать?`)) return install(true);
-      return;
-    }
-    setMsg(r.ok ? `Вебхук установлен: ${d.url}` : `Ошибка: ${d.error}`);
-    load();
-  };
-
   if (!s) return <p style={{ padding: 24 }}>Загрузка…</p>;
 
-  const webhookOk = s.webhook?.url === s.expectedWebhook;
-  const allOk = s.env.TELEGRAM_SUPPORT_BOT_TOKEN && s.env.TELEGRAM_SUPPORT_CHAT_ID
+  const webhookOk = Boolean(s.webhook?.viaRelay);
+  const allOk = s.env.TELEGRAM_BOT_TOKEN && s.env.TELEGRAM_SUPPORT_CHAT_ID && s.env.TELEGRAM_WEBHOOK_SECRET
     && s.chat?.isForum && s.botRights?.canManageTopics && webhookOk;
 
   const card = { background: 'rgb(var(--surface))', border: '1px solid rgb(var(--ink-200))', borderRadius: 12, padding: 18, marginBottom: 16 } as const;
@@ -66,8 +48,10 @@ export default function SupportAdmin() {
       </p>
 
       <div style={card}>
-        {row(s.env.TELEGRAM_SUPPORT_BOT_TOKEN, 'TELEGRAM_SUPPORT_BOT_TOKEN',
-             'Отдельный бот только для поддержки — создайте в @BotFather. Не бот заказов и не бот другого проекта')}
+        {row(s.env.TELEGRAM_BOT_TOKEN, 'TELEGRAM_BOT_TOKEN',
+             'Токен бота — тот же, что указан у приёмника в панели relaxdev')}
+        {row(s.env.TELEGRAM_WEBHOOK_SECRET, 'TELEGRAM_WEBHOOK_SECRET',
+             'Секрет вебхука — задаётся в панели relaxdev вместе с приёмником')}
         {row(s.env.TELEGRAM_SUPPORT_CHAT_ID, 'TELEGRAM_SUPPORT_CHAT_ID',
              'ID группы поддержки (начинается с -100). Отдельная группа, не чат заказов')}
         {s.bot && row(true, `Бот: ${s.bot}`)}
@@ -75,8 +59,13 @@ export default function SupportAdmin() {
              'Настройки группы → Темы → включить')}
         {s.botRights && row(s.botRights.canManageTopics, 'Бот — админ с правом «Управление темами»',
              'Назначьте бота администратором группы и дайте право управлять темами')}
-        {row(webhookOk, `Вебхук: ${s.webhook?.url || 'не установлен'}`,
-             s.webhook?.url ? `Должен быть ${s.expectedWebhook}` : 'Нажмите кнопку ниже')}
+        {row(webhookOk, `Вебхук через приёмник relaxdev: ${s.webhook?.url || 'не установлен'}`,
+             'Включите вебхук в панели relaxdev, в разделе приёмника (ссылка setWebhook)')}
+        {s.webhook && s.webhook.pending > 0 && (
+          <p style={{ fontSize: 12, color: 'rgb(var(--ink-500))', marginTop: 4 }}>
+            Ждут доставки у Telegram: {s.webhook.pending}
+          </p>
+        )}
         {s.webhook?.lastError && (
           <p style={{ fontSize: 12, color: 'rgb(var(--clay))', marginTop: 6 }}>
             Последняя ошибка доставки: {s.webhook.lastError}
@@ -84,12 +73,6 @@ export default function SupportAdmin() {
         )}
         {s.error && <p style={{ fontSize: 12, color: 'rgb(var(--clay))', marginTop: 6 }}>{s.error}</p>}
 
-        <button onClick={() => install()} disabled={busy || !s.env.TELEGRAM_SUPPORT_BOT_TOKEN}
-          style={{ marginTop: 12, padding: '9px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                   background: 'rgb(var(--brand-600))', color: 'rgb(var(--on-brand))', fontWeight: 700 }}>
-          {busy ? 'Устанавливаем…' : webhookOk ? 'Переустановить вебхук' : 'Установить вебхук'}
-        </button>
-        {msg && <p style={{ fontSize: 13, marginTop: 8, color: 'rgb(var(--brand-600))' }}>{msg}</p>}
       </div>
 
       <h2 style={{ fontSize: 15, fontWeight: 700, margin: '20px 0 8px' }}>Последние разговоры</h2>
