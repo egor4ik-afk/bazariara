@@ -7,8 +7,8 @@ import { ThemeProvider, themeInitScript } from '@/contexts/ThemeContext'
 import { CONTACTS } from '@/lib/contacts'
 import Header from '@/components/Header'
 import SupportChat from '@/components/SupportChatLazy'
+import DeferredAnalytics from '@/components/DeferredAnalytics'
 import Footer from '@/components/Footer'
-import Script from 'next/script'
 import { headers } from 'next/headers'
 import { runtimeEnv } from '@/lib/env'
 
@@ -207,42 +207,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </LanguageProvider>
         </ThemeProvider>
 
-        {/* Счётчики грузятся после загрузки страницы (lazyOnload): ~390 КБ скриптов
-            Google, Метрики и Facebook больше не отнимают процессор у первого показа. */}
-        <Script
-          src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
-          strategy="lazyOnload"
-        />
-        <Script id="google-analytics" strategy="lazyOnload">
-          {`
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){ window.dataLayer.push(arguments); }
-            window.gtag = gtag;
-            gtag('js', new Date());
-            gtag('config', 'G-EN4C3S417X');
-          `}
-        </Script>
-        {/* Yandex Metrika */}
-        <Script id="yandex-metrika" strategy="lazyOnload">
-          {`
-    (function(m,e,t,r,i,k,a){
-      m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
-      m[i].l=1*new Date();
-      for(var j=0;j<document.scripts.length;j++){if(document.scripts[j].src===r){return;}}
-      k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
-    })(window,document,'script','https://mc.yandex.ru/metrika/tag.js?id=107711719','ym');
-    ym(107711719,'init',{
-      ssr: true,
-      webvisor: true,
-      clickmap: true,
-      ecommerce: "dataLayer",
-      referrer: document.referrer,
-      url: location.href,
-      accurateTrackBounce: true,
-      trackLinks: true
-    });
-  `}
-        </Script>
+        {/* Google Analytics, Метрика и пиксель Meta стартуют по первому действию
+            посетителя или через 5 секунд — см. components/DeferredAnalytics. */}
+        <DeferredAnalytics pixelId={pixelId} />
         <noscript>
           <img
             src="https://mc.yandex.ru/watch/107711719"
@@ -252,21 +219,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         </noscript>
         {pixelId && (
         <>
-        {/* Facebook Pixel Script */}
-        <Script id="fb-pixel-base" strategy="lazyOnload">
-          {`
-            !function(f,b,e,v,n,t,s)
-            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
-            t.src=v;s=b.getElementsByTagName(e)[0];
-            s.parentNode.insertBefore(t,s)}(window, document,'script',
-            'https://connect.facebook.net/en_US/fbevents.js');
-            fbq('init', '${pixelId}');
-            fbq('track', 'PageView');
-          `}
-        </Script>
         <noscript>
           <img
             height="1"
