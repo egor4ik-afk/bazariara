@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import sql from '@/lib/db';
 import ProductCard from '@/components/ProductCard';
-import { Product } from '@/lib/types';
+import { Product, toCardProduct } from '@/lib/types';
 
 export const revalidate = 300;
 
@@ -276,7 +276,7 @@ export default async function ProducerPage(
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
               {products.map((p, i) => (
-                <ProductCard key={p.id} product={p} index={i} />
+                <ProductCard key={p.id} product={toCardProduct(p)} index={i} />
               ))}
             </div>
           )}

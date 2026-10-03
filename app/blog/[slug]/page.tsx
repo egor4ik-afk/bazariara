@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import sql from '@/lib/db';
 import ProductCard from '@/components/ProductCard';
-import { Product } from '@/lib/types';
+import { Product, toCardProduct } from '@/lib/types';
 
 export const revalidate = 300;
 type Locale = 'ru' | 'en' | 'ka';
@@ -388,7 +388,7 @@ export default async function PostPage(
           <section className="mt-12">
             <h2 className="text-2xl font-bold mb-5">{L.fromPost}</h2>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-              {products.map((p, i) => <ProductCard key={p.id} product={p} index={i} />)}
+              {products.map((p, i) => <ProductCard key={p.id} product={toCardProduct(p)} index={i} />)}
             </div>
           </section>
         )}

@@ -100,3 +100,40 @@ export function getAllImages(p: Product): string[] {
   if (p.image_url) return [p.image_url];
   return [];
 }
+
+/**
+ * Товар для карточки каталога: только то, что карточка показывает и кладёт в корзину.
+ * Раньше в клиентскую карточку уходил весь объект — три полных описания, source_url,
+ * даты, — и Next.js вписывал его в HTML для каждой карточки: 4–5 КБ на товар,
+ * ~250 КБ на главной. Описания в корзине не показываются, хватает начала.
+ */
+export function toCardProduct(p: any): Product {
+  const cut = (s: string | null | undefined) =>
+    s && s.length > 160 ? s.slice(0, 160).trimEnd() + '…' : (s ?? null);
+  return {
+    id: p.id,
+    external_id: p.external_id,
+    category_key: p.category_key,
+    name: p.name,
+    name_ru: p.name_ru ?? null,
+    name_en: p.name_en ?? null,
+    name_ka: p.name_ka ?? null,
+    description: cut(p.description),
+    description_ru: cut(p.description_ru),
+    description_en: cut(p.description_en),
+    description_ka: cut(p.description_ka),
+    price: p.price ?? null,
+    currency: p.currency,
+    in_stock: p.in_stock,
+    category: p.category ?? null,
+    category_en: p.category_en ?? null,
+    category_ka: p.category_ka ?? null,
+    sub_category: p.sub_category ?? null,
+    sub_category_en: p.sub_category_en ?? null,
+    sub_category_ka: p.sub_category_ka ?? null,
+    farmer_slug: p.farmer_slug ?? null,
+    farmer_name: p.farmer_name ?? null,
+    image_url: p.image_url ?? null,
+    images: getAllImages(p),
+  } as Product;
+}

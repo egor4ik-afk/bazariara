@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getProducts } from '@/app/actions';
 import ProductCard from '@/components/ProductCard';
+import { toCardProduct } from '@/lib/types';
 
 const PATH = '/gostintsy-iz-gruzii';
 
@@ -187,7 +188,7 @@ export default async function GeorgianGiftsPage() {
   const grid = (products: Awaited<ReturnType<typeof getProducts>>['products']) => (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
       {products.map((p) => (
-        <ProductCard key={p.id} product={p} index={0} />
+        <ProductCard key={p.id} product={toCardProduct(p)} index={0} />
       ))}
     </div>
   );

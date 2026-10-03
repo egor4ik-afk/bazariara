@@ -9,6 +9,7 @@ import { getCategories, getSubCategories, getProducts } from './actions';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { ProducersSection, RegionsSection, BlogSection, ProducerCTASection } from '@/components/home/HomeSections';
+import { toCardProduct } from '@/lib/types';
 
 type SearchParams = Promise<{ [key: string]: string | undefined }>;
 
@@ -244,7 +245,7 @@ export default async function HomePage({ searchParams }: { searchParams: SearchP
         <section aria-label={locale === 'en' ? 'Products' : locale === 'ka' ? 'პროდუქცია' : 'Список товаров'}>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {products.map((product, index) => (
-              <ProductCard key={product.id} product={product} index={index} />
+              <ProductCard key={product.id} product={toCardProduct(product)} index={index} />
             ))}
           </div>
 

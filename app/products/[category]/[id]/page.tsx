@@ -5,6 +5,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { headers } from 'next/headers';
 import { CONTACTS } from '@/lib/contacts';
+import { toCardProduct } from '@/lib/types';
 
 type Params = Promise<{ category: string; id: string }>;
 
@@ -364,7 +365,7 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
             {relatedProducts.map(p => (
-              <ProductCard key={p.id} product={p as any} index={0} />
+              <ProductCard key={p.id} product={toCardProduct(p)} index={0} />
             ))}
           </div>
         </div>

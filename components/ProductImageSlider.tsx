@@ -6,6 +6,14 @@ import 'swiper/css';
 import 'swiper/css/pagination';
 import { isVideoUrl } from '@/lib/media';
 
+// Картинки с CDN — через оптимизатор Next (/_next/image): ресайз под карточку
+// (640 px — с запасом на ретину) и webp. Оригиналы весят 100–450 КБ, после — десятки.
+// Если оптимизатор не ответит, onError вернёт исходный файл.
+const OPTIMIZE_HOSTS = /^https:\/\/(cdn\.relaxdev\.ru|storage\.yandexcloud\.net)\//;
+function cardSrc(url: string): string {
+  return OPTIMIZE_HOSTS.test(url) ? `/_next/image?url=${encodeURIComponent(url)}&w=640&q=75` : url;
+}
+
 interface ProductImageSliderProps {
   images: string[];
   alt: string;
@@ -34,7 +42,8 @@ function Media({ url, alt, eager }: { url: string; alt: string; eager: boolean }
   }
   return (
     <img
-      src={url}
+      src={cardSrc(url)}
+      onError={(e) => { const el = e.currentTarget; if (el.src !== url) el.src = url; }}
       alt={alt}
       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ease-in-out"
       loading={eager ? 'eager' : 'lazy'}

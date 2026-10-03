@@ -191,11 +191,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </LanguageProvider>
         </ThemeProvider>
 
+        {/* Счётчики грузятся после загрузки страницы (lazyOnload): ~390 КБ скриптов
+            Google, Метрики и Facebook больше не отнимают процессор у первого показа. */}
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-EN4C3S417X"
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
-        <Script id="google-analytics" strategy="afterInteractive">
+        <Script id="google-analytics" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){ window.dataLayer.push(arguments); }
@@ -205,7 +207,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           `}
         </Script>
         {/* Yandex Metrika */}
-        <Script id="yandex-metrika" strategy="afterInteractive">
+        <Script id="yandex-metrika" strategy="lazyOnload">
           {`
     (function(m,e,t,r,i,k,a){
       m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
@@ -233,7 +235,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           />
         </noscript>
         {/* Facebook Pixel Script */}
-        <Script id="fb-pixel-base" strategy="afterInteractive">
+        <Script id="fb-pixel-base" strategy="lazyOnload">
           {`
             !function(f,b,e,v,n,t,s)
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
