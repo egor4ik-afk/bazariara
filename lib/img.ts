@@ -2,12 +2,12 @@
 // Оригиналы весят 100–450 КБ, после оптимизатора — десятки.
 //
 // Ширины обязаны быть из next.config.js (deviceSizes + imageSizes):
-// 128, 256, 640, 1080, 1920. Любую другую оптимизатор отклонит с 400.
+// 128, 256, 384, 640, 1080, 1920. Любую другую оптимизатор отклонит с 400.
 
 // i.ibb.co — фото новогодних товаров из прошлогодней выгрузки.
 const OPTIMIZE_HOSTS = /^https:\/\/(cdn\.relaxdev\.ru|storage\.yandexcloud\.net|i\.ibb\.co)\//;
 
-export type ImgWidth = 128 | 256 | 640 | 1080 | 1920;
+export type ImgWidth = 128 | 256 | 384 | 640 | 1080 | 1920;
 
 export function canOptimize(url: string | null | undefined): url is string {
   return !!url && OPTIMIZE_HOSTS.test(url);

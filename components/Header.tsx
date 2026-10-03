@@ -142,7 +142,9 @@ export default function Header() {
                   ₾{totalPrice.toFixed(2)}
                 </span>
               )}
-              <ShoppingCartIcon className="h-7 w-7 sm:h-8 sm:w-8" />
+              <ShoppingCartIcon className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
+              {/* Имя ссылки для скринридеров и AI-агентов: без него это «ссылка без названия» */}
+              <span className="sr-only">{t('cart.title')}</span>
               {itemCount > 0 && (
                 <span className="absolute -top-1.5 -right-1.5 bg-brand-600 text-on-brand rounded-full h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center text-[10px] sm:text-xs font-bold">
                   {itemCount}

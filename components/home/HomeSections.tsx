@@ -115,7 +115,9 @@ export async function ProducersSection({ locale }: { locale: Locale }) {
   const desc = (p: any) => {
     const d = locale === 'en' ? (p.description_en || p.description)
             : locale === 'ka' ? (p.description_ka || p.description) : p.description;
-    return d ? String(d).split('\n\n')[0] : '';
+    // На карточке видно две строки (clamp-2); весь абзац раздувал HTML главной.
+    const first = d ? String(d).split('\n\n')[0] : '';
+    return first.length > 180 ? first.slice(0, 180).replace(/\s+\S*$/, '') + '…' : first;
   };
 
   return (

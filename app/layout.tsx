@@ -6,7 +6,7 @@ import { LanguageProvider } from '@/contexts/LanguageContext'
 import { ThemeProvider, themeInitScript } from '@/contexts/ThemeContext'
 import { CONTACTS } from '@/lib/contacts'
 import Header from '@/components/Header'
-import SupportChat from '@/components/SupportChat'
+import SupportChat from '@/components/SupportChatLazy'
 import Footer from '@/components/Footer'
 import Script from 'next/script'
 import { headers } from 'next/headers'
@@ -176,10 +176,14 @@ function fbPixelId(): string {
   return /^\d{6,20}$/.test(id) ? id : '';
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Язык документа — по адресу страницы (/ru, /en, /ka). Раньше везде стоял «ru»,
+  // и английские страницы для поисковиков и скринридеров выглядели русскими.
+  const lh = (await headers()).get('x-locale');
+  const lang = lh === 'en' || lh === 'ka' ? lh : 'ru';
   const pixelId = fbPixelId();
   return (
-    <html lang="ru" suppressHydrationWarning>
+    <html lang={lang} suppressHydrationWarning>
       <head>
         {/* Ставит класс темы до первой отрисовки. Без этого страница
             моргает светлым, пока грузится React. */}

@@ -146,8 +146,19 @@ export function middleware(req: NextRequest) {
       }
     }
 
+    // Внутренний маршрут страниц категорий снаружи не открывается
+    if (rest === '/category-page' || rest.startsWith('/category-page/')) {
+      const nf = req.nextUrl.clone();
+      nf.pathname = '/__not-found';
+      return NextResponse.rewrite(nf);
+    }
+
     const url = req.nextUrl.clone();
-    url.pathname = rest === '/' ? '/' : rest;
+    // /{locale}?category=X — страница категории (app/category-page): адрес тот же,
+    // маршрут отдельный, чтобы главная не грузила JS каталога.
+    url.pathname = rest === '/'
+      ? (searchParams.get('category') ? '/category-page' : '/')
+      : rest;
 
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set('x-locale', first);

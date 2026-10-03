@@ -139,6 +139,8 @@ const COPY = {
     find: 'Найти',
     allProducts: 'Смотреть все товары',
     subcats: 'Подразделы',
+    toolDescription: 'Поиск товаров в магазине BAZARI ARA (Тбилиси): грузинские продукты, подарки, туризм. Открывает каталог с результатами.',
+    toolParam: 'Что искать: название товара или категории, например «мёд», «палатка», «чурчхела»',
   },
   en: {
     searchLabel: 'Search products',
@@ -146,6 +148,8 @@ const COPY = {
     find: 'Search',
     allProducts: 'Browse all products',
     subcats: 'Subcategories',
+    toolDescription: 'Search products in the BAZARI ARA store (Tbilisi): Georgian food, gifts, travel gear. Opens the catalogue with results.',
+    toolParam: 'What to search for: a product or category name, e.g. "honey", "tent", "churchkhela"',
   },
   ka: {
     searchLabel: 'პროდუქტების ძიება',
@@ -153,10 +157,16 @@ const COPY = {
     find: 'ძიება',
     allProducts: 'ყველა პროდუქტის ნახვა',
     subcats: 'ქვეკატეგორიები',
+    toolDescription: 'პროდუქტების ძიება BAZARI ARA-ს მაღაზიაში (თბილისი): ქართული პროდუქტები, საჩუქრები, ტურიზმი.',
+    toolParam: 'რა ვეძებოთ: პროდუქტის ან კატეგორიის სახელი, მაგალითად «თაფლი»',
   },
 } as const;
 
 const MAX_SUBCATS_PER_CATEGORY = 12;
+
+// Атрибуты WebMCP (toolname, tooldescription…) React передаёт в HTML как есть,
+// но в типах JSX их нет — отсюда обёртка.
+const webmcp = (attrs: Record<string, string>) => attrs as Record<string, string>;
 
 const hasPhoto = (url: string | null | undefined): url is string =>
   !!url && !url.startsWith('/placeholder');
@@ -287,7 +297,7 @@ function Tiles({ tiles, cols, sizes, width }: {
                   src={t.image}
                   alt=""
                   width={width}
-                  srcSetWidths={[256, 640]}
+                  srcSetWidths={[256, 384, 640]}
                   sizes={sizes}
                   className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-[1.04]"
                 />
@@ -379,12 +389,16 @@ export default async function Welcome({ locale }: { locale: Locale }) {
             {tr.heroSubtitle}
           </p>
 
-          {/* Обычная форма: работает без JS и ведёт в каталог с поиском. */}
-          <form action={`/${locale}/catalog`} method="get" role="search" className="mt-7 max-w-xl mx-auto flex gap-2">
+          {/* Обычная форма: работает без JS и ведёт в каталог с поиском.
+              Атрибуты tool* — разметка WebMCP: браузерный AI-агент видит форму
+              как инструмент «поиск по товарам» и может вызвать его сам. */}
+          <form action={`/${locale}/catalog`} method="get" role="search" className="mt-7 max-w-xl mx-auto flex gap-2"
+                {...webmcp({ toolname: 'search_products', tooldescription: c.toolDescription })}>
             <label htmlFor="welcome-search" className="sr-only">{c.searchLabel}</label>
             <input
               id="welcome-search"
               name="search"
+              {...webmcp({ toolparamtitle: c.searchLabel, toolparamdescription: c.toolParam })}
               type="search"
               minLength={2}
               required

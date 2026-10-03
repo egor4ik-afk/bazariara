@@ -233,7 +233,6 @@ export default function CheckoutPage() {
                         value={phone}
                         onChange={handlePhoneChange}
                         error={phoneError}
-                        placeholder={t('checkout.phonePlaceholder')}
                     />
                 </div>
 
